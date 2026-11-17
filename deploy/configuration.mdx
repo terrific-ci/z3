@@ -45,7 +45,12 @@ Each address is `IP:port`. z3 serves plain HTTP on all three; see
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_PEER_TOKEN` | `--peer-token` | empty | Token peers must present to pull from this node. The replication API is off while it is empty (this node can still pull from others) |
+| `Z3_PEER_TOKEN` | `--peer-token` | empty | Token peers must present to pull from this node. The replication API is off while it is empty (this node can still pull from others). Also enables [cluster mode](/deploy/cluster) |
+| `Z3_CLUSTER_ADDR` | `--cluster-addr` | `http://127.0.0.1:<peer port>` | This node's peer API as other cluster members reach it |
+| `Z3_NODE_NAME` | `--node-name` | host name | This node's name in a cluster |
+| `Z3_CLUSTER_COPIES` | `--cluster-copies` | `3` | Copies of each chunk in a cluster, capped at the member count |
+| `Z3_CLUSTER_READS` | `--cluster-reads` | `consistent` | `consistent` (followers catch up with the leader before reads) or `local` |
+| `Z3_CLUSTER_SWEEP_INTERVAL` | `--cluster-sweep-interval` | `600` | Seconds between placement sweeps in a cluster |
 | `Z3_SITE_NAME` | `--site-name` | empty | This node's site name for residency rules and geo erasure coding when site replication isn't configured |
 | `Z3_ANTI_ENTROPY_INTERVAL` | `--anti-entropy-interval` | `300` | Seconds between Merkle anti-entropy runs on each replication link (at least 10) |
 

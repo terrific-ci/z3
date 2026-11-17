@@ -19,6 +19,11 @@ These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing
 | `POST` | `/api/support/speedtest` | `admin:Profiling` | Drive or network speed test |
 | `POST` | `/api/support/profile` | `admin:Profiling` | CPU profile (zip) |
 | `GET` | `/api/support/inspect` | `admin:InspectData` | How an object is stored (zip) |
+| `GET` | `/api/cluster` | `admin:ServerInfo` | Cluster status: leader, members, progress, last sweep |
+| `POST` | `/api/cluster/init` | `admin:ConfigUpdate` | Start a cluster with this node |
+| `POST` | `/api/cluster/members` | `admin:ConfigUpdate` | Add an empty node: `{"addr": "http://10.0.0.12:9002"}` |
+| `DELETE` | `/api/cluster/members/{id}` | `admin:ConfigUpdate` | Remove a member (it drains first) |
+| `POST` | `/api/cluster/sweep` | `admin:ConfigUpdate` | Repair and rebalance chunk copies on every member |
 | `GET` | `/api/pools` | `admin:ServerInfo` | Pools and the current operation |
 | `POST` | `/api/pools/rebalance` | `admin:ConfigUpdate` | Start a rebalance |
 | `POST` | `/api/pools/{index}/decommission` | `admin:ConfigUpdate` | Start emptying a pool |

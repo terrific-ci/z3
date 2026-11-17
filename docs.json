@@ -60,6 +60,7 @@
               "deploy/systemd",
               "deploy/configuration",
               "deploy/disks",
+              "deploy/cluster",
               "deploy/tls-and-proxies",
               "deploy/migrate-from-minio",
               "deploy/upgrading",
@@ -166,6 +167,7 @@
               "cli/batch",
               "cli/support",
               "cli/pools",
+              "cli/cluster",
               "cli/metrics"
             ]
           }
