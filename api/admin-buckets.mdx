@@ -23,6 +23,11 @@ admin right. See [Rights](/api/overview#rights). Every example sends
 | `GET` | `/api/buckets/{bucket}/objects/content` | `s3:GetObject` / `s3:GetObjectVersion` | Download or preview |
 | `PUT` | `/api/buckets/{bucket}/objects/content` | `s3:PutObject` | Upload |
 | `GET` | `/api/buckets/{bucket}/changelog` | `admin:ServerInfo` | The bucket's change log |
+| `GET` | `/api/buckets/{bucket}/deletion-protection` | `admin:ServerInfo` | Deletion delay, pending change, trash size ([Deletion protection](/storage/deletion-protection)) |
+| `PUT` | `/api/buckets/{bucket}/deletion-protection` | `admin:ConfigUpdate` | Set the delay: `{"days": 7}` |
+| `DELETE` | `/api/buckets/{bucket}/deletion-protection` | `admin:ConfigUpdate` | Turn it off once the current delay has passed |
+| `GET` | `/api/buckets/{bucket}/trash` | `admin:ServerInfo` | Deleted versions waiting to be purged |
+| `POST` | `/api/buckets/{bucket}/trash/restore` | `admin:ConfigUpdate` | Bring versions back, by version or by prefix |
 | `GET` | `/api/lifecycle` | `admin:ServerInfo` | Every bucket with lifecycle rules, and the last runs |
 | `GET` | `/api/buckets/{bucket}/lifecycle` | `s3:GetLifecycleConfiguration` | Rules and last run of one bucket |
 | `PUT` | `/api/buckets/{bucket}/lifecycle` | `s3:PutLifecycleConfiguration` | Replace the rules |

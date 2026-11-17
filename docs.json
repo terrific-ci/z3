@@ -80,9 +80,11 @@
             "group": "Replication",
             "pages": [
               "replication/overview",
+              "replication/map",
               "replication/bucket-replication",
               "replication/site-replication",
-              "replication/geo-erasure-coding"
+              "replication/geo-erasure-coding",
+              "replication/edge"
             ]
           },
           {
@@ -93,6 +95,7 @@
               "storage/lifecycle",
               "storage/tiers",
               "storage/object-lock",
+              "storage/deletion-protection",
               "storage/tags-and-quota",
               "storage/compression",
               "storage/batch"

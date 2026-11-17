@@ -21,6 +21,8 @@ on the node being pulled from. The endpoints below are on the admin API.
 | `POST` | `/api/buckets/{bucket}/replication/resync` | Run Merkle anti-entropy against each peer now |
 | `GET` | `/api/buckets/{bucket}/conflicts` | Concurrent writes resolved by HLC |
 | `GET` | `/api/replication` | Live state of every link |
+| `GET` | `/api/replication?view=peers` | Per peer: online or offline, last contact, changes waiting to send and to receive ([Edge](/replication/edge#monitoring)) |
+| `GET` | `/api/replication/topology` | Every node's links, peers, site and bucket settings, gathered from the whole group ([Replication map](/replication/map#api)) |
 | `GET` | `/api/site` | Site replication (tokens hidden) |
 | `PUT` | `/api/site` | Join or change site replication; pushed to every other site |
 | `DELETE` | `/api/site` | Leave site replication (this node only) |
@@ -89,6 +91,7 @@ curl -X PUT http://127.0.0.1:9001/api/peers/dc2 -H "Authorization: Bearer $TOKEN
 | `priority` | `"normal"` | `"high"`, `"normal"` or `"low"`: bandwidth priority when a peer is throttled |
 | `rules` | `[]` | Checked in order; the first that matches a key decides |
 | `geo` | `null` | Geo erasure coding for new writes: `{"data": 2, "parity": 1}` ([Geo erasure coding](/replication/geo-erasure-coding)) |
+| `on_offline` | `"wait"` | For `quorum`/`all`: `"wait"` for the timeout, or `"local"` to answer at once while the peers needed are offline ([Edge](/replication/edge#on_offline)) |
 
 A rule:
 
@@ -152,6 +155,8 @@ from different nodes. Both versions are kept; the one with the higher HLC is cur
 | `bytes_wire`, `bytes_raw`, `bytes_deduplicated` | Bytes over the network, chunk bytes stored after decompression, chunk bytes not sent because they were already here |
 | `throttled_ms` | Time spent waiting for the peer's bandwidth limit |
 | `geo_chunks` | Geo-erasure-coded chunks for which only this site's shards were fetched |
+| `last_contact_ms`, `offline`, `offline_since_ms` | When the peer last answered, and whether it counts as offline (no answer for 10 s on any link) |
+| `outgoing_entries` | Changes made here that the peer has not pulled yet |
 
 The same figures feed the `z3_replication_*` [Prometheus metrics](/operations/prometheus#replication).
 
