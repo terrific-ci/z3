@@ -70,8 +70,11 @@ if command -v sha256sum >/dev/null 2>&1; then got=$(sha256sum "$tmp/$asset" | cu
 [ -n "$want" ] && [ "$want" = "$got" ] || die "checksum mismatch for $asset"
 tar -C "$tmp" -xzf "$tmp/$asset"
 
+# Writable: the directory, or the nearest parent that exists when it doesn't yet.
+probe=$DIR
+while [ ! -d "$probe" ]; do probe=$(dirname "$probe"); done
 SUDO=""
-if [ ! -w "$DIR" ] && [ "$(id -u)" != 0 ]; then need sudo; SUDO=sudo; fi
+if [ ! -w "$probe" ] && [ "$(id -u)" != 0 ]; then need sudo; SUDO=sudo; fi
 $SUDO mkdir -p "$DIR"
 $SUDO install -m 0755 "$tmp/z3" "$DIR/z3"
 say "Installed $DIR/z3 ($("$DIR/z3" --version 2>/dev/null || echo "z3 $VERSION"))"
