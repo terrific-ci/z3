@@ -1,0 +1,65 @@
+---
+title: "Benchmarks"
+description: "How fast z3 0.1.0 stores and serves objects compared with MinIO and RustFS on the same machine, how much memory each uses, and how to measure it yourself."
+---
+
+z3 was measured against MinIO and RustFS with [warp](https://github.com/minio/warp), MinIO's S3
+benchmark tool, on one machine, one server at a time, with the same limits and workloads.
+
+## Setup
+
+- **Machine:** a KVM virtual machine with 4 CPUs (Intel Xeon Silver 4114, 2.2 GHz), x86_64, 15 GiB
+  of memory, Linux 7.0, one ext4 disk, nothing else running.
+- **Limits:** every server ran in Docker on CPUs 0–1 with 2 GiB of memory and its data on the same
+  disk (one drive each: z3 with a plain data directory, MinIO and RustFS in single-drive mode).
+  warp ran on CPUs 2–3.
+- **Versions:** z3 0.1.0 (`terrificci/z3:0.1.0`), MinIO RELEASE.2026-08-04 (the community build
+  `pgsty/minio`; MinIO no longer publishes images), RustFS 1.0.6 (`rustfs/rustfs`), warp 1.3.1.
+- **Settings:** each server's defaults. The objects are random data, so z3's deduplication and
+  compression play no part.
+- **Workloads:** 40 seconds each (stat 30 s), 1 MiB objects with 16 clients and 16 KiB objects
+  with 32 clients. Every workload ran twice, on 2026-11-17; the tables show the average of both
+  rounds. Rounds differed by less than 7%, except MinIO's stat (3,585 and 5,020 objects/s).
+
+## Results
+
+| Workload | z3 | MinIO | RustFS |
+|---|---|---|---|
+| PUT 1 MiB | **150.9 MiB/s** | 105.8 MiB/s | 102.5 MiB/s |
+| GET 1 MiB | **1,484 MiB/s** | 1,380 MiB/s | 604 MiB/s |
+| PUT 16 KiB | 805 objects/s | 669 objects/s | **947 objects/s** |
+| GET 16 KiB | **5,752 objects/s** | 3,587 objects/s | 5,435 objects/s |
+| Mixed 1 MiB: GET | **308 MiB/s** | 251 MiB/s | 172 MiB/s |
+| Mixed 1 MiB: PUT | **102.7 MiB/s** | 83.3 MiB/s | 57.6 MiB/s |
+| HEAD (stat) 16 KiB | **10,078 objects/s** | 4,303 objects/s | 7,960 objects/s |
+| Peak memory | **175 MiB** | 773 MiB | 288 MiB |
+
+Mixed is warp's default mix of GET, PUT, STAT and DELETE on the same objects, so its rows show the
+GET and PUT throughput within it. Peak memory is the highest container memory seen after any
+workload.
+
+- **Large objects:** z3 writes 1 MiB objects 43–47% faster than MinIO and RustFS, and reads
+  them at about the same rate as MinIO, more than twice RustFS.
+- **Small objects:** RustFS takes small writes fastest, 18% ahead of z3; z3 reads small objects
+  and answers HEAD requests fastest.
+- **Memory:** z3 stays under 180 MiB through every workload, less than a quarter of MinIO.
+
+<Note>
+  This is a single-drive setup on one machine. Erasure-coded disk sets, several nodes and replication
+  change the picture for every server; measure the layout you plan to run.
+</Note>
+
+## Measure it yourself
+
+The script runs the three servers one after another with the same limits and prints one line per
+workload, with the throughput and the container's memory:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/terrific-ci/z3/main/bench/run.sh
+chmod +x run.sh
+./run.sh 1          # results in results-1.txt
+```
+
+It needs Docker and a machine with at least 4 CPUs. Data goes to `/var/tmp/s3bench-data` and is
+removed afterwards; warp also deletes its objects after each workload. Set `Z3_IMAGE` to measure
+another z3 image.

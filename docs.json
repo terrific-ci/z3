@@ -63,7 +63,8 @@
               "deploy/tls-and-proxies",
               "deploy/migrate-from-minio",
               "deploy/upgrading",
-              "deploy/troubleshooting"
+              "deploy/troubleshooting",
+              "deploy/benchmarks"
             ]
           },
           {
