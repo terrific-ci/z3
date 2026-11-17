@@ -1,0 +1,126 @@
+---
+title: "WebDAV"
+description: "Mount buckets as a network drive in Finder, Windows Explorer, davfs2 or rclone over WebDAV, signing in with an access key."
+---
+
+WebDAV serves buckets over HTTP, so desktops can mount them as a network drive and WebDAV clients
+can browse, upload and download. Read the [overview](/protocols/overview) first for how buckets
+look as files and how permissions work.
+
+## Turn it on
+
+<Tabs>
+  <Tab title="Console">
+
+    Open **Protocols** and turn on **WebDAV**. The gear icon sets the **Address** (default
+    `0.0.0.0:9005`). When it's running, the **Connect** line shows the URL, for example
+    `http://z3.example.com:9005/`.
+
+  </Tab>
+  <Tab title="z3 admin">
+
+    ```bash
+    z3 admin protocols enable webdav --address 0.0.0.0:9005
+    ```
+
+  </Tab>
+</Tabs>
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `webdav.enabled` | `false` | Serve buckets over WebDAV |
+| `webdav.address` | `0.0.0.0:9005` | Where WebDAV listens on every node |
+
+## Sign in
+
+WebDAV uses **HTTP Basic** authentication: the user name is an access key (or an IAM user name) and
+the password is its secret key. The root of the server lists the buckets the key may use as
+folders.
+
+<Warning>
+  WebDAV is plain HTTP, and Basic authentication sends the secret key with every request. On a
+  network you don't trust, put WebDAV behind a reverse proxy that terminates TLS, and connect with
+  `https://`. See [TLS and reverse proxies](/deploy/tls-and-proxies).
+</Warning>
+
+## Connect a client
+
+<Tabs>
+  <Tab title="macOS Finder">
+
+    In Finder, choose **Go → Connect to Server**, enter `http://z3.example.com:9005/` (or the
+    `https://` address of your proxy), and sign in with the access key and secret key.
+
+  </Tab>
+  <Tab title="Windows">
+
+    In File Explorer, choose **This PC → Map network drive**, and enter the URL, for example
+    `https://z3.example.com/` behind a TLS proxy. Sign in with the access key and secret key.
+
+    Windows only sends Basic credentials over HTTPS by default, so use a TLS proxy in front of
+    WebDAV rather than changing that.
+
+  </Tab>
+  <Tab title="Linux (davfs2)">
+
+    ```bash
+    sudo apt install davfs2
+    sudo mkdir -p /mnt/z3
+    sudo mount -t davfs http://z3.example.com:9005/ /mnt/z3
+    # asks for the user name (access key) and password (secret key)
+    ```
+
+    To mount at boot, put the credentials in `/etc/davfs2/secrets`:
+
+    ```text
+    http://z3.example.com:9005/  AKEXAMPLE  SECRETEXAMPLE
+    ```
+
+  </Tab>
+  <Tab title="rclone">
+
+    ```bash
+    rclone config create z3dav webdav \
+      url=http://z3.example.com:9005/ vendor=other \
+      user=AKEXAMPLE pass=$(rclone obscure SECRETEXAMPLE)
+
+    rclone ls z3dav:photos
+    rclone copy ./scans z3dav:scans/2026
+    ```
+
+    For S3-aware tools like rclone, the S3 API on port 9000 is usually the better choice. See
+    [Clients](/get-started/clients).
+
+  </Tab>
+  <Tab title="curl">
+
+    ```bash
+    # list buckets
+    curl -u AKEXAMPLE:SECRETEXAMPLE -X PROPFIND -H 'Depth: 1' http://z3.example.com:9005/
+
+    # upload and download
+    curl -u AKEXAMPLE:SECRETEXAMPLE -T report.pdf http://z3.example.com:9005/docs/report.pdf
+    curl -u AKEXAMPLE:SECRETEXAMPLE -O http://z3.example.com:9005/docs/report.pdf
+
+    # make a folder (at the top level: a bucket)
+    curl -u AKEXAMPLE:SECRETEXAMPLE -X MKCOL http://z3.example.com:9005/docs/2026
+    ```
+
+  </Tab>
+</Tabs>
+
+## How it behaves
+
+- An upload is spooled to a temporary file under the data directory (`spool/`) and becomes one
+  object when the PUT finishes.
+- Reads stream ranges, so media players and resumable downloads work.
+- `MOVE` renames files and folders (a folder up to 10,000 files); buckets can't be renamed.
+- `LOCK` and `UNLOCK` are answered without real locking, so Finder and Windows agree to write.
+- Policy [conditions](/access/conditions) see the client's address and its user agent (or
+  `z3-webdav` when it sends none). With a [trusted proxy](/access/conditions#trusted-proxies), the
+  forwarded address and HTTPS are used.
+
+## Not supported yet
+
+- TLS directly on the WebDAV port. Use a reverse proxy.
+- Appending to files, symlinks and per-file permissions.

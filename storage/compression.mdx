@@ -1,0 +1,77 @@
+---
+title: "Compression"
+description: "Store new objects compressed with LZ4 when their name or content type matches, without changing deduplication, replication or range reads."
+---
+
+z3 can store new objects compressed with **LZ4**, a fast compressor that costs little CPU. It's
+off by default. When it's on, an object is compressed if its **name** ends in one of the listed
+extensions **or** its **content type** is one of the listed types. Clients see no difference:
+reads return the original bytes, and sizes and ETags are those of the original data.
+
+## Settings
+
+Compression is part of the [cluster settings](/operations/settings), subsystem `compression`.
+Changes apply right away, without a restart.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `compression.enabled` | `false` | Store new unencrypted objects compressed when their name or type matches |
+| `compression.extensions` | `.txt .log .csv .json .tar .xml .bin` | Object names ending in one of these are compressed (case-insensitive) |
+| `compression.mime_types` | `text/* application/json application/xml binary/octet-stream` | Content types that are compressed. `text/*` matches every `text/` type |
+
+## Turn it on
+
+<Tabs>
+  <Tab title="Console">
+
+    Open **Settings → Compression**, turn on **Compression**, and adjust **Extensions** and
+    **Content types** if needed. Each key shows its default, and **Use default** puts it back.
+
+  </Tab>
+  <Tab title="z3 admin">
+
+    ```bash
+    z3 admin settings set compression enabled=true
+    z3 admin settings set compression 'extensions=[".log",".csv",".json",".parquet"]'
+    z3 admin settings get compression
+    z3 admin settings reset compression
+    ```
+
+    See [CLI: settings](/cli/settings).
+
+  </Tab>
+  <Tab title="Admin API">
+
+    ```bash
+    curl -X PUT http://127.0.0.1:9001/api/settings/compression \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+      -d '{"enabled": true, "mime_types": ["text/*", "application/json"]}'
+    ```
+
+    A `null` value puts a key back to its default.
+
+  </Tab>
+</Tabs>
+
+Changing settings needs `admin:ConfigUpdate`; viewing them needs `admin:ServerInfo`.
+
+## How it works
+
+- Compression happens **per chunk** in the chunk store. A chunk's hash is still the hash of the
+  original data, so [deduplication](/get-started/concepts), replication, healing and range reads
+  work as before.
+- A chunk stays compressed only if that saves more than about 1/16 of its size. Chunks that
+  don't shrink enough (already compressed media, archives) are stored as they are.
+- On an [erasure coded](/durability/erasure-coding) disk set, the compressed form is what gets
+  split into shards.
+- Encrypted objects are never compressed: ciphertext doesn't compress.
+- Only new writes are affected. Existing objects stay as they were, and chunks received through
+  replication are stored uncompressed.
+- Writes through [file protocols](/protocols/overview) and [batch replicate](/storage/batch) jobs
+  into this cluster follow the same rules.
+
+## With replication
+
+Settings are stored once for the cluster, so [site replication](/replication/site-replication)
+carries them to every site, and a reset on one site applies everywhere. A
+[configuration export](/operations/config-export) includes the keys you set.

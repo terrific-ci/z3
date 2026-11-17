@@ -1,0 +1,96 @@
+---
+title: "z3 admin pools"
+description: "See pool usage, spread data over pools, and empty a pool before removing it."
+---
+
+`z3 admin pools` shows a node's [pools](/durability/pools) and runs the two pool operations:
+**rebalance** and **decommission**.
+
+| Command | What it does | Right |
+| --- | --- | --- |
+| `z3 admin pools` | Same as `status` | `admin:ServerInfo` |
+| `z3 admin pools status` | Pools, their state and usage, and the current or last operation | `admin:ServerInfo` |
+| `z3 admin pools rebalance [--wait]` | Spread chunks over the active pools by capacity | `admin:ConfigUpdate` |
+| `z3 admin pools decommission INDEX [--wait]` | Move everything off a pool so it can be removed from `Z3_POOLS` | `admin:ConfigUpdate` |
+| `z3 admin pools cancel` | Stop the running rebalance or decommission | `admin:ConfigUpdate` |
+
+## status
+
+```bash
+z3 admin pools
+```
+
+```
+pool 0  active         4 disks, 2+2      1.4 TiB stored  412.0 GiB free of 3.6 TiB
+pool 1  active         6 disks, 4+2    210.3 GiB stored  10.2 TiB free of 10.9 TiB
+rebalance: done, 182344 chunks moved (612.4 GiB), 0 failed
+```
+
+Each line shows the pool's index, its state, its layout (`N disks, data+parity`, or `directory` for
+one plain directory), the bytes z3 stores in it (measured every minute) and its free space.
+
+| State | Meaning |
+| --- | --- |
+| `active` | Takes new data |
+| `draining` | Being decommissioned: no new data, everything moving out |
+| `decommissioned` | Empty and taking no data; remove it from `Z3_POOLS` and restart |
+
+The last line describes the current or last operation, with its state (`running`, `done`, `failed`,
+`cancelled`), chunks and bytes moved, failures, and while it runs, how many directories it has gone
+through.
+
+## rebalance
+
+```bash
+z3 admin pools rebalance --wait
+```
+
+```
+rebalance started
+rebalance: running, 1200 chunks moved (4.1 GiB), 0 failed, 12/256 directories
+rebalance: running, 2412 chunks moved (8.3 GiB), 0 failed, 25/256 directories
+...
+rebalance: done, 182344 chunks moved (612.4 GiB), 0 failed
+```
+
+Rebalance moves chunks from the fullest pools to the emptiest until their fill levels are within
+5% of each other. It needs at least two active pools:
+
+```
+Error: rebalancing needs at least two active pools
+```
+
+## decommission
+
+```bash
+z3 admin pools decommission 0 --wait
+```
+
+```
+decommission of pool 0 started
+decommission of pool 0: running, 5120 chunks moved (17.6 GiB), 0 failed, 40/256 directories
+...
+decommission of pool 0: done, 412904 chunks moved (1.4 TiB), 0 failed
+```
+
+`INDEX` is the pool's number in `z3 admin pools`. Decommission stops new data going to the pool,
+then moves everything in it to the other pools. Another active pool must be there to take the
+data. When it is done, the pool is `decommissioned`: remove it from `Z3_POOLS` and restart.
+
+## cancel
+
+```bash
+z3 admin pools cancel
+# cancelling
+```
+
+A cancelled or failed decommission puts the pool back to taking data. No data is lost either way:
+every chunk is copied and verified before the old copy is removed. Without a running operation the
+answer is `Error: no pool operation is running`.
+
+## Waiting
+
+With `--wait`, `rebalance` and `decommission` print the operation's state every second until it
+ends, and exit with status 1 if it fails. Without it they return at once; check on them later with
+`z3 admin pools`. Only one operation runs on a node at a time (`409` from the API otherwise), and an
+operation interrupted by a restart continues where it stopped.

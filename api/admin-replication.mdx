@@ -1,0 +1,192 @@
+---
+title: "Replication"
+description: "Admin API endpoints for peers, per-bucket replication, conflicts, link status, anti-entropy and site replication."
+---
+
+These endpoints set up and watch [replication](/replication/overview). Reading needs
+`admin:ServerInfo`; changing needs `admin:ConfigUpdate`.
+
+Replication itself runs between nodes on the **peer API** (port 9002), which needs `Z3_PEER_TOKEN`
+on the node being pulled from. The endpoints below are on the admin API.
+
+## Endpoints
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/peers` | Peers (tokens hidden) |
+| `PUT` | `/api/peers/{name}` | Add or change a peer |
+| `DELETE` | `/api/peers/{name}` | Remove a peer |
+| `GET` | `/api/buckets/{bucket}/replication` | A bucket's replication |
+| `PUT` | `/api/buckets/{bucket}/replication` | Set a bucket's replication (empty `peers` turns it off) |
+| `POST` | `/api/buckets/{bucket}/replication/resync` | Run Merkle anti-entropy against each peer now |
+| `GET` | `/api/buckets/{bucket}/conflicts` | Concurrent writes resolved by HLC |
+| `GET` | `/api/replication` | Live state of every link |
+| `GET` | `/api/site` | Site replication (tokens hidden) |
+| `PUT` | `/api/site` | Join or change site replication; pushed to every other site |
+| `DELETE` | `/api/site` | Leave site replication (this node only) |
+
+## Peers
+
+A peer is another z3 node this node pulls changes from.
+
+`PUT /api/peers/{name}`:
+
+<ParamField body="endpoint" type="string" required>
+  The peer's replication API, like `http://10.0.0.2:9002` or `https://dc2.example.com:9002`.
+</ParamField>
+
+<ParamField body="token" type="string" required>
+  The peer's `Z3_PEER_TOKEN`. When changing an existing peer, an empty token keeps the saved one.
+</ParamField>
+
+<ParamField body="max_bytes_per_sec" type="integer">
+  Throttle chunk transfers from this peer, all buckets together. Must be positive.
+</ParamField>
+
+<ParamField body="windows" type="string[]">
+  UTC time windows when replication from this peer runs, like `["22:00-06:00"]`. Empty: always.
+</ParamField>
+
+```bash
+curl -X PUT http://127.0.0.1:9001/api/peers/dc2 -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"endpoint": "https://dc2.example.com:9002", "token": "peer-token-of-dc2", "windows": ["22:00-06:00"]}'
+```
+
+`GET /api/peers`:
+
+```json
+[ { "name": "dc2", "endpoint": "https://dc2.example.com:9002", "node_id": "01a1e327-...", "token": "***",
+    "max_bytes_per_sec": null, "windows": ["22:00-06:00"] } ]
+```
+
+`node_id` is learned on first contact.
+
+## Bucket replication
+
+`PUT /api/buckets/{bucket}/replication`:
+
+```json
+{
+  "peers": ["dc2", "dc3"],
+  "mode": { "quorum": 1 },
+  "timeout_ms": 5000,
+  "priority": "high",
+  "rules": [
+    { "prefix": "tmp/", "replicate": false },
+    { "prefix": "records/", "mode": "all" },
+    { "prefix": "eu/", "sites": ["fra"] }
+  ],
+  "geo": null
+}
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `peers` | | Peer names to replicate with. Empty turns replication off |
+| `mode` | `"async"` | When a write answers: `"async"` after the local commit, `{"quorum": N}` once N peers applied it, `"all"` once every peer did |
+| `timeout_ms` | `5000` | How long a `quorum` or `all` write waits before failing with `503` |
+| `priority` | `"normal"` | `"high"`, `"normal"` or `"low"`: bandwidth priority when a peer is throttled |
+| `rules` | `[]` | Checked in order; the first that matches a key decides |
+| `geo` | `null` | Geo erasure coding for new writes: `{"data": 2, "parity": 1}` ([Geo erasure coding](/replication/geo-erasure-coding)) |
+
+A rule:
+
+| Field | Meaning |
+| --- | --- |
+| `prefix` | Keys starting with this (empty: every key) |
+| `tags` | Objects with all of these tags. Never matches removals, which have no tags |
+| `replicate` | `false` keeps matching objects on this node only (default `true`) |
+| `mode` | Overrides the bucket's mode for matching keys |
+| `sites` | Data residency: only these sites (or peers) may hold matching objects. Writes elsewhere are refused |
+
+`GET` answers the same shape, plus `managed` (`true` when site replication manages the bucket) and
+`updated` (when it last changed). See [Bucket replication](/replication/bucket-replication).
+
+### Resync
+
+`POST /api/buckets/{bucket}/replication/resync` compares the bucket with each peer through Merkle
+trees and repairs what differs, without waiting for the next anti-entropy run:
+
+```json
+[ { "peer": "dc2", "divergent_leaves": 3, "repaired": 12 } ]
+```
+
+### Conflicts
+
+`GET /api/buckets/{bucket}/conflicts?limit=50` (at most 1000) lists concurrent writes to the same key
+from different nodes. Both versions are kept; the one with the higher HLC is current everywhere.
+
+```json
+[
+  { "key": "reports/q3.pdf", "detected": { "physical_ms": 1794921008881, "logical": 0 },
+    "winner_version": "01a1e9a1-0ef1-7489-8fd7-60050032d518", "winner_origin": "01a1e9a0-...", "winner_hlc": { "physical_ms": 1794921008700, "logical": 0 },
+    "loser_version": "01a1e9a1-0dd2-7c41-a2b8-f0e5c3d91a77", "loser_origin": "01a1e327-...", "loser_hlc": { "physical_ms": 1794921008650, "logical": 0 } }
+]
+```
+
+## Link status
+
+`GET /api/replication` answers one entry per (peer, bucket) link:
+
+```json
+[
+  {
+    "peer": "dc2", "bucket": "radiology", "state": "streaming", "peer_node_id": "01a1e327-...",
+    "cursor": 18233, "remote_head": 18233, "lag_entries": 0, "lag_ms": 0, "last_delay_ms": 84,
+    "applied": 18233, "skipped": 0, "conflicts": 1, "chunks_fetched": 20411,
+    "bytes_raw": 61203394112, "bytes_wire": 40211993002, "bytes_deduplicated": 1204332110,
+    "last_sync_ms": 1794921008881, "errors": 0, "last_error": null,
+    "anti_entropy_runs": 288, "last_anti_entropy_ms": 1794920700000, "last_divergent_leaves": 0,
+    "anti_entropy_repaired": 4, "throttled_ms": 0, "geo_chunks": 0
+  }
+]
+```
+
+| Field | Meaning |
+| --- | --- |
+| `state` | `connecting`, `streaming`, `error`, or `paused` (outside the peer's windows) |
+| `cursor`, `remote_head` | The last peer log entry applied here, and the peer's newest |
+| `lag_entries`, `lag_ms` | Entries not applied yet, and the age of the oldest (0 when caught up) |
+| `last_delay_ms` | From the origin's commit to the local apply, for the last change |
+| `bytes_wire`, `bytes_raw`, `bytes_deduplicated` | Bytes over the network, chunk bytes stored after decompression, chunk bytes not sent because they were already here |
+| `throttled_ms` | Time spent waiting for the peer's bandwidth limit |
+| `geo_chunks` | Geo-erasure-coded chunks for which only this site's shards were fetched |
+
+The same figures feed the `z3_replication_*` [Prometheus metrics](/operations/prometheus#replication).
+
+## Site replication
+
+Site replication replicates every bucket of every site, and keeps bucket creation, deletion,
+versioning, replication settings, IAM and the other cluster documents in step. See
+[Site replication](/replication/site-replication).
+
+`PUT /api/site` sets it up on this node and then hands the same configuration to every other site,
+authenticating with that site's token, so **one call sets up the whole group**:
+
+```json
+{
+  "name": "jkt",
+  "sites": {
+    "jkt": { "endpoint": "https://jkt.example.com:9002", "token": "token-of-jkt" },
+    "sby": { "endpoint": "https://sby.example.com:9002", "token": "token-of-sby", "max_bytes_per_sec": 104857600 },
+    "bdg": { "endpoint": "https://bdg.example.com:9002", "token": "token-of-bdg", "windows": ["22:00-06:00"] }
+  },
+  "topology": "mesh"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `name` | This node's own site, one of the keys of `sites` |
+| `sites` | Every site (at least two): its replication API `endpoint`, its `Z3_PEER_TOKEN`, and optionally `max_bytes_per_sec` and `windows` for pulling from it |
+| `topology` | `"mesh"` (every site pulls from every other), `{"hub_spoke": {"hub": "jkt"}}`, or `{"chain": {"order": ["jkt", "sby", "bdg"]}}` (each site pulls from its neighbours). Changes are relayed, so every topology reaches every site |
+
+The answer says how the push to each other site went:
+
+```json
+[ { "site": "sby", "ok": true }, { "site": "bdg", "ok": false, "error": "error sending request ..." } ]
+```
+
+`GET /api/site` answers the configuration with tokens as `***`, or `null`. `DELETE /api/site` makes
+this node leave; the other sites keep their configuration.

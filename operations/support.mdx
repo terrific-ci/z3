@@ -1,0 +1,112 @@
+---
+title: "Support tools"
+description: "Health checks, drive and network speed tests, CPU profiles, and inspecting how an object is stored, without logging in to the server."
+---
+
+The **Support** page gathers the tools to find out why a node is slow or unwell, without logging
+in to the server. Everything runs on the node you are signed in to, from the console, the
+[admin API](/api/admin-operations#support) or [`z3 admin support`](/cli/support).
+
+| Tool | What it does | Right |
+| --- | --- | --- |
+| Health | Runs a set of checks and grades each one | `admin:ServerInfo` |
+| Performance | Measures disk throughput, or the network to each replication peer | `admin:Profiling` |
+| Profile | Records a CPU profile while the node keeps serving | `admin:Profiling` |
+| Inspect | Downloads how one object is stored on disk | `admin:InspectData` |
+
+The built-in `diagnostics` policy has `admin:ServerInfo` and `admin:Profiling`, but **not**
+`admin:InspectData`, because inspect hands out raw object data. The console shows only the tabs your
+rights allow.
+
+## Health
+
+<Frame>
+  <img src="/images/support-health.png" alt="The health check on the Support page" />
+</Frame>
+
+Each check is `ok`, `warn` or `fail`; the report takes the worst level.
+
+| Check | Looks at | Warn / fail when |
+| --- | --- | --- |
+| Disks | Each disk's state, the erasure layout, free space | **Fail**: more disks offline than the parity allows. **Warn**: a disk offline, or under 10% free |
+| Disk writes | Writes, syncs, reads back and deletes a 4 KiB file on every disk | **Fail**: a disk cannot write. **Warn**: slower than 500 ms |
+| Healing | Chunks checked, shards repaired, chunks lost | **Fail**: a chunk could not be repaired |
+| Peers and clocks | A hello to each replication peer: round trip, version, clock difference (from its `Date` header) | **Fail**: a peer is unreachable. **Warn**: a clock more than 5 s off, or another z3 version |
+| Replication | The state of each replication link | **Warn**: a link failing, or more than 5 minutes behind |
+| Memory and CPU | Host and process memory, load average | **Warn**: memory over 90%, or load over 1.5 × the number of CPUs |
+| Errors in the last hour | Errors and warnings in the log, the last five errors | **Warn**: any error |
+| Root credentials | Whether root still uses the default keys | **Warn** |
+
+In the console, open a check to see its details. **Report** downloads the whole report as JSON, to
+attach when asking for help.
+
+```bash
+z3 admin support health
+```
+
+```
+z3 0.1.0 on node 01a1e9a0-be79-7462-83e2-8685ea015598: warn
+  ok    Disks                    6 disks online
+  ok    Disk writes              Slowest synced 4 KiB write took 5.6 ms
+  ok    Healing                  No full scan since start, nothing lost
+  ok    Peers and clocks         2 peers reachable, clocks agree
+  ok    Replication              24 links streaming
+  ok    Memory and CPU           Memory 62% used, load 2.9 on 16 CPUs
+  ok    Errors in the last hour  No errors, 1 warning
+  WARN  Root credentials         Root still uses the default access and secret key; set Z3_ACCESS_KEY and Z3_SECRET_KEY
+```
+
+The command exits with status 1 when a check fails, so it fits in a monitoring script.
+
+## Performance
+
+<Frame>
+  <img src="/images/support-performance.png" alt="Speed test results" />
+</Frame>
+
+Pick **drive** or **network** and a size (1 to 1024 MB, 64 MB by default):
+
+- **Drive** writes a test file on every disk at once in 4 MiB blocks, syncs it, reads it back and
+  deletes it. The result is MiB/s per disk and in total. Reads may come from the operating
+  system's cache, so the write figure is the more honest one.
+- **Network** downloads test data from each replication peer, one peer at a time, over the same
+  connection replication uses (`GET /v1/speedtest` on the peer API). The result is the round trip
+  and MiB/s per peer.
+
+## Profile
+
+A profile samples the stack of every thread 99 times a second for the chosen time (1 to 120
+seconds, 15 by default) while the node keeps serving, then downloads a zip:
+
+| File | Contents |
+| --- | --- |
+| `flamegraph.svg` | Open it in a browser: the widest stacks are where the time goes. Missing when the node was idle |
+| `cpu.pb` | pprof format, for `go tool pprof -http=:8080 cpu.pb` or another pprof viewer |
+| `runtime.json` | Host, traffic, and async runtime figures (workers, live tasks, queues) |
+| `README.txt` | What the files are |
+
+Only one speed test or profile runs on a node at a time; a second one gets `409`. Profiles need a
+Unix host (Linux, macOS).
+
+## Inspect
+
+Inspect downloads a zip that shows how one object version is stored on this node:
+
+| File | Contents |
+| --- | --- |
+| `object.json` | The version record: size, ETag, chunk list, encryption and tier |
+| `layout.json` | For each chunk, the files that hold it on this node's disks (position, disk, path, size), and whether the chunk reads back intact |
+| `chunks/` | The files as they are on disk: `<chunk number>-<hash>/<position>-disk<index>` |
+| `README.txt` | What the files are |
+
+Chunk files can be LZ4-compressed (starting with `z3c1`), encrypted (SSE data stays encrypted in the
+zip), or erasure-coded shards with a header. On a node with one data directory, a file is the
+whole chunk.
+
+Leave the raw files out (**without data**, `data=false`, `--no-data`) to get only the record and the
+layout. With data, the files may total at most 1 GiB; a larger object answers `413` and must be
+inspected without data.
+
+```bash
+z3 admin support inspect photos 2026/a.jpg --no-data -o a.zip
+```

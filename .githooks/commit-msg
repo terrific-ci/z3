@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Strips AI attribution (assistant co-author trailers, "generated with" lines,
+# session links) from every commit message before the commit is created.
+set -euo pipefail
+
+msg_file="$1"
+patterns="$(git rev-parse --show-toplevel)/.githooks/forbidden-lines.regex"
+[ -f "$patterns" ] || { echo "commit-msg: $patterns not found" >&2; exit 1; }
+
+if grep -qiE -f "$patterns" "$msg_file"; then
+  tmp="$(mktemp)"
+  grep -viE -f "$patterns" "$msg_file" > "$tmp" || true
+  # Drop trailing blank lines left behind by the removed trailers.
+  awk 'NF {for (i = 0; i < blank; i++) print ""; blank = 0; print; next} {blank++}' "$tmp" > "$msg_file"
+  rm -f "$tmp"
+  echo "commit-msg: removed AI attribution lines from the commit message" >&2
+fi
+
+if ! grep -qvE '^[[:space:]]*(#|$)' "$msg_file"; then
+  echo "commit-msg: commit message is empty after cleanup" >&2
+  exit 1
+fi

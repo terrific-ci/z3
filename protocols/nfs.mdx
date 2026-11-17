@@ -1,0 +1,95 @@
+---
+title: "NFS"
+description: "Export buckets over NFSv3 to servers on a trusted network: one access key decides what clients may do, and only allowed addresses may mount."
+---
+
+NFS lets Linux and Unix servers mount buckets as a file system. z3 serves **NFSv3 over TCP**, with
+the mount service on the same port. Read the [overview](/protocols/overview) first for how buckets
+look as files and how permissions work.
+
+NFSv3 has no passwords. Instead:
+
+- every allowed client acts as **one access key** (`nfs.access_key`), whose
+  [policies](/access/policies) decide what NFS clients may do, and
+- only addresses in `nfs.allowed_clients` may connect. Connections from anywhere else are closed
+  at once and counted as refused sign-ins.
+
+<Warning>
+  Use NFS only on a trusted network. Anyone who can use an allowed address gets the access key's
+  rights. Give NFS its own access key, restricted to the buckets it needs, and use
+  `nfs.read_only` when clients only read.
+</Warning>
+
+## Settings
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `nfs.enabled` | `false` | Export buckets over NFSv3 |
+| `nfs.address` | `0.0.0.0:2049` | Where NFS and its mount service listen on every node |
+| `nfs.access_key` | empty | **Required.** The access key (or user name) whose policies decide what NFS clients may do |
+| `nfs.allowed_clients` | empty | **Required.** Client IP addresses or networks that may mount, such as `10.0.0.0/24` or `192.168.1.7`. No entries: none. |
+| `nfs.read_only` | `false` | Refuse every change through NFS |
+
+Without `nfs.access_key` and `nfs.allowed_clients`, or with an access key that doesn't exist or is
+turned off, NFS shows **Failed** with the reason.
+
+## Turn it on
+
+<Steps>
+  <Step title="Create an access key for NFS">
+    Create a user (for example `nfs-client`) with a policy for the buckets clients should see, or
+    an [access key](/access/users-groups-keys#access-keys) restricted to them.
+  </Step>
+  <Step title="Turn NFS on">
+    <Tabs>
+      <Tab title="Console">
+
+        Open **Protocols**, click the gear icon next to **NFS**, fill in **Acts as** and **Allowed
+        clients** (and **Read only** if needed), then turn on the switch.
+
+      </Tab>
+      <Tab title="z3 admin">
+
+        ```bash
+        z3 admin protocols enable nfs --set access_key=nfs-client --set allowed_clients=10.0.0.0/24
+        z3 admin settings set nfs read_only=true
+        ```
+
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Mount on the client">
+    The **Mount** line on the Protocols page has the command. z3 serves NFS and the mount service on
+    one port, so pass both ports explicitly:
+
+    ```bash
+    sudo mkdir -p /mnt/z3
+    sudo mount -t nfs -o vers=3,tcp,nolock,port=2049,mountport=2049 z3.example.com:/ /mnt/z3
+    ls /mnt/z3            # one folder per bucket
+    ```
+
+    In `/etc/fstab`:
+
+    ```text
+    z3.example.com:/  /mnt/z3  nfs  vers=3,tcp,nolock,port=2049,mountport=2049,_netdev  0  0
+    ```
+  </Step>
+</Steps>
+
+## How it behaves
+
+- **Writes**: NFSv3 has no "close". A file being written is kept in a temporary file on the node
+  and stored as one object once nothing has been written to it for **2 seconds**. Changing part of
+  a file rewrites the whole object.
+- **Read-only**: with `nfs.read_only`, every change is refused with a read-only file system error.
+- **File handles** live in memory. After the node restarts, clients see stale handles and must
+  mount again.
+- **Locking** isn't supported: mount with `nolock`.
+- Symlinks and hard links aren't supported.
+- [Conditions](/access/conditions) see `aws:UserAgent` = `z3-nfs`. NFS requests carry no source
+  address for policies; the address check is `nfs.allowed_clients`.
+
+## Not supported yet
+
+- NFSv4, NFS over UDP and NFS locking.
+- Per-client identities: every allowed client acts as the same access key.

@@ -1,0 +1,124 @@
+---
+title: "S3 compatibility"
+description: "Which S3 operations z3 supports, the extensions it adds, and the differences from AWS S3 to know about."
+---
+
+z3 speaks the S3 API on port 9000. AWS SDKs, the AWS CLI, `mc`, rclone, s3cmd and most S3 tools work
+against it unchanged; point them at the endpoint and use path-style addressing. See
+[Clients](/get-started/clients).
+
+```bash
+export AWS_ACCESS_KEY_ID=z3admin AWS_SECRET_ACCESS_KEY=z3admin-secret AWS_DEFAULT_REGION=us-east-1
+aws --endpoint-url http://localhost:9000 s3 mb s3://photos
+aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
+```
+
+## Supported operations
+
+### Buckets
+
+| Operation | Notes |
+| --- | --- |
+| `ListBuckets` | Lists only the buckets the caller may use |
+| `CreateBucket`, `HeadBucket`, `DeleteBucket` | A bucket must be empty to be deleted |
+| `GetBucketLocation` | Returns the `region.name` [setting](/operations/settings#region) |
+| `PutBucketVersioning`, `GetBucketVersioning` | `Enabled` or `Suspended`. Suspending is refused on a bucket with Object Lock |
+| `PutBucketPolicy`, `GetBucketPolicy`, `DeleteBucketPolicy` | AWS policy documents, public access included ([Bucket policies](/access/bucket-policies)) |
+| `PutBucketLifecycleConfiguration`, `GetBucketLifecycleConfiguration`, `DeleteBucketLifecycle` | Expiration, noncurrent versions, delete markers, transitions to tiers, aborting uploads ([Lifecycle](/storage/lifecycle)) |
+| `PutBucketNotificationConfiguration`, `GetBucketNotificationConfiguration` | `QueueConfiguration` only ([Bucket events](/events/bucket-events)) |
+| `PutBucketEncryption`, `GetBucketEncryption`, `DeleteBucketEncryption` | Default SSE-S3 or SSE-KMS ([Encryption](/security/encryption)) |
+| `PutBucketTagging`, `GetBucketTagging`, `DeleteBucketTagging` | Up to 50 tags ([Tags and quota](/storage/tags-and-quota)) |
+| `PutObjectLockConfiguration`, `GetObjectLockConfiguration` | Turn Object Lock on and set a default retention ([Object Lock](/storage/object-lock)) |
+
+### Objects
+
+| Operation | Notes |
+| --- | --- |
+| `PutObject` | With metadata, tags, content type, SSE headers, Object Lock headers, conditional writes |
+| `GetObject`, `HeadObject` | Ranges, conditional requests, versions, SSE-C keys |
+| `DeleteObject`, `DeleteObjects` | Versions, delete markers, `x-amz-bypass-governance-retention` |
+| `CopyObject` | No data is copied: the new version points at the same chunks |
+| `ListObjects`, `ListObjectsV2` | Prefix, delimiter, up to 1000 keys a page |
+| `ListObjectVersions` | Versions and delete markers |
+| `PutObjectTagging`, `GetObjectTagging`, `DeleteObjectTagging` | |
+| `PutObjectRetention`, `GetObjectRetention` | Governance and compliance retention |
+| `PutObjectLegalHold`, `GetObjectLegalHold` | |
+
+### Multipart uploads
+
+| Operation | Notes |
+| --- | --- |
+| `CreateMultipartUpload`, `UploadPart`, `CompleteMultipartUpload` | Completing an upload copies no data |
+| `AbortMultipartUpload`, `ListParts`, `ListMultipartUploads` | Uploads older than `scanner.upload_ttl_secs` (7 days by default) are aborted by garbage collection |
+
+### Also on the S3 port
+
+| Operation | Notes |
+| --- | --- |
+| `ListenBucketNotification`, `ListenNotification` | MinIO's event streaming, for `mc event listen` and `mc watch` ([Watch events live](/events/listen)) |
+| `AssumeRoleWithWebIdentity`, `AssumeRoleWithLDAPIdentity` | Temporary credentials for OpenID Connect and LDAP users ([STS](/api/sts)) |
+
+Operations not listed here answer `NotImplemented`.
+
+## Requests and signatures
+
+- **Signature V4**, in the `Authorization` header and in presigned URLs. Presigned URLs may ask for
+  up to `api.presigned_max_expiry_secs` (7 days by default). With boto3, use
+  `Config(signature_version="s3v4")` for presigned URLs.
+- **Signature V2** only when `api.sigv2` is on (`Z3_ENABLE_SIGV2`); it is off by default.
+- **Anonymous requests** only where a [bucket policy](/access/bucket-policies) allows them.
+- **Temporary credentials** from [STS](/api/sts), with `x-amz-security-token`.
+- **Path-style addresses**: `http://host:9000/bucket/key`. Configure clients for path-style
+  addressing (`addressing_style: path` in boto3, `--path-style` or the equivalent elsewhere).
+- When `region.name` is set, requests signed for another region are refused with
+  `AuthorizationHeaderMalformed`.
+
+## Limits
+
+| What | Limit |
+| --- | --- |
+| Bucket names | 3 to 63 characters: lowercase letters, digits, dots and hyphens, starting and ending with a letter or digit |
+| Single PUT, or one multipart part | `api.max_object_size_mb` (5 GiB by default), else `EntityTooLarge` |
+| Keys per list page | 1000 |
+| Tags per bucket | 50 |
+| Requests at once per node | `api.requests_max` (no limit by default); requests over it wait, then get `503 SlowDown` with `Retry-After` |
+
+## z3 extensions
+
+| Header or code | Meaning |
+| --- | --- |
+| `x-z3-session` | Returned on every write. Send it back on a read at another site to read your own write there: the node waits until it has applied that write ([Replication](/replication/overview)) |
+| `x-z3-session-consistent: unverified` | On a read whose session token names a node this node does not pull the bucket from directly |
+| `x-amz-replication-status` | On `GetObject` and `HeadObject` of replicated buckets |
+| `x-amz-storage-class` | The [tier](/storage/tiers) name, once lifecycle moved a version to a tier |
+| `XMinioAdminBucketQuotaExceeded` | A write refused because the bucket's [quota](/storage/tags-and-quota) is full, as in MinIO |
+
+## Encryption
+
+SSE-S3, SSE-KMS (named keys in z3's own KMS, or an external Vault or KES) and SSE-C, on `PutObject`,
+`CopyObject` and multipart uploads, plus bucket default encryption. Encrypted data stays encrypted
+on disk, in replication and in tiers. See [Encryption](/security/encryption).
+
+## Differences from AWS S3
+
+<Warning>
+  Check these before you move an application to z3.
+</Warning>
+
+- **Not supported:** `UploadPartCopy`, and `GetObject` with `partNumber`.
+- **Not stored:** the `Content-Disposition`, `Cache-Control` and `Content-Encoding` headers of an
+  object.
+- **CORS** is set for the whole cluster with `api.cors_allow_origins`; per-bucket CORS
+  (`PutBucketCors`, `GetBucketCors`) is not supported.
+- **Replication** is configured in the console or the [admin API](/api/admin-replication), not with
+  `PutBucketReplication`. It is active-active and pulls changes between z3 nodes.
+- **Bucket notifications:** `TopicConfiguration` and `LambdaFunctionConfiguration` are refused; the
+  queue ARN is `arn:z3:sqs::<name>:<kind>` (or MinIO's `arn:minio:sqs::...`). Bucket-level events
+  are not sent.
+- **Policy conditions:** `s3:ExistingObjectTag` is not supported in `Condition`.
+- **Conditional writes:** `If-None-Match` on a write only supports `*`, and `If-Match` on a write
+  needs an ETag.
+- **Copy sources** that are access points are not supported.
+- **STS:** only `AssumeRoleWithWebIdentity` and `AssumeRoleWithLDAPIdentity`; session policies
+  (`Policy`, `PolicyArns`) are refused.
+- Virtual-hosted-style addresses (`bucket.host`) are not served.

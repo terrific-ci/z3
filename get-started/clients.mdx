@@ -1,0 +1,148 @@
+---
+title: "Clients"
+description: "Connect the AWS CLI, boto3, mc, rclone and s3cmd to z3: endpoint, path-style addressing, region and credentials."
+---
+
+Any S3 client that speaks Signature V4 works with z3. Three settings matter:
+
+| Setting | Value |
+| --- | --- |
+| Endpoint | `http://<host>:9000`, or the `https://` address of your [TLS proxy](/deploy/tls-and-proxies) |
+| Addressing | **Path-style** (`http://host:9000/bucket/key`). z3 doesn't serve virtual-hosted buckets (`bucket.host`) |
+| Region | Any region, for example `us-east-1`. If the cluster setting `region.name` is set, use exactly that region; requests signed for another one are refused with `AuthorizationHeaderMalformed` |
+
+For credentials, use an [access key](/access/users-groups-keys) rather than the root account.
+The examples below use `AKEXAMPLE` / `SECRETEXAMPLE`.
+
+<Note>
+  Signature V2 is off by default. Turn it on only for an old client that can't sign with V4: the
+  `api.sigv2` [setting](/operations/settings), or `Z3_ENABLE_SIGV2=true` at startup.
+</Note>
+
+## AWS CLI
+
+Pass the endpoint on every call:
+
+```bash
+export AWS_ACCESS_KEY_ID=AKEXAMPLE
+export AWS_SECRET_ACCESS_KEY=SECRETEXAMPLE
+export AWS_DEFAULT_REGION=us-east-1
+
+aws --endpoint-url http://localhost:9000 s3 mb s3://photos
+aws --endpoint-url http://localhost:9000 s3 cp ./photo.jpg s3://photos/
+aws --endpoint-url http://localhost:9000 s3 ls s3://photos/
+aws --endpoint-url http://localhost:9000 s3api list-object-versions --bucket photos
+```
+
+Or keep it in a profile (AWS CLI v2.13 or newer reads `endpoint_url` from the config file):
+
+```ini ~/.aws/config
+[profile z3]
+region = us-east-1
+endpoint_url = http://localhost:9000
+s3 =
+  addressing_style = path
+```
+
+```ini ~/.aws/credentials
+[z3]
+aws_access_key_id = AKEXAMPLE
+aws_secret_access_key = SECRETEXAMPLE
+```
+
+```bash
+aws --profile z3 s3 ls
+```
+
+## boto3 (Python)
+
+```python
+import boto3
+from botocore.config import Config
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url="http://localhost:9000",
+    aws_access_key_id="AKEXAMPLE",
+    aws_secret_access_key="SECRETEXAMPLE",
+    region_name="us-east-1",
+    config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+)
+
+s3.create_bucket(Bucket="photos")
+s3.upload_file("photo.jpg", "photos", "2026/photo.jpg")
+for obj in s3.list_objects_v2(Bucket="photos").get("Contents", []):
+    print(obj["Key"], obj["Size"])
+
+url = s3.generate_presigned_url(
+    "get_object", Params={"Bucket": "photos", "Key": "2026/photo.jpg"}, ExpiresIn=3600
+)
+```
+
+Keep `signature_version="s3v4"`: without it, some boto3 versions sign presigned URLs with
+Signature V2, which z3 refuses by default.
+
+## MinIO Client (mc)
+
+```bash
+mc alias set z3 http://localhost:9000 AKEXAMPLE SECRETEXAMPLE --api S3v4 --path on
+
+mc mb z3/photos
+mc cp ./photo.jpg z3/photos/
+mc ls z3/photos
+mc version enable z3/photos
+```
+
+The bucket and object commands work. `mc admin` talks to MinIO's own admin API, which z3 doesn't
+serve; use the console, the [admin API](/api/overview) or [`z3 admin`](/cli/overview) instead.
+
+## rclone
+
+```ini ~/.config/rclone/rclone.conf
+[z3]
+type = s3
+provider = Other
+access_key_id = AKEXAMPLE
+secret_access_key = SECRETEXAMPLE
+endpoint = http://localhost:9000
+region = us-east-1
+force_path_style = true
+```
+
+```bash
+rclone mkdir z3:photos
+rclone copy ./pictures z3:photos/2026
+rclone ls z3:photos
+rclone sync ./pictures z3:photos/2026 --progress
+```
+
+## s3cmd
+
+```ini ~/.s3cfg
+[default]
+access_key = AKEXAMPLE
+secret_key = SECRETEXAMPLE
+host_base = localhost:9000
+host_bucket = localhost:9000
+bucket_location = us-east-1
+use_https = False
+signature_v2 = False
+```
+
+Setting `host_bucket` to the same value as `host_base` makes s3cmd use path-style requests.
+
+```bash
+s3cmd mb s3://photos
+s3cmd put photo.jpg s3://photos/
+s3cmd ls s3://photos
+```
+
+With a TLS proxy in front, set `host_base` and `host_bucket` to its host name and
+`use_https = True`.
+
+## Read your writes across sites
+
+With [replication](/replication/overview), every write answers with an `x-z3-session` header. Send
+it back on a later read at another node and that node waits until it has applied the write before it
+answers. This matters behind GeoDNS or a load balancer that may send the next read to another site.
+See [Session tokens](/replication/bucket-replication#read-your-writes-with-session-tokens).

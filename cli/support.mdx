@@ -1,0 +1,129 @@
+---
+title: "z3 admin support"
+description: "Run health checks and speed tests, record CPU profiles and inspect how an object is stored."
+---
+
+`z3 admin support` runs the [support tools](/operations/support) on the node you talk to.
+
+| Command | What it does | Right |
+| --- | --- | --- |
+| `z3 admin support health [--json]` | Run the health checks | `admin:ServerInfo` |
+| `z3 admin support speedtest drive\|network [--size-mb N]` | Measure disk throughput, or the network to each peer | `admin:Profiling` |
+| `z3 admin support profile [--seconds N] [-o FILE]` | Record a CPU profile and save it as a zip | `admin:Profiling` |
+| `z3 admin support inspect BUCKET KEY [--version-id ID] [--no-data] [-o FILE]` | Save how an object is stored as a zip | `admin:InspectData` |
+
+## health
+
+```bash
+z3 admin support health
+```
+
+```
+z3 0.1.0 on node 01a1e9a0-be79-7462-83e2-8685ea015598: warn
+  ok    Disks                    6 disks online
+  ok    Disk writes              Slowest synced 4 KiB write took 5.6 ms
+  ok    Healing                  No full scan since start, nothing lost
+  WARN  Peers and clocks         1 peer with a clock more than 5 s off
+  ok    Replication              24 links streaming
+  ok    Memory and CPU           Memory 62% used, load 2.9 on 16 CPUs
+  ok    Errors in the last hour  No errors, 1 warning
+  ok    Root credentials         Root has its own keys
+```
+
+The first line has the version, the node id and the overall level (`ok`, `warn` or `fail`). Then one
+line per check: `ok`, `WARN` or `FAIL`, its title and a summary. The checks are explained in
+[Support tools](/operations/support#health).
+
+The command exits with status 1 (`Error: health checks failed`) when a check fails, and 0 otherwise,
+warnings included:
+
+```bash
+z3 admin support health > /dev/null || logger -t z3 "z3 health checks failed"
+```
+
+| Option | What it does |
+| --- | --- |
+| `--json` | Print the whole report as JSON: every check with its `details`, plus the host figures |
+
+## speedtest
+
+```bash
+z3 admin support speedtest drive --size-mb 256
+```
+
+```
+  /mnt/d1: write 412 MiB/s, read 1830 MiB/s
+  /mnt/d2: write 405 MiB/s, read 1792 MiB/s
+  /mnt/d3: write 398 MiB/s, read 1811 MiB/s
+  /mnt/d4: write 409 MiB/s, read 1824 MiB/s
+  total: write 1624 MiB/s, read 7257 MiB/s
+```
+
+```bash
+z3 admin support speedtest network
+```
+
+```
+  dc2: 108 MiB/s, round trip 3.2 ms
+  dc3: 41 MiB/s, round trip 18.7 ms
+```
+
+| Argument / option | What it does |
+| --- | --- |
+| `drive` | Write, sync, read back and delete a test file on every disk at once |
+| `network` | Download test data from each replication peer in turn. With no peers: `no peers configured` |
+| `--size-mb <N>` | Megabytes per disk, or per peer: 1 to 1024, default 64 |
+
+A disk or peer that fails shows `error:` and the reason. Reads in the drive test may come from the
+operating system's cache; the write figure is the more honest one.
+
+## profile
+
+```bash
+z3 admin support profile --seconds 30 -o profile.zip
+```
+
+```
+profiling for 30 s...
+saved profile.zip (184213 bytes)
+```
+
+| Option | What it does |
+| --- | --- |
+| `--seconds <N>` | How long to sample: 1 to 120, default 15 |
+| `-o`, `--output <FILE>` | Where to save; default the server's name for it, `z3-profile-<time>.zip` |
+
+The zip holds `flamegraph.svg`, `cpu.pb` (pprof) and `runtime.json`; see
+[Profile](/operations/support#profile). Open the pprof file with:
+
+```bash
+unzip profile.zip cpu.pb && go tool pprof -http=:8080 cpu.pb
+```
+
+Only one speed test or profile runs on a node at a time; a second one gets
+`Error: Another speed test or profile is running on this node`.
+
+## inspect
+
+```bash
+z3 admin support inspect photos 2026/a.jpg
+# saved z3-inspect-photos-2026_a.jpg.zip (201688 bytes)
+
+z3 admin support inspect photos 2026/a.jpg --version-id 01a1e9a10ef174898fd760050032d518 --no-data -o a.zip
+# saved a.zip (1407 bytes)
+```
+
+| Argument / option | What it does |
+| --- | --- |
+| `BUCKET`, `KEY` | The object |
+| `--version-id <ID>` | A specific version; default the current one |
+| `--no-data` | Leave out the raw chunk files: only `object.json` and `layout.json` |
+| `-o`, `--output <FILE>` | Where to save; default the server's name for it |
+
+With data, the stored files may total at most 1 GiB; for a larger object use `--no-data`. The
+contents of the zip are explained in [Inspect](/operations/support#inspect).
+
+<Warning>
+  An inspect zip holds the object's stored files. Unencrypted objects are readable from it, so
+  handle it like the object itself.
+</Warning>

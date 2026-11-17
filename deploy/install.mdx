@@ -1,0 +1,120 @@
+---
+title: "Install"
+description: "Get z3 as a Docker image, or as a Linux or macOS binary with the install script."
+---
+
+z3 is one program, `z3`, that contains the S3 API, the admin API, the replication API and the web
+console. Without a command it runs a node; `z3 admin ...` manages a running node (see the
+[CLI](/cli/overview)).
+
+<CardGroup cols={2}>
+  <Card title="Docker" icon="docker" href="/deploy/docker">
+    The quickest way to run it on a server.
+  </Card>
+  <Card title="systemd" icon="linux" href="/deploy/systemd">
+    The binary as a Linux service.
+  </Card>
+</CardGroup>
+
+## Docker image
+
+The image runs on `linux/amd64` and `linux/arm64`.
+
+```bash
+docker pull terrificci/z3:latest
+```
+
+| Tag | Meaning |
+| --- | --- |
+| `latest` | The newest release |
+| `0.1.0` | One exact version |
+
+Pin a version tag to choose when you upgrade. Continue with [Docker](/deploy/docker).
+
+## Install script
+
+On Linux or macOS, install the `z3` binary with one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
+```
+
+The script picks the archive for the machine's system and CPU (Linux or macOS, amd64 or arm64)
+from the latest [GitHub release](https://github.com/terrific-ci/z3/releases), checks it against the
+release's `SHA256SUMS`, and puts `z3` in `/usr/local/bin` (asking for `sudo` when it needs to). Run
+it again to upgrade.
+
+| Option | Meaning |
+| --- | --- |
+| `--service` | Also run z3 as a systemd service and start it (Linux only); see [systemd](/deploy/systemd) |
+| `--version X` | Install version `X` (such as `0.1.0`) instead of the latest release |
+| `--dir DIR` | Install into `DIR` instead of `/usr/local/bin` |
+
+Pass options after `sh -s --`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 0.1.0
+```
+
+The environment variables `Z3_VERSION` and `Z3_INSTALL_DIR` do the same as `--version` and
+`--dir`.
+
+<Accordion title="Without the script">
+  Each release has one archive per platform, each holding the `z3` binary, plus a `SHA256SUMS`
+  file:
+
+  | Platform | Archive |
+  | --- | --- |
+  | Linux, x86-64 | `z3-<version>-linux-amd64.tar.gz` |
+  | Linux, ARM64 | `z3-<version>-linux-arm64.tar.gz` |
+  | macOS, Apple silicon | `z3-<version>-darwin-arm64.tar.gz` |
+  | macOS, Intel | `z3-<version>-darwin-amd64.tar.gz` |
+
+  ```bash
+  VERSION=0.1.0
+  ASSET=z3-$VERSION-linux-amd64.tar.gz
+  curl -fLO https://github.com/terrific-ci/z3/releases/download/v$VERSION/$ASSET
+  curl -fLO https://github.com/terrific-ci/z3/releases/download/v$VERSION/SHA256SUMS
+  grep " $ASSET\$" SHA256SUMS | sha256sum -c -
+  tar -xzf $ASSET
+  sudo install -m 755 z3 /usr/local/bin/z3
+  ```
+
+  On macOS, use `shasum -a 256 -c -` instead of `sha256sum -c -`.
+</Accordion>
+
+The console is built into the binary; there is nothing else to install.
+
+## Check that it runs
+
+```bash
+z3 --version
+z3 --help           # every option, with its environment variable
+```
+
+Start a node in the current directory to try it (data goes to `./data`):
+
+```bash
+Z3_ACCESS_KEY=admin Z3_SECRET_KEY=change-me-please z3
+```
+
+Then open `http://127.0.0.1:9001`. See the [Quickstart](/get-started/quickstart) for the first
+bucket.
+
+## Next
+
+<Steps>
+  <Step title="Run it as a service">
+    [Docker](/deploy/docker) or [systemd](/deploy/systemd).
+  </Step>
+  <Step title="Set the root credentials">
+    `Z3_ACCESS_KEY` and `Z3_SECRET_KEY`, before the first start. See
+    [Configuration](/deploy/configuration#root-credentials).
+  </Step>
+  <Step title="Give it disks">
+    One directory, or several disks with erasure coding. See [Disks](/deploy/disks).
+  </Step>
+  <Step title="Put TLS in front">
+    z3 serves plain HTTP. See [TLS and reverse proxies](/deploy/tls-and-proxies).
+  </Step>
+</Steps>

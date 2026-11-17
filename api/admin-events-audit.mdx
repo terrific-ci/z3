@@ -1,0 +1,229 @@
+---
+title: "Events and audit"
+description: "Admin API endpoints for event destinations, bucket event rules, watching events live, audit targets, the trace and server logs."
+---
+
+These endpoints configure [bucket events](/events/bucket-events) and the [audit log](/audit/audit-log),
+and stream the live [trace and logs](/audit/trace-and-logs).
+
+## Endpoints
+
+| Method | Path | Right | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/events` | `admin:ServerInfo` | Every destination with its delivery status, and every bucket's rules |
+| `PUT` | `/api/events/targets/{name}` | `admin:ConfigUpdate` | Add or change a destination |
+| `DELETE` | `/api/events/targets/{name}` | `admin:ConfigUpdate` | Remove a destination no bucket uses |
+| `POST` | `/api/events/test` | `admin:ConfigUpdate` | Send a test event to a destination as entered |
+| `GET` | `/api/buckets/{bucket}/notifications` | `s3:GetBucketNotification` | A bucket's rules |
+| `PUT` | `/api/buckets/{bucket}/notifications` | `s3:PutBucketNotification` | Replace a bucket's rules |
+| `DELETE` | `/api/buckets/{bucket}/notifications` | `s3:PutBucketNotification` | Remove a bucket's rules |
+| `GET` | `/api/buckets/{bucket}/events/listen` | `s3:ListenBucketNotification` | A bucket's events, live |
+| `GET` | `/api/audit` | `admin:ServerInfo` | Audit targets with delivery and queue status |
+| `PUT` | `/api/audit/targets/{name}` | `admin:ConfigUpdate` | Add or change an audit target |
+| `DELETE` | `/api/audit/targets/{name}` | `admin:ConfigUpdate` | Remove an audit target and its queue |
+| `POST` | `/api/audit/test` | `admin:ConfigUpdate` | Send a test entry to a target as entered |
+| `GET` | `/api/trace` | `admin:ServerInfo` | Recent requests |
+| `GET` | `/api/trace/stream` | `admin:ServerInfo` | New requests, live |
+| `GET` | `/api/logs` | `admin:ServerInfo` | Recent log lines |
+| `GET` | `/api/logs/stream` | `admin:ServerInfo` | New log lines, live |
+
+## Event destinations
+
+### Add or change a destination
+
+`PUT /api/events/targets/{name}` answers `204`. The body holds the fields of
+[Event destinations](/events/destinations#fields):
+
+```json
+{
+  "kind": "redis", "enabled": true, "endpoint": "10.0.0.5:6379", "user": "", "secret": "redis-password",
+  "key": "z3:objects", "format": "namespace", "queue_limit": 10000, "comment": "Object index",
+  "tls": false, "tls_ca": "", "tls_skip_verify": false
+}
+```
+
+`secret` left out keeps the saved one; `""` removes it. An invalid destination answers `400` with the
+reason, such as `Redis needs a key` or `the endpoint is an amqp:// or amqps:// URL`.
+
+`DELETE /api/events/targets/{name}` answers `409` while a bucket still uses it:
+
+```json
+{ "error": "bucket logs sends events to hook; remove those rules first" }
+```
+
+### List destinations and rules
+
+`GET /api/events`:
+
+```json
+{
+  "targets": [
+    {
+      "name": "hook", "kind": "webhook", "enabled": true, "endpoint": "https://hooks.example.com/z3",
+      "user": "", "has_secret": true, "key": "", "format": "access", "queue_limit": 0, "comment": "",
+      "arn": "arn:z3:sqs::hook:webhook", "used_by": ["logs"],
+      "status": { "queued": 0, "sent": 1204, "failed": 3, "dropped": 0, "online": true,
+                  "last_sent_ms": 1794921056000, "last_error": null, "last_error_ms": null }
+    }
+  ],
+  "buckets": [
+    { "bucket": "logs", "rules": [ { "id": "rule-1", "target": "hook", "events": ["s3:ObjectCreated:*"], "prefix": "app/", "suffix": "" } ] }
+  ],
+  "event_names": ["s3:ObjectCreated:Put", "s3:ObjectCreated:Copy", "..."],
+  "default_queue_limit": 10000
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `arn` | The queue ARN to use in `PutBucketNotificationConfiguration` |
+| `used_by` | Buckets whose rules send to it |
+| `status.queued` | Events waiting |
+| `status.sent`, `status.failed`, `status.dropped` | Delivered events, failed attempts (each retried), events dropped because the queue was full |
+| `status.online` | `null` until the first attempt |
+
+TLS and type-specific options (`tls`, `tls_ca`, `tls_skip_verify`, `sasl`, `exchange`, `exchange_type`,
+`durable`, `qos`) appear on the destination when set.
+
+### Test a destination
+
+`POST /api/events/test` takes the same body as `PUT`, plus an optional `name` (to reuse a saved
+destination's secret), and sends an `s3:TestEvent` straight away:
+
+```json
+{ "ok": true, "ms": 14, "error": null }
+```
+
+## Bucket rules
+
+`PUT /api/buckets/{bucket}/notifications` replaces the bucket's rules (`204`):
+
+```json
+{
+  "rules": [
+    { "id": "jpegs", "target": "hook", "events": ["s3:ObjectCreated:*", "s3:ObjectRemoved:Delete"],
+      "prefix": "photos/", "suffix": ".jpg" }
+  ]
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Unique in the bucket; default `rule-1`, `rule-2`, ... |
+| `target` | A destination name |
+| `events` | At least one event name or group wildcard ([Event types](/events/bucket-events#event-types)) |
+| `prefix`, `suffix` | Key filters, at most 1024 bytes each |
+
+At most 100 rules. `GET` answers `{"bucket", "config", "targets", "event_names"}`, where `config` is
+`{"rules": [...]}` or `null` and `targets` lists every destination's `name`, `kind` and `enabled`.
+`DELETE` removes the rules.
+
+## Watch a bucket live
+
+`GET /api/buckets/{bucket}/events/listen` streams the bucket's events as server-sent events, whether
+or not a rule matches them.
+
+| Query | Meaning |
+| --- | --- |
+| `prefix`, `suffix` | Key filters |
+| `events` | Comma-separated event names or wildcards; empty: every event |
+
+Each message is `{"bucket", "key", "event", "record"}`, where `record` is the S3 event record. A
+`lagged` event says how many events were skipped. See [Watch events live](/events/listen).
+
+## Audit targets
+
+`PUT /api/audit/targets/{name}` takes the same body as an event destination, with `kind` one of
+`webhook`, `redis`, `nats`, `elasticsearch` or `kafka` (others answer `400`). `format` is always
+`access`.
+
+`GET /api/audit`:
+
+```json
+{
+  "targets": [
+    {
+      "name": "siem", "kind": "kafka", "enabled": true, "endpoint": "k1:9092,k2:9092", "user": "z3",
+      "has_secret": true, "key": "z3-audit", "format": "access", "queue_limit": 0, "comment": "",
+      "tls": true, "sasl": "scram-sha-512", "arn": "arn:z3:sqs::siem:kafka", "used_by": [],
+      "status": { "queued": 412, "sent": 98123, "failed": 7, "dropped": 0, "online": false,
+                  "last_sent_ms": 1794921000000, "last_error": "connection refused", "last_error_ms": 1794921056000 },
+      "queue": { "on_disk": 412, "limit": 10000 }
+    }
+  ],
+  "default_queue_limit": 10000
+}
+```
+
+`queue.on_disk` counts waiting entries saved on disk, which survive a restart. `DELETE` on an unknown
+target answers `404`. `POST /api/audit/test` sends a test entry (`api.name` `z3:TestAudit`) and answers
+`{"ok", "ms", "error"}`.
+
+## Trace
+
+`GET /api/trace` answers recent requests, newest first.
+
+| Query | Default | Meaning |
+| --- | --- | --- |
+| `kind` | both | `s3` or `admin` |
+| `errors` | `false` | Only answers with status 400 and up |
+| `q` | | Text in the API name, path, bucket, object, access key or client address |
+| `limit` | `200` | At most 500 |
+| `scope` | this node | `all`: every node of the group |
+
+```json
+[
+  {
+    "time_ms": 1794921056091, "id": "1A1E9A1C75B000044", "kind": "s3", "api": "GetObject",
+    "method": "GET", "path": "/logs/x", "query": "", "bucket": "logs", "object": "x",
+    "status": 403, "duration_us": 1517, "rx": 0, "tx": 0, "access_key": "", "remote": "10.0.0.9",
+    "user_agent": "curl/8.7.1",
+    "request_headers": { "accept": "*/*", "host": "z3.example.com:9000", "user-agent": "curl/8.7.1" },
+    "response_headers": { "content-type": "application/xml", "x-amz-request-id": "1A1E9A1C75B000044" }
+  }
+]
+```
+
+`id` is the request id the client got in `x-amz-request-id`. `api` is the S3 operation, or for admin
+calls the route (`GET /api/logs`). `duration_us` runs until the response headers.
+
+`GET /api/trace/stream` takes the same filters except `limit`, and streams each new request as a
+server-sent event.
+
+## Logs
+
+`GET /api/logs` answers recent log lines, oldest first.
+
+| Query | Default | Meaning |
+| --- | --- | --- |
+| `level` | every level | The least severe level shown: `warn` shows warnings and errors |
+| `q` | | Text in the message or fields |
+| `limit` | `500` | At most 2,000 |
+| `scope` | this node | `all`: every node of the group |
+
+```json
+[
+  { "seq": 8, "time_ms": 1794921056093, "level": "warn", "target": "z3_server",
+    "message": "using default credentials; set Z3_ACCESS_KEY and Z3_SECRET_KEY before exposing this server", "fields": {} }
+]
+```
+
+`level` is `error`, `warn`, `info`, `debug` or `trace`. `GET /api/logs/stream` streams new lines.
+
+## All nodes
+
+With `scope=all`, `GET /api/trace` and `GET /api/logs` answer:
+
+```json
+{
+  "entries": [ { "...": "...", "node": "01a1e9a0-be79-7462-83e2-8685ea015598", "node_name": "jkt" } ],
+  "nodes": [
+    { "name": "jkt", "node": "01a1e9a0-be79-7462-83e2-8685ea015598", "local": true, "state": "ok", "error": null },
+    { "name": "sby", "node": null, "local": false, "state": "unreachable", "error": "error sending request ..." }
+  ]
+}
+```
+
+Every entry carries `node` and `node_name`. Each node's `state` is `ok`, `connecting` or
+`unreachable`. The streams send a `nodes` event with the same list at the start and whenever a
+node's state changes; a node that cannot be reached never fails the request.

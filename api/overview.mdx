@@ -1,0 +1,184 @@
+---
+title: "API overview"
+sidebarTitle: "Overview"
+description: "The three HTTP APIs of a z3 node, how to sign in to the admin API, tokens, admin rights and errors."
+---
+
+A z3 node serves three HTTP APIs, each on its own port:
+
+| API | Default address | Variable | For |
+| --- | --- | --- | --- |
+| S3 | `0.0.0.0:9000` | `Z3_S3_ADDR` | Applications and S3 clients ([S3 compatibility](/api/s3-compatibility)), and [STS](/api/sts) |
+| Admin | `127.0.0.1:9001` | `Z3_ADMIN_ADDR` | The console, the [CLI](/cli/overview) and automation: everything under `/api/`, plus [`/metrics`](/api/prometheus) |
+| Peer | `0.0.0.0:9002` | `Z3_PEER_ADDR` | Other z3 nodes: replication, and trace and logs for the all-nodes view. Off until `Z3_PEER_TOKEN` is set |
+
+This section documents the **admin API**. It speaks JSON and is what the console uses, so anything
+the console does can be scripted.
+
+<Note>
+  The admin API listens on `127.0.0.1` by default. To reach it from other machines, set
+  `Z3_ADMIN_ADDR=0.0.0.0:9001` and put an HTTPS reverse proxy in front
+  ([TLS and proxies](/deploy/tls-and-proxies)).
+</Note>
+
+## Signing in
+
+Every `/api/` endpoint needs a session token, except the few listed under
+[Open endpoints](#open-endpoints). Get one with `POST /api/auth/login`:
+
+```bash
+curl -X POST http://127.0.0.1:9001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"access_key": "z3admin", "secret_key": "z3admin-secret"}'
+```
+
+```json
+{ "token": "729bdb67d66e36145d64112072f1df835f9022d6957e983f53c40e2a0f4b13a4", "access_key": "z3admin", "expires_in_secs": 43200 }
+```
+
+<ParamField body="access_key" type="string" required>
+  Any identity z3 knows: the root access key, an IAM user name, an access key, or an LDAP user name
+  when [LDAP](/access/openid-connect-ldap) is set up.
+</ParamField>
+
+<ParamField body="secret_key" type="string" required>
+  Its secret key (for LDAP, the password).
+</ParamField>
+
+A wrong key or secret answers `401` after a short delay, which slows down guessing. Credentials are
+compared in constant time. Single sign-on through OpenID Connect goes through the console's sign-in
+page (`GET /api/auth/oidc/start`), which hands the console a session the same way.
+
+### Using the token
+
+Send it as a bearer token:
+
+```bash
+export TOKEN=729bdb67d66e36145d64112072f1df835f9022d6957e983f53c40e2a0f4b13a4
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:9001/api/info
+```
+
+Where a header cannot be set (a download link, a browser `EventSource`), pass it as `?token=` in the
+query instead. The [audit log and trace](/audit/audit-log#redaction) redact it either way.
+
+### Sessions
+
+- A token lasts **12 hours**, and every use extends it by another 12 hours.
+- Sessions live in memory: restarting the node signs everyone out.
+- The identity is looked up again on every request, so disabling or deleting a user or key ends
+  its sessions at once, and policy changes apply immediately.
+- `POST /api/auth/logout` ends the session (`204`).
+- Each node has its own sessions; sign in to each node you call.
+
+### Who am I
+
+`GET /api/auth/me` says who the token belongs to and which admin rights it has:
+
+```json
+{
+  "access_key": "ops", "kind": "user", "provider": null, "user": "ops",
+  "server_info": true, "config_update": false, "user_admin": false,
+  "profiling": true, "inspect_data": false
+}
+```
+
+`kind` is `root`, `user`, `access_key` or `federated` (with `provider`: `oidc` or `ldap`). `user` is
+the user acting, an access key's parent for a key.
+
+## Open endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/health` | `{"status": "ok"}` when the node is up |
+| `POST /api/auth/login` | Sign in |
+| `GET /api/auth/providers` | What the sign-in page offers: `{"oidc": "<button label>" or null, "ldap": true/false}` |
+| `GET /api/auth/oidc/start`, `GET /api/auth/oidc/callback` | The OpenID Connect sign-in flow |
+| `GET /metrics` | [Prometheus metrics](/api/prometheus) |
+
+The console's own pages and files are served without a token too.
+
+## Rights
+
+The admin API uses the same IAM [policies](/access/policies) as S3. Two kinds of check apply:
+
+**Bucket and object endpoints check the S3 action itself.** Listing objects needs `s3:ListBucket`,
+changing a bucket policy `s3:PutBucketPolicy`, and so on. So every user can use the console within
+their own rights, without admin rights. This covers `/api/buckets` and, under
+`/api/buckets/{bucket}`, the bucket itself and `objects`, `versioning`, `policy`, `lifecycle`,
+`notifications`, `events`, `object-lock`, `tags` and `encryption`. Users also manage their own
+access keys under `/api/iam/access-keys`.
+
+**Everything else needs an admin right:**
+
+| Right | Covers |
+| --- | --- |
+| `admin:ServerInfo` | Reading server state: every other `GET` (status, metrics, disks, replication, settings, events, audit, trace, logs, pools, batch jobs, health) |
+| `admin:ConfigUpdate` | Changing server state: every other `PUT`, `POST` and `DELETE` (peers, site replication, bucket replication and quota, settings, destinations, tiers, KMS, batch jobs, pools, heal, GC, imports) |
+| `admin:UserAdmin` | `/api/iam/*` (users, groups, policies, everyone's access keys) and `/api/idp/*` (OpenID Connect, LDAP, STS) |
+| `admin:Profiling` | `POST /api/support/speedtest`, `POST /api/support/profile` |
+| `admin:InspectData` | `GET /api/support/inspect`, which hands out raw object data |
+
+`admin:*` grants all of them.
+
+### Built-in policies
+
+| Policy | Grants |
+| --- | --- |
+| `consoleAdmin` | Everything: `admin:*` and `s3:*` on every bucket |
+| `readwrite` | `s3:*` on every bucket and object |
+| `readonly` | List and read every bucket and object |
+| `writeonly` | Upload into every bucket without reading or listing |
+| `diagnostics` | `admin:ServerInfo` and `admin:Profiling`: status, health checks, speed tests and profiles, no data access |
+
+The root account can do everything. Built-in policies cannot be changed or deleted.
+
+## Errors
+
+Errors come back as JSON with an HTTP status:
+
+```json
+{ "error": "this needs the admin:ConfigUpdate permission" }
+```
+
+| Status | Meaning |
+| --- | --- |
+| `400` | The request is invalid: a bad value, a missing field, an unknown setting |
+| `401` | No token, an expired token, or a wrong key or secret at sign-in (`Sign in required`) |
+| `403` | The identity lacks the right (`this needs the admin:ServerInfo permission`, `your policies do not allow s3:PutBucketPolicy here`) |
+| `404` | The bucket, key, job, tier or other item does not exist |
+| `409` | A conflict: a bucket that is not empty, a destination still in use, an operation already running |
+| `413` | Too large, for example an inspect download over 1 GiB |
+| `502` | A remote system failed: a peer, a tier, an external KMS, an import source |
+| `500` | Something failed inside the node |
+
+Successful changes usually answer `204 No Content`, or `201 Created` for something new.
+
+## Streams
+
+Live endpoints answer with [server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html):
+
+| Endpoint | Streams |
+| --- | --- |
+| `GET /api/trace/stream` | Requests ([Trace](/api/admin-events-audit#trace)) |
+| `GET /api/logs/stream` | Log lines ([Logs](/api/admin-events-audit#logs)) |
+| `GET /api/buckets/{bucket}/events/listen` | A bucket's events ([Watch live](/api/admin-events-audit#watch-a-bucket-live)) |
+
+Each message's data is one JSON item. A `lagged` event, whose data is a number, says that many items
+were skipped because the reader fell behind. Use `curl -N` to see them unbuffered.
+
+## Audit
+
+Every call that is not a `GET` is sent to the [audit targets](/audit/audit-log), with the route as
+its `api.name` (for example `PUT /api/buckets/{bucket}/policy`) and the signed-in identity as its
+`accessKey`, failed sign-ins included.
+
+## Reference
+
+| Page | Endpoints |
+| --- | --- |
+| [Buckets and objects](/api/admin-buckets) | Buckets, objects, versioning, change log, lifecycle, Object Lock, tags, quota, encryption and KMS, tiers |
+| [IAM](/api/admin-iam) | Users, groups, policies, access keys, bucket policies, identity providers, STS settings |
+| [Replication](/api/admin-replication) | Peers, bucket replication, conflicts, link status, site replication |
+| [Events and audit](/api/admin-events-audit) | Event destinations and rules, watching live, audit targets, trace, logs |
+| [Operations](/api/admin-operations) | Info, status, metrics, support, pools, settings, protocols, batch, disks, heal, GC, config, imports |
+| [Prometheus](/api/prometheus) | `/metrics` |

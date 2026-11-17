@@ -1,0 +1,194 @@
+---
+title: "Temporary credentials (STS)"
+description: "Trade an OpenID Connect ID token or an LDAP username and password for temporary S3 credentials with AssumeRoleWithWebIdentity and AssumeRoleWithLDAPIdentity."
+---
+
+Applications and scripts of [federated users](/access/openid-connect-ldap) get S3 access through
+**STS**, as on AWS: they trade proof of identity for **temporary credentials** (an access key, a
+secret key and a session token) that expire on their own. The credentials carry the same policies
+as a console sign-in by that person, and work on every site.
+
+| Action | Proof of identity | Policies from |
+| --- | --- | --- |
+| `AssumeRoleWithWebIdentity` | `WebIdentityToken`: an ID token (JWT) from the configured OIDC provider | The policy claim plus **Policies for everyone**, as for a console sign-in |
+| `AssumeRoleWithLDAPIdentity` | `LDAPUsername` and `LDAPPassword` (an LDAP bind) | The user and group DN mappings, as for a console sign-in |
+
+STS is served on the **S3 port** (9000), not the console port. Requests are AWS STS form requests:
+`POST /` with `Action=…&Version=2011-06-15` in the body (or `Action` in the query), answered with
+AWS-style XML holding `AccessKeyId`, `SecretAccessKey`, `SessionToken` and `Expiration`.
+
+## Turn STS on
+
+STS is on once a provider is set up. Open **Identity Providers → S3 access (STS)**:
+
+- The switch turns temporary credentials on or off. When it's off, new requests **and** sessions
+  already handed out are refused.
+- **Longest session** caps how long credentials may last, in hours (0.25 to 12). The default is 12.
+- **STS endpoint (the S3 port)** shows the address to send requests to.
+
+Or over the admin API (needs `admin:UserAdmin`):
+
+```bash
+curl -X PUT http://127.0.0.1:9001/api/idp/sts \
+  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"enabled": true, "max_duration_secs": 43200}'
+```
+
+## Durations
+
+- `DurationSeconds` is 900 (15 minutes) to 43200 (12 hours). Without it, credentials last one hour.
+- A value above **Longest session** is lowered to it; a value outside 900 to 43200 is refused with
+  `ValidationError`.
+- `RoleArn` and `RoleSessionName` are accepted but don't change the rights.
+- Session policies (`Policy`, `PolicyArns`) are refused with `InvalidParameterValue` rather than
+  silently ignored: the provider's policies apply.
+
+STS requests don't need to be signed, as on AWS for these two actions. If one is signed, the
+signature is ignored.
+
+## With an OIDC ID token
+
+The program gets an ID token from your provider (for example with the client credentials or device
+flow, or from a Kubernetes or CI identity), then trades it.
+
+<Tabs>
+  <Tab title="AWS CLI">
+
+    ```bash
+    aws sts assume-role-with-web-identity --endpoint-url http://z3.example.com:9000 \
+      --role-arn arn:aws:iam::000000000000:role/z3 --role-session-name app \
+      --web-identity-token "$ID_TOKEN" --duration-seconds 3600
+    ```
+
+    Put the answer in the environment and use S3 as usual:
+
+    ```bash
+    export AWS_ACCESS_KEY_ID=ZSTS...
+    export AWS_SECRET_ACCESS_KEY=...
+    export AWS_SESSION_TOKEN=z3sts1....
+    aws --endpoint-url http://z3.example.com:9000 s3 ls
+    ```
+
+  </Tab>
+  <Tab title="boto3">
+
+    ```python
+    import boto3
+    from botocore import UNSIGNED
+    from botocore.config import Config
+
+    sts = boto3.client("sts", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+                       config=Config(signature_version=UNSIGNED))
+    c = sts.assume_role_with_web_identity(
+        RoleArn="arn:aws:iam::000000000000:role/z3",
+        RoleSessionName="app",
+        WebIdentityToken=id_token,
+        DurationSeconds=3600,
+    )["Credentials"]
+
+    s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+                      aws_access_key_id=c["AccessKeyId"],
+                      aws_secret_access_key=c["SecretAccessKey"],
+                      aws_session_token=c["SessionToken"])
+    print(s3.list_buckets()["Buckets"])
+    ```
+
+  </Tab>
+</Tabs>
+
+z3 checks the ID token carefully:
+
+- The **signature**, with the keys from the provider's `jwks_uri`: RS256/384/512, PS256/384/512,
+  ES256/384. `none` and HS* are refused.
+- The **issuer**, the **audience** (`aud` or `azp` must be the client ID), `exp` and `nbf`, with 60
+  seconds of clock leeway.
+- The JWKS is cached for 10 minutes and fetched again when a signature doesn't match, so the
+  provider can rotate its keys.
+
+## With an LDAP username and password
+
+The AWS CLI and boto3 have no call for `AssumeRoleWithLDAPIdentity`, so send the form request
+yourself.
+
+<Tabs>
+  <Tab title="curl">
+
+    ```bash
+    curl -X POST http://z3.example.com:9000/ \
+      -d Action=AssumeRoleWithLDAPIdentity -d Version=2011-06-15 \
+      -d LDAPUsername=backup-svc -d LDAPPassword="$LDAP_PASSWORD" -d DurationSeconds=3600
+    ```
+
+  </Tab>
+  <Tab title="Python">
+
+    ```python
+    import xml.etree.ElementTree as ET
+    import boto3
+    import requests
+
+    r = requests.post("http://z3.example.com:9000/", data={
+        "Action": "AssumeRoleWithLDAPIdentity", "Version": "2011-06-15",
+        "LDAPUsername": "backup-svc", "LDAPPassword": ldap_password, "DurationSeconds": "3600",
+    })
+    r.raise_for_status()
+    ns = {"s": "https://sts.amazonaws.com/doc/2011-06-15/"}
+    creds = ET.fromstring(r.text).find(".//s:Credentials", ns)
+    get = lambda name: creds.find(f"s:{name}", ns).text
+
+    s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+                      aws_access_key_id=get("AccessKeyId"),
+                      aws_secret_access_key=get("SecretAccessKey"),
+                      aws_session_token=get("SessionToken"))
+    ```
+
+  </Tab>
+</Tabs>
+
+A wrong LDAP password is slowed down by 400 ms, like a console sign-in.
+
+<Warning>
+  Use HTTPS in front of the S3 port when sending LDAP passwords or ID tokens over a network. See
+  [TLS and reverse proxies](/deploy/tls-and-proxies).
+</Warning>
+
+## Using temporary credentials
+
+Temporary credentials sign requests with ordinary Signature V4, plus the session token in the
+`x-amz-security-token` header (or `X-Amz-Security-Token` in a presigned URL). Every AWS SDK does
+this when you pass the session token.
+
+| Problem | Error |
+| --- | --- |
+| No session token, or one that doesn't belong to the access key | `InvalidToken` |
+| The credentials have expired | `ExpiredToken` |
+| The provider no longer grants a known policy, or STS is off | `AccessDenied` |
+
+On every request, z3 checks the token and its expiry and works out the policies again from the
+provider settings **as they are now**. If an LDAP mapping is removed, a policy is deleted from z3,
+the provider is turned off, or STS is turned off, sessions that haven't expired yet stop working
+at once.
+
+## How sessions work
+
+Nothing is stored per session:
+
+- The access key is `ZSTS` plus 16 random characters. Its secret key is an HMAC of the access key
+  under an **STS signing key**, so z3 can check signatures knowing only the access key.
+- The session token is `z3sts1.<payload>.<mac>`: the access key, expiry, provider, user and where
+  the policies come from (the OIDC policy claim, or the LDAP DN and groups), signed with the same
+  key. The token is bound to its access key; changing anything in it breaks the signature.
+- The signing key is created at random for the first session and kept sealed with the STS
+  settings. Sessions survive restarts, and with [site replication](/replication/site-replication)
+  the key reaches every site: a session issued on one site works on all of them.
+
+This keeps STS simple and adds no writes to replicate per session. The trade-off: a single session
+can't be revoked before it expires. Revoke through the mapping, the policy, or by turning STS off.
+
+## Not supported yet
+
+- `AssumeRole` for IAM users, `AssumeRoleWithClientGrants` and `AssumeRoleWithCertificate`.
+- Session policies.
+- Revoking one session before it expires.
+
+See also [API: STS](/api/sts).

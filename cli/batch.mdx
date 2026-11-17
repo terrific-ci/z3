@@ -1,0 +1,166 @@
+---
+title: "z3 admin batch"
+description: "Start, follow, cancel and remove batch jobs that replicate, expire or re-key many objects."
+---
+
+`z3 admin batch` runs [batch jobs](/storage/batch): one-off work over many objects, in the
+background on the node you talk to.
+
+| Command | What it does | Right |
+| --- | --- | --- |
+| `z3 admin batch list` | Jobs on the node, newest first | `admin:ServerInfo` |
+| `z3 admin batch start FILE [--wait]` | Start a job from a JSON definition (a file, or `-` for standard input) | `admin:ConfigUpdate` |
+| `z3 admin batch status ID` | One job's progress, last errors and dry-run samples | `admin:ServerInfo` |
+| `z3 admin batch cancel ID` | Stop a running job | `admin:ConfigUpdate` |
+| `z3 admin batch remove ID` | Forget a finished job | `admin:ConfigUpdate` |
+
+## Job definitions
+
+A job is a JSON document with a `type`: `replicate`, `expire` or `rotate`.
+
+<Tabs>
+  <Tab title="expire">
+
+```json expire-tmp.json
+{
+  "type": "expire",
+  "source": { "bucket": "logs", "prefix": "tmp/" },
+  "filter": { "older_than": "30d" },
+  "versions": "all",
+  "dry_run": true
+}
+```
+
+`versions`: `current` (default; a delete marker in a versioned bucket), `noncurrent`, or `all`
+(every version and delete marker). Versions held by Object Lock are skipped.
+
+  </Tab>
+  <Tab title="replicate">
+
+```json replicate-archive.json
+{
+  "type": "replicate",
+  "source": { "bucket": "medical-records" },
+  "target": {
+    "bucket": "archive", "prefix": "site-a/",
+    "endpoint": "https://s3.dr-site.example", "region": "us-east-1",
+    "access_key": "AKIAEXAMPLE", "secret_key": "..."
+  }
+}
+```
+
+Without `target.endpoint`, the target is a bucket on this cluster. `"overwrite": true` copies again
+even when the target already has the same object.
+
+  </Tab>
+  <Tab title="rotate">
+
+```json rotate-key.json
+{ "type": "rotate", "source": { "bucket": "medical-records" }, "key_id": "records-key-2027" }
+```
+
+Without `key_id`, objects move to the default SSE-S3 key (`z3-default`). `"dry_run": true` only
+counts.
+
+  </Tab>
+</Tabs>
+
+Every type takes an optional `filter`; all the conditions given must hold:
+
+| Field | Meaning |
+| --- | --- |
+| `source.bucket` | Required: the bucket to go through |
+| `source.prefix` | Only keys starting with this |
+| `filter.tags` | Objects with all of these tags, like `{"kind": "scratch"}` |
+| `filter.size_gt`, `filter.size_lt` | Larger or smaller than this many bytes |
+| `filter.older_than`, `filter.newer_than` | Written at least, or at most, this long ago: `90s`, `15m`, `12h`, `30d`, `2w` |
+
+Before starting, z3 checks the definition: the bucket exists, a remote target answers, the KMS key
+exists. A bad definition is refused and nothing runs.
+
+## start
+
+```bash
+z3 admin batch start expire-tmp.json --wait
+```
+
+```
+started expire-146d75b7b7a2775c
+expire-146d75b7b7a2775c      expire    running   matched 812  done 640  skipped 0  failed 0  163840000 bytes
+expire-146d75b7b7a2775c      expire    done      matched 1204  done 1204  skipped 0  failed 0  246579200 bytes
+```
+
+Without `--wait`, the command prints the job id and returns. With `--wait`, it prints a progress
+line every second until the job ends, then the job's last errors. It exits with status 1 when the
+job fails.
+
+A definition can come from standard input:
+
+```bash
+echo '{"type":"rotate","source":{"bucket":"medical-records"},"key_id":"records-key-2027"}' \
+  | z3 admin batch start - --wait
+```
+
+The progress line shows the job id, type and state (`running`, `done`, `failed`, `cancelled`), then:
+
+| Count | Meaning |
+| --- | --- |
+| `matched` | Versions the filter selected |
+| `done` | Copied, deleted or re-keyed (or would be, in a dry run) |
+| `skipped` | Selected but left alone: already at the target, held by Object Lock, encrypted with a customer key |
+| `failed` | Versions that failed; see `status` for the errors |
+| `bytes` | Data handled |
+
+## list
+
+```bash
+z3 admin batch list
+```
+
+```
+rotate-9f2c41d07ab3e815       rotate    running   matched 20311  done 9120  skipped 4  failed 0  0 bytes
+replicate-51be0a77c9d2f043    replicate done      matched 1832  done 1790  skipped 42  failed 0  48213044221 bytes
+expire-146d75b7b7a2775c      expire    done      matched 2  done 2  skipped 0  failed 0  400000 bytes
+```
+
+## status
+
+```bash
+z3 admin batch status expire-146d75b7b7a2775c
+```
+
+```
+expire-146d75b7b7a2775c      expire    done      matched 2  done 2  skipped 0  failed 0  400000 bytes
+  would touch: tmp/a.log
+  would touch: tmp/b.log
+```
+
+After the progress line come the job's message (why it failed, for example), up to 20 recent
+errors (`error: ...`), and for a dry run up to 100 keys it would touch (`would touch: ...`).
+
+## cancel
+
+```bash
+z3 admin batch cancel rotate-9f2c41d07ab3e815
+# rotate-9f2c41d07ab3e815: cancelling
+```
+
+Only a running job can be cancelled; otherwise the answer is `Error: the job is not running`.
+
+## remove
+
+```bash
+z3 admin batch remove expire-146d75b7b7a2775c
+# expire-146d75b7b7a2775c: removed
+```
+
+A running job must be cancelled first. Removing forgets the job's record; what it did stays done.
+
+## Scheduling
+
+Jobs run once. For a recurring job, start it from cron:
+
+```bash
+# Every night at 02:00, expire scratch files older than a week
+0 2 * * * z3 admin batch start /etc/z3/expire-scratch.json
+```

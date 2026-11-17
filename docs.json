@@ -1,0 +1,215 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "z3",
+  "description": "S3-compatible object storage in one binary: erasure coding, active-active replication, IAM, encryption and a web console.",
+  "colors": {
+    "primary": "#4b55d6",
+    "light": "#a6b0ff",
+    "dark": "#4b55d6"
+  },
+  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "background": {
+    "color": {
+      "light": "#f2f3f8",
+      "dark": "#0a0c14"
+    }
+  },
+  "fonts": {
+    "family": "Inter"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/terrific-ci/z3"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Install",
+      "href": "/deploy/install"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guide",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "index",
+              "get-started/quickstart",
+              "get-started/concepts",
+              "get-started/clients"
+            ]
+          },
+          {
+            "group": "Install and deploy",
+            "pages": [
+              "deploy/install",
+              "deploy/docker",
+              "deploy/systemd",
+              "deploy/configuration",
+              "deploy/disks",
+              "deploy/tls-and-proxies",
+              "deploy/migrate-from-minio",
+              "deploy/upgrading",
+              "deploy/troubleshooting"
+            ]
+          },
+          {
+            "group": "Durability",
+            "pages": [
+              "durability/erasure-coding",
+              "durability/healing",
+              "durability/pools"
+            ]
+          },
+          {
+            "group": "Replication",
+            "pages": [
+              "replication/overview",
+              "replication/bucket-replication",
+              "replication/site-replication",
+              "replication/geo-erasure-coding"
+            ]
+          },
+          {
+            "group": "Storage",
+            "pages": [
+              "storage/buckets",
+              "storage/versioning",
+              "storage/lifecycle",
+              "storage/tiers",
+              "storage/object-lock",
+              "storage/tags-and-quota",
+              "storage/compression",
+              "storage/batch"
+            ]
+          },
+          {
+            "group": "Identity and access",
+            "pages": [
+              "access/users-groups-keys",
+              "access/policies",
+              "access/conditions",
+              "access/bucket-policies",
+              "access/openid-connect-ldap",
+              "access/sts"
+            ]
+          },
+          {
+            "group": "Encryption",
+            "pages": [
+              "security/encryption",
+              "security/external-kms"
+            ]
+          },
+          {
+            "group": "Events and audit",
+            "pages": [
+              "events/bucket-events",
+              "events/destinations",
+              "events/listen",
+              "audit/audit-log",
+              "audit/trace-and-logs"
+            ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "operations/console",
+              "operations/metrics",
+              "operations/running-status",
+              "operations/settings",
+              "operations/support",
+              "operations/prometheus",
+              "operations/config-export"
+            ]
+          },
+          {
+            "group": "File protocols",
+            "pages": [
+              "protocols/overview",
+              "protocols/webdav",
+              "protocols/ftp",
+              "protocols/sftp",
+              "protocols/nfs"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Basics",
+            "pages": [
+              "cli/overview"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/settings",
+              "cli/protocols",
+              "cli/batch",
+              "cli/support",
+              "cli/pools",
+              "cli/metrics"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API",
+        "groups": [
+          {
+            "group": "Basics",
+            "pages": [
+              "api/overview",
+              "api/s3-compatibility",
+              "api/sts"
+            ]
+          },
+          {
+            "group": "Admin API",
+            "pages": [
+              "api/admin-buckets",
+              "api/admin-iam",
+              "api/admin-replication",
+              "api/admin-events-audit",
+              "api/admin-operations",
+              "api/prometheus"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Changelog",
+        "groups": [
+          {
+            "group": "Releases",
+            "pages": [
+              "changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/terrific-ci/z3"
+    }
+  }
+}

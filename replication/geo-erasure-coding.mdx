@@ -1,0 +1,90 @@
+---
+title: "Geo erasure coding"
+description: "Split a bucket's chunks into shards across sites instead of keeping a full copy at each: 1.5x storage for three sites, still readable with one site down."
+---
+
+Normal replication keeps a **full copy** of every object at every site: three sites store three
+times the data. Geo erasure coding cuts each chunk into Reed-Solomon shards and spreads them across
+the sites instead.
+
+With three sites and a 4+2 layout, each site keeps 2 of the 6 shards. Total storage is **1.5 times**
+the data instead of 3 times, and objects stay readable when any one site is down.
+
+## Requirements
+
+- Every site has a **name**: from [site replication](/replication/site-replication), or from
+  `Z3_SITE_NAME` on each node. Without a name, z3 refuses with `geo erasure coding needs a site name`.
+- Every site of the bucket pulls **directly** from every other site: a mesh. Hub-and-spoke and chain
+  topologies don't work here.
+- At least two sites, and no site may hold more shards than the parity, so that losing one site
+  always leaves enough shards. z3 refuses a layout that breaks this, with
+  `a site would keep N shards but only P may be lost; raise parity or add sites`.
+- At most 32 shards (`data + parity`), and at least as many shards as sites.
+
+Without site replication, name each node with `Z3_SITE_NAME` and give each peer the same name as
+that node's site, since the bucket's peers stand for its sites.
+
+## Turn it on
+
+Set `geo` in the bucket's replication configuration. With site replication the peers follow the
+topology, so `peers` can stay empty:
+
+<Tabs>
+  <Tab title="Console">
+    Open the bucket, **Settings → Replication**, turn on geo erasure coding and choose data and
+    parity shards.
+  </Tab>
+  <Tab title="Admin API">
+    ```bash
+    curl -X PUT http://127.0.0.1:9001/api/buckets/video/replication \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+      -d '{"peers": [], "geo": {"data": 4, "parity": 2}}'
+    ```
+  </Tab>
+</Tabs>
+
+It applies to **new writes**. Existing versions keep the layout they were written with (a full copy,
+or an earlier geo layout).
+
+### Choosing a layout
+
+Shard `i` is kept by site number `i mod sites`, with the sites sorted by name.
+
+| Sites | Layout | Shards per site | Storage | Survives |
+| --- | --- | --- | --- | --- |
+| 2 | 2+2 | 2 | 2× | One site down |
+| 3 | 4+2 | 2 | 1.5× | One site down |
+| 4 | 6+2 | 2 | 1.33× | One site down |
+| 4 | 4+4 | 2 | 2× | Two sites down |
+
+## How it works
+
+- **The layout travels with each version**, so every site agrees on who holds which shard, even
+  after the bucket's configuration changes.
+- **The writing site stores the full chunks first.** Once every other site has acknowledged the
+  version (they then hold their shards), the background healer cuts the chunks into shards, keeps
+  its own and deletes the full chunks.
+- **Other sites never fetch full chunks**, only their own shards.
+- **Reads** put each chunk together from the local shards plus shards fetched from other sites, and
+  check it against its BLAKE3 hash. This adds the round trip between sites to a GET.
+- **Shards are stored as ordinary chunks**, so on each site they're protected again by local
+  [erasure coding](/durability/erasure-coding), [healing](/durability/healing) and garbage
+  collection.
+- Copying an object into a bucket without geo erasure coding stores its chunks in full again.
+
+In tests with three sites, each site stored exactly 3 MiB for a 6 MiB object.
+
+## Watching it
+
+`z3_replication_geo_chunks_total` on `/metrics` counts geo-coded chunks. The [Support](/operations/support)
+page's **Inspect** shows how an object's chunks are stored on this node.
+
+## When not to use it
+
+- **Latency-sensitive reads.** Every GET needs shards from other sites.
+- **Sites that are often unreachable.** Reads need enough sites up to gather `data` shards, and the
+  writing site keeps full chunks until every site has acknowledged.
+- **Small buckets.** The saving is in storage; for a little data, full copies are simpler.
+
+For full copies at every site, use plain [bucket replication](/replication/bucket-replication) or
+[site replication](/replication/site-replication).

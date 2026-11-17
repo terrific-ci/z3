@@ -1,0 +1,388 @@
+---
+title: "Operations"
+description: "Admin API endpoints for node info, running status, metrics, support tools, pools, settings, protocols, batch jobs, disks, healing, garbage collection, config export and imports."
+---
+
+These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing needs
+`admin:ConfigUpdate`, unless noted.
+
+## Endpoints
+
+| Method | Path | Right | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/health` | none | `{"status": "ok"}` |
+| `GET` | `/api/info` | `admin:ServerInfo` | Node id, version, uptime, storage totals |
+| `GET` | `/api/status` | `admin:ServerInfo` | Running status: traffic, host, the last hour |
+| `GET` | `/api/metrics` | `admin:ServerInfo` | Historical series, node-wide or per bucket |
+| `GET` | `/api/metrics/buckets` | `admin:ServerInfo` | Traffic per bucket over a range |
+| `GET` | `/api/support/health` | `admin:ServerInfo` | Health report |
+| `POST` | `/api/support/speedtest` | `admin:Profiling` | Drive or network speed test |
+| `POST` | `/api/support/profile` | `admin:Profiling` | CPU profile (zip) |
+| `GET` | `/api/support/inspect` | `admin:InspectData` | How an object is stored (zip) |
+| `GET` | `/api/pools` | `admin:ServerInfo` | Pools and the current operation |
+| `POST` | `/api/pools/rebalance` | `admin:ConfigUpdate` | Start a rebalance |
+| `POST` | `/api/pools/{index}/decommission` | `admin:ConfigUpdate` | Start emptying a pool |
+| `POST` | `/api/pools/cancel` | `admin:ConfigUpdate` | Stop the running operation |
+| `GET` | `/api/settings` | `admin:ServerInfo` | Every setting with its value and default |
+| `PUT` | `/api/settings/{subsystem}` | `admin:ConfigUpdate` | Set keys of a subsystem |
+| `DELETE` | `/api/settings/{subsystem}` | `admin:ConfigUpdate` | Put a subsystem back to its defaults |
+| `GET` | `/api/protocols` | `admin:ServerInfo` | State of WebDAV, FTP, SFTP and NFS on this node |
+| `GET` | `/api/batch` | `admin:ServerInfo` | Batch jobs, newest first |
+| `POST` | `/api/batch` | `admin:ConfigUpdate` | Start a job |
+| `GET` | `/api/batch/{id}` | `admin:ServerInfo` | One job |
+| `POST` | `/api/batch/{id}/cancel` | `admin:ConfigUpdate` | Stop a running job |
+| `DELETE` | `/api/batch/{id}` | `admin:ConfigUpdate` | Forget a finished job |
+| `GET` | `/api/disks` | `admin:ServerInfo` | Disks, erasure layout, healing totals |
+| `POST` | `/api/heal` | `admin:ConfigUpdate` | Verify and repair every chunk now |
+| `POST` | `/api/gc` | `admin:ConfigUpdate` | Run garbage collection now |
+| `GET` | `/api/config/export` | `admin:ServerInfo` (+ more for IAM and secrets) | Configuration as JSON |
+| `POST` | `/api/config/import` | `admin:ConfigUpdate` (+ `admin:UserAdmin` for IAM) | Apply a configuration |
+| `GET` | `/api/imports` | `admin:ServerInfo` | Import jobs from MinIO or S3 |
+| `POST` | `/api/imports` | `admin:ConfigUpdate` | Start an import |
+| `GET` | `/api/imports/{id}` | `admin:ServerInfo` | One import |
+| `POST` | `/api/imports/{id}/pause` | `admin:ConfigUpdate` | Pause an import |
+| `POST` | `/api/imports/{id}/resume` | `admin:ConfigUpdate` | Resume an import |
+| `DELETE` | `/api/imports/{id}` | `admin:ConfigUpdate` | Stop and forget an import (imported data stays) |
+
+## Info
+
+`GET /api/info`:
+
+```json
+{
+  "version": "0.1.0", "uptime_secs": 86400, "node_id": "01a1e9a0-be79-7462-83e2-8685ea015598",
+  "buckets": 12, "objects": 1204331, "logical_bytes": 2309011234511, "physical_bytes": 1840223344012,
+  "chunks": 2203114, "multipart_uploads": 3, "dedup_ratio": 1.2547
+}
+```
+
+`logical_bytes` counts every version as clients see it; `physical_bytes` what the chunk store
+references after deduplication. `dedup_ratio` is their quotient.
+
+## Status
+
+`GET /api/status` returns the [Running status](/operations/running-status#api): version, node id,
+uptime, `host` (name, OS, CPUs, load, memory), `totals` since start, and `history`, one sample every
+`sample_secs` (5) for the last hour.
+
+## Metrics
+
+`GET /api/metrics?range=24h[&bucket=name]` returns a series from the [historical metrics](/operations/metrics).
+
+<ParamField query="range" type="string" default="24h">
+  A number and `m`, `h`, `d`, `w` or `y`: `90m`, `24h`, `7d`, `1y`. From 1 minute to 3 years.
+</ParamField>
+
+<ParamField query="bucket" type="string">
+  One bucket instead of the node.
+</ParamField>
+
+```json
+{
+  "range_secs": 86400, "tier": "minute", "step_secs": 480, "from": 1794834600,
+  "points": [
+    null,
+    { "t": 1794835080, "requests": 9120, "reads": 8011, "writes": 1109, "errors": 4, "client_errors": 4,
+      "server_errors": 0, "bytes_in": 120433221, "bytes_out": 904331221, "cpu_percent": 12.4,
+      "process_memory": 335724544, "memory_used": 19275776000, "buckets": 12, "objects": 1204331,
+      "logical_bytes": 2309011234511, "physical_bytes": 1840223344012 }
+  ]
+}
+```
+
+- `tier` is `minute`, `hour` or `day`; `step_secs` the length of one point; `from` the start of the
+  first point (Unix seconds). There are at most 180 points.
+- A point is `null` for a period with no data (the node was down).
+- With `bucket`, a point has `t`, `requests`, `errors`, `bytes_in`, `bytes_out`, `objects` and `bytes`.
+
+`GET /api/metrics/buckets?range=24h` lists every bucket, busiest first:
+
+```json
+{ "range_secs": 86400, "buckets": [
+  { "bucket": "radiology", "requests": 912044, "errors": 120, "bytes_in": 6020334411, "bytes_out": 30140332211,
+    "objects": 812004, "bytes": 1759218604441 } ] }
+```
+
+Traffic is over the range; `objects` and `bytes` are the size now. A bad range answers `400`.
+
+## Support
+
+See [Support tools](/operations/support) for what each tool does.
+
+### Health
+
+`GET /api/support/health`:
+
+```json
+{
+  "generated_ms": 1794921056000, "version": "0.1.0", "node_id": "01a1e9a0-be79-7462-83e2-8685ea015598",
+  "uptime_secs": 86400, "level": "warn",
+  "host": { "hostname": "z3-jkt-1", "cpus": 16, "...": "..." },
+  "checks": [
+    { "id": "disks", "title": "Disks", "level": "ok", "summary": "6 disks online", "details": { "...": "..." } },
+    { "id": "credentials", "title": "Root credentials", "level": "warn",
+      "summary": "Root still uses the default access and secret key; set Z3_ACCESS_KEY and Z3_SECRET_KEY", "details": {} }
+  ]
+}
+```
+
+Check ids: `disks`, `disk_latency`, `healing`, `peers`, `replication`, `resources`, `errors`,
+`credentials`. `level` is `ok`, `warn` or `fail`; the report's level is the worst.
+
+### Speed test
+
+`POST /api/support/speedtest`:
+
+<ParamField body="kind" type="string" required>
+  `drive` or `network`.
+</ParamField>
+
+<ParamField body="size_mb" type="integer" default="64">
+  Megabytes per disk or per peer, 1 to 1024.
+</ParamField>
+
+```json
+{ "kind": "drive", "size_mb": 64,
+  "results": [ { "index": 0, "path": "/mnt/d1", "write_mbps": 412.3, "read_mbps": 1830.1 } ],
+  "total_write_mbps": 412.3, "total_read_mbps": 1830.1 }
+```
+
+For `network`, each result is `{"name", "rtt_ms", "bytes", "download_mbps"}` for a peer. A disk or
+peer that fails has `error` instead.
+
+### Profile
+
+`POST /api/support/profile?seconds=15` (1 to 120) samples for that long, then answers a zip
+(`application/zip`, named `z3-profile-<time>.zip`) with `flamegraph.svg`, `cpu.pb`, `runtime.json`
+and `README.txt`. Needs a Unix host.
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -o profile.zip \
+  "http://127.0.0.1:9001/api/support/profile?seconds=30"
+```
+
+Only one speed test or profile runs at a time; a second one answers `409`.
+
+### Inspect
+
+`GET /api/support/inspect?bucket=photos&key=2026/a.jpg` answers a zip with `object.json`,
+`layout.json`, `chunks/` and `README.txt`.
+
+| Query | Meaning |
+| --- | --- |
+| `bucket`, `key` | Required |
+| `version_id` | A version; default the current one |
+| `data` | `false` leaves out the raw chunk files |
+
+With data, the files may total at most 1 GiB; above that the answer is `413`.
+
+## Pools
+
+`GET /api/pools`:
+
+```json
+{
+  "pools": [
+    { "index": 0, "id": "01a1e9a0-be6d-7121-a910-033f203a3778", "data": 2, "parity": 2, "writable": true,
+      "disks": [ { "pool": 0, "index": 0, "path": "/mnt/a1", "state": "online", "total_bytes": 1000204886016, "free_bytes": 110223344123 } ],
+      "total_bytes": 4000819544064, "free_bytes": 440893376492, "state": "active", "stored_bytes": 1539316278886 }
+  ],
+  "usage_measured_ms": 1794921000000,
+  "op": {
+    "kind": "rebalance", "state": "running", "started_ms": 1794920000000, "finished_ms": null,
+    "created_by": "z3admin", "pool_id": null, "pool_index": null,
+    "dirs_done": 25, "dirs_total": 256, "passes": 1, "moved_chunks": 2412, "moved_bytes": 8912003311,
+    "gone": 0, "failed": 0, "errors": [], "message": null, "...": "..."
+  }
+}
+```
+
+- A pool's `data` and `parity` are `null` for a plain directory. `state` is `active`, `draining` or
+  `decommissioned`. `stored_bytes` is measured every minute.
+- `op` is the current or last operation: `kind` `rebalance` or `decommission`, `state` `running`,
+  `done`, `failed` or `cancelled`.
+
+`POST /api/pools/rebalance` and `POST /api/pools/{index}/decommission` answer `202` with the new
+operation, `400` when it cannot run (`rebalancing needs at least two active pools`), or `409` when
+another one is running. `POST /api/pools/cancel` answers `204`, or `400` when nothing runs. See
+[Pools](/durability/pools).
+
+## Settings
+
+`GET /api/settings`:
+
+```json
+{
+  "subsystems": ["region", "api", "compression", "scanner", "logger", "webdav", "ftp", "sftp", "nfs"],
+  "keys": [
+    { "subsystem": "api", "key": "requests_max", "label": "Concurrent requests",
+      "help": "S3 requests handled at once on this node; more wait for a free slot. 0: no limit.",
+      "type": "int", "min": 0, "max": 100000, "unit": "", "default": 0, "env": null, "value": 500, "is_set": true }
+  ]
+}
+```
+
+`type` is `int` (with `min`, `max`, `unit`), `bool`, `text` (with a `format`: `region`, `address`,
+`ports`, `path` or `name`), `list` or `filter`. `env` names the startup variable the default comes from.
+
+`PUT /api/settings/{subsystem}` takes `{"key": value, ...}` for the keys to change; `null` puts a key
+back to its default. The whole body is checked first, and a bad value answers `400` with the reason.
+`DELETE /api/settings/{subsystem}` resets every key of the subsystem. Every key is listed in
+[Cluster settings](/operations/settings).
+
+```bash
+curl -X PUT http://127.0.0.1:9001/api/settings/api -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"requests_max": 500, "requests_deadline_secs": null}'
+```
+
+## Protocols
+
+`GET /api/protocols` answers the state of each file protocol on this node:
+
+```json
+[
+  { "name": "sftp", "enabled": true, "state": "running", "address": "0.0.0.0:8022", "error": null,
+    "since_ms": 1794920996938, "sessions": 2, "logins": 41, "failed_logins": 3,
+    "fingerprint": "SHA256:Ujlfbc1TnB+t9xW0WLl3qWtlu41h0SUQ60bQngnCiRc" }
+]
+```
+
+`state` is `off`, `starting`, `running` or `failed` (with `error`). `fingerprint` is the SFTP host key's.
+Protocols are turned on and configured with `PUT /api/settings/{webdav,ftp,sftp,nfs}`:
+
+```bash
+curl -X PUT http://127.0.0.1:9001/api/settings/sftp -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"enabled": true, "address": "0.0.0.0:8022"}'
+```
+
+See [File protocols](/protocols/overview).
+
+## Batch jobs
+
+`POST /api/batch` takes a [job definition](/cli/batch#job-definitions) and answers `201` with the job.
+It is checked first: the bucket exists, a remote target answers, the KMS key exists.
+
+```json
+{
+  "id": "expire-146d75b7b7a2775c",
+  "spec": { "type": "expire", "source": { "bucket": "logs", "prefix": "tmp/" }, "filter": { "older_than": "30d" },
+            "versions": "all", "dry_run": true },
+  "state": "done", "created_ms": 1794921010000, "finished_ms": 1794921011000, "created_by": "z3admin",
+  "progress": { "scanned": 3, "matched": 2, "done": 2, "skipped": 0, "failed": 0, "bytes": 400000 },
+  "cursor": "tmp/b.log", "errors": [], "samples": ["tmp/a.log", "tmp/b.log"], "message": null
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `state` | `running`, `done`, `failed` or `cancelled` |
+| `progress` | Versions scanned and matched; done, skipped, failed; bytes handled |
+| `cursor` | The last key fully handled; a job interrupted by a restart continues after it |
+| `errors` | Up to 20 recent errors |
+| `samples` | Dry runs: up to 100 keys that would be touched |
+| `message` | Why the job failed or stopped |
+
+A replicate job's target secret key is stored sealed and never sent back. `POST /api/batch/{id}/cancel`
+answers `400` for a job that is not running; `DELETE /api/batch/{id}` answers `400` for a running job
+(cancel it first) and `404` for an unknown one. See [Batch jobs](/storage/batch).
+
+## Disks, healing and garbage collection
+
+`GET /api/disks`:
+
+```json
+{
+  "erasure": { "data": 4, "parity": 2 },
+  "disks": [
+    { "pool": 0, "index": 0, "path": "/mnt/d1", "state": "online", "total_bytes": 1000204886016, "free_bytes": 400123344121 },
+    { "pool": 0, "index": 3, "path": "/mnt/d4", "state": "offline", "reason": "No such file or directory (os error 2)",
+      "total_bytes": null, "free_bytes": null }
+  ],
+  "healing": { "chunks_checked": 2203114, "shards_repaired": 12, "chunks_lost": 0, "full_scans": 3,
+               "last_full_scan_ms": 1794834588308, "last_full_scan": { "checked": 2203114, "damaged": 4, "repaired": 12, "lost": 0, "lost_chunks": [] } }
+}
+```
+
+`erasure` is `null` for a single data directory. A disk's `state` is `online`, `offline` or `foreign`
+(it holds another set's data and is never written), with a `reason` for the last two.
+
+`POST /api/heal` verifies every chunk and repairs damaged shards now, and answers when it is done:
+
+```json
+{ "checked": 2203114, "damaged": 4, "repaired": 12, "lost": 0, "lost_chunks": [] }
+```
+
+`lost_chunks` lists up to 100 hashes of chunks with too few good shards to rebuild. See
+[Healing](/durability/healing).
+
+`POST /api/gc` runs garbage collection now with the configured grace period. `?grace_secs=0` deletes
+unreferenced chunks at once:
+
+```json
+{ "chunks_deleted": 120, "bytes_freed": 402331221, "uploads_aborted": 1 }
+```
+
+## Config export and import
+
+`GET /api/config/export?secrets=false` answers the configuration document; `secrets=true` includes
+every secret and needs `admin:UserAdmin` and `admin:ConfigUpdate`. The IAM part is included only for
+callers with `admin:UserAdmin`.
+
+`POST /api/config/import` takes that document and answers `{"applied": [...], "skipped": [...]}`. A
+document whose `z3_config` is not `1` answers `400`. See [Config export and import](/operations/config-export).
+
+## Imports
+
+An import copies buckets and objects from MinIO or another S3 store into this node. See
+[Migrate from MinIO](/deploy/migrate-from-minio).
+
+`POST /api/imports` answers `201` with the job:
+
+<ParamField body="endpoint" type="string" required>
+  The source's S3 API, like `http://minio.local:9000`.
+</ParamField>
+
+<ParamField body="access_key" type="string" required>
+  An access key on the source.
+</ParamField>
+
+<ParamField body="secret_key" type="string" required>
+  Its secret key. Shown as `***` afterwards.
+</ParamField>
+
+<ParamField body="region" type="string">
+  The source's region.
+</ParamField>
+
+<ParamField body="buckets" type="string[]">
+  Buckets to import; empty imports every bucket.
+</ParamField>
+
+<ParamField body="continuous" type="boolean" default="false">
+  Keep importing what is new every `interval_secs` until stopped, for a cutover.
+</ParamField>
+
+<ParamField body="interval_secs" type="integer" default="300">
+  The pause between passes in continuous mode.
+</ParamField>
+
+<ParamField body="concurrency" type="integer" default="8">
+  Objects copied in parallel.
+</ParamField>
+
+A job:
+
+```json
+{
+  "id": "...", "request": { "endpoint": "http://minio.local:9000", "access_key": "minioadmin", "secret_key": "***",
+    "region": "", "buckets": [], "continuous": true, "interval_secs": 300, "concurrency": 8 },
+  "status": "waiting",
+  "progress": { "passes": 1, "buckets": ["photos", "logs"], "bucket_index": 0, "marker": null,
+    "objects_imported": 120443, "delete_markers_imported": 12, "bytes_imported": 912003344221,
+    "skipped": 0, "failed": 0, "recent_errors": [], "pass_started_ms": 1794920000000, "last_pass_finished_ms": 1794920900000 },
+  "created_ms": 1794919000000, "last_error": null
+}
+```
+
+`status` is `running`, `waiting` (continuous mode, between passes), `paused`, `done` or `failed`.
+`pause` and `resume` answer the job. `DELETE` stops the job and forgets it; what was imported stays.

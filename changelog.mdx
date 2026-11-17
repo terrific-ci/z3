@@ -1,0 +1,79 @@
+---
+title: "Changelog"
+description: "Every z3 release, newest first, and what changed in it."
+rss: true
+---
+
+The latest release is **0.1.0**, released November 17, 2026. To install it, see
+[Install](/deploy/install) or [Docker](/deploy/docker).
+
+<Update label="0.1.0" description="November 17, 2026" tags={["Latest"]}>
+
+The first release of z3: S3-compatible object storage in one binary, written in Rust.
+
+**Storage**
+
+- **S3 API** on port 9000: buckets, versioning, objects with ranges, metadata, tags and conditional
+  requests, `ListObjects` V1 and V2, `ListObjectVersions`, `CopyObject`, `DeleteObjects`, multipart
+  uploads and presigned URLs. See [S3 compatibility](/api/s3-compatibility).
+- **Content-defined chunking** with BLAKE3: identical data is stored once, every read verifies its
+  hash, and `CopyObject` and completing a multipart upload copy no data.
+- **Erasure coding** over a set of disks (`Z3_DISKS`), with healing that repairs damaged shards
+  found by reads, refills a replaced disk, and verifies everything on a schedule.
+- **Pools** (`Z3_POOLS`): grow with a new disk set, **rebalance** by capacity, and **decommission** a
+  pool before removing it, with objects readable throughout.
+- **Lifecycle** rules: expiration, noncurrent versions, orphaned delete markers, aborting uploads,
+  and **transitions to tiers** on AWS S3, MinIO or another z3, Google Cloud Storage and Azure Blob,
+  with reads going through z3 transparently.
+- **Object Lock**: governance and compliance retention, legal hold and default retention per bucket.
+- **Bucket tags and quotas**, with MinIO's `XMinioAdminBucketQuotaExceeded` when a bucket is full.
+- **LZ4 compression** of chosen names and content types, per chunk.
+- **Batch jobs**: replicate to another bucket or S3 store, expire with a dry run, and move encrypted
+  objects to another KMS key without rewriting data.
+
+**Replication**
+
+- **Active-active replication** between nodes over a pull-based peer API, with `async`, `quorum`
+  and `all` consistency, prefix and tag rules, conflict resolution by hybrid logical clocks, and
+  Merkle anti-entropy.
+- **Site replication**: one call joins every site in a mesh, hub-and-spoke or chain topology, and
+  keeps buckets, IAM, settings and other cluster documents in step.
+- **Read-your-writes across sites** with the `x-z3-session` header, bandwidth limits and time
+  windows per peer, data residency rules, and **geo erasure coding** across sites.
+
+**Identity and security**
+
+- **IAM**: users, groups, AWS-style policies with conditions, access keys with their own policy and
+  expiry, and bucket policies including anonymous access.
+- **OpenID Connect and LDAP** sign-in for the console, and **STS** (`AssumeRoleWithWebIdentity`,
+  `AssumeRoleWithLDAPIdentity`) for temporary S3 credentials that work on every site.
+- **Encryption**: SSE-S3, SSE-KMS and SSE-C with a data key per object (AES-256-GCM per chunk),
+  bucket default encryption, an internal KMS, or HashiCorp Vault and MinIO KES as external KMS.
+
+**Events and audit**
+
+- **Bucket events** to webhooks, Redis, NATS, Elasticsearch, Kafka, RabbitMQ, MQTT, PostgreSQL,
+  MySQL and NSQ, with TLS options, a queue that survives restarts and unreachable destinations, and
+  exactly one event per change across sites. See [Bucket events](/events/bucket-events).
+- **`ListenBucketNotification`** on the S3 port for `mc event listen`, and **Watch live** in the console.
+- **Audit log** of every S3 request and admin change to webhook, Redis, NATS, Elasticsearch or Kafka,
+  in MinIO's format, with secrets redacted and an on-disk queue. See [Audit log](/audit/audit-log).
+- **Live trace and logs**, for one node or every node of the group.
+
+**Operations**
+
+- **Web console** on port 9001 for everything above, with **Find** (<kbd>⌘</kbd> <kbd>K</kbd>), dark and
+  light themes, and a phone layout. See [Web console](/operations/console).
+- **Running status**, **historical metrics** per minute, hour and day for up to three years, per
+  bucket too, and **Prometheus** metrics at `/metrics`.
+- **Cluster settings** changed at runtime: region, request limits, CORS, upload size, Signature V2,
+  compression, scanner intervals and logging. See [Cluster settings](/operations/settings).
+- **Support tools**: health checks, drive and network speed tests, CPU profiles with flame graphs,
+  and inspecting how an object is stored.
+- **File protocols**: WebDAV, FTP/FTPS, SFTP and NFSv3 over the same buckets and policies, off by
+  default.
+- **Import** from MinIO or any S3 store, and **config export and import** between nodes.
+- **`z3 admin`** command line for settings, protocols, batch jobs, support, pools and metrics. See
+  [Command line](/cli/overview).
+
+</Update>

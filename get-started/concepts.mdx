@@ -1,0 +1,98 @@
+---
+title: "Concepts"
+description: "Nodes, buckets, objects, versions, chunks, disks, pools, peers, sites and the change log, in plain words."
+---
+
+## Node
+
+A **node** is one running `z3` process with its own data directory (`Z3_DATA_DIR`). It has a
+random node id, created the first time it starts, and serves three things:
+
+- the **S3 API** on port 9000, for applications and S3 clients,
+- the **console and admin API** on port 9001, for people and scripts,
+- the **replication API** on port 9002, which other nodes pull changes from (only when
+  `Z3_PEER_TOKEN` is set).
+
+The data directory holds the metadata database (`meta.redb`) and, unless you give z3 separate
+disks, the chunks themselves (under `chunks/`).
+
+## Buckets and objects
+
+A **bucket** is a named container of objects, as on Amazon S3. An **object** is a key (such as
+`2026/photo.jpg`) with its data, content type, user metadata (`x-amz-meta-*`) and tags.
+
+## Versions
+
+Every write of an object creates a **version** with a globally unique id. In a bucket with
+**versioning** enabled, older versions are kept and stay readable with `versionId`, and a delete
+adds a **delete marker** instead of removing data. In a bucket without versioning (or with
+versioning suspended), writes replace a single "null" version.
+
+The current version of a key is the one with the highest timestamp (see
+[Change log and clock](#change-log-and-clock)). See [Versioning](/storage/versioning).
+
+## Chunks and deduplication
+
+z3 doesn't store objects as whole files. It cuts each object into **chunks** with content-defined
+chunking (about 1 MiB on average) and stores each chunk under its BLAKE3 hash. Because the cut
+points follow the content, an edited file shares most of its chunks with the previous version.
+
+- The same data is stored **once**, however many objects or versions contain it. The console's
+  overview shows the deduplication ratio (logical bytes divided by bytes on disk).
+- CopyObject and CompleteMultipartUpload copy no data: the new version references existing chunks.
+- Every chunk is checked against its hash when it is read, so silent corruption (bit rot) is
+  detected instead of returned.
+- Chunks no longer referenced by any version are deleted by **garbage collection** after a grace
+  period (`Z3_GC_GRACE`, one hour by default).
+
+Encrypted objects are the exception: each one has its own data key, so their chunks are never
+shared with other objects.
+
+## Disks and erasure sets
+
+By default chunks live in the data directory. With `Z3_DISKS`, a node spreads them over a **disk
+set** (an erasure set): each chunk is split into data shards and Reed-Solomon parity shards, one per
+disk. With six disks and parity 2, any two disks can fail and every object is still readable, for
+1.5 times the raw size. See [Disks](/deploy/disks) and [Erasure coding](/durability/erasure-coding).
+
+**Healing** repairs missing or damaged shards: right after a read finds one, when a disk comes back
+or is replaced, and on a regular full pass. See [Healing](/durability/healing).
+
+## Pools
+
+A disk set can't grow. To add capacity you add a **pool**: another disk set (or a plain directory)
+next to the existing ones, each with its own layout. New chunks go to the pool with the most free
+space, **rebalance** evens out the existing data, and **decommission** empties a pool so you can
+remove it. See [Pools](/durability/pools).
+
+## Change log and clock
+
+Every change to a bucket (a new version, a delete, a tag change) is written to that bucket's
+**change log** in the same transaction as the change itself. The log is what replication reads.
+
+Each entry carries a **hybrid logical clock** (HLC) timestamp: the wall clock combined with a
+counter. A node moves its clock past every timestamp it receives, so a write made after seeing
+another write always gets a higher timestamp, even if that server's clock is behind. All nodes pick
+the version with the highest timestamp as current, so they agree without coordinating.
+
+## Peers
+
+A **peer** is another node this node replicates with, known by a name, the URL of its replication
+API and its token. You choose which buckets replicate to which peers, and how many peers must have a
+write before the client gets its answer. Both nodes accept writes (active-active). See
+[Bucket replication](/replication/bucket-replication).
+
+Concurrent writes to the same key on two nodes (for example while the network is split) are
+detected exactly with version vectors. Both versions are kept: the one with the highest timestamp
+becomes current everywhere and the other stays readable by its version id.
+
+## Sites
+
+A **site** is a named node in a site replication group. With **site replication**, every bucket
+of every site is replicated, and bucket creation and deletion, versioning, replication settings,
+cluster settings and IAM follow automatically. Sites can pull from each other in a mesh, a hub and
+spokes, or a chain. See [Site replication](/replication/site-replication).
+
+Site names are also what data residency rules and [geo erasure coding](/replication/geo-erasure-coding)
+refer to: a bucket can keep certain objects only at allowed sites, or split its chunks into shards
+across sites instead of keeping a full copy at each.

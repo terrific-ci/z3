@@ -1,0 +1,377 @@
+---
+title: "Buckets and objects"
+description: "Admin API endpoints for buckets, objects, versioning, the change log, lifecycle, Object Lock, tags, quota, encryption, KMS keys and tiers."
+---
+
+These are the endpoints the console's bucket pages use. Bucket and object endpoints check the
+**S3 action** of the caller, so any user can call them within their own rights; the others need an
+admin right. See [Rights](/api/overview#rights). Every example sends
+`-H "Authorization: Bearer $TOKEN"`.
+
+## Endpoints
+
+| Method | Path | Right | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/buckets` | any access to the bucket | Buckets the caller may use |
+| `POST` | `/api/buckets` | `s3:CreateBucket` | Create a bucket |
+| `GET` | `/api/buckets/{bucket}` | any access to the bucket | One bucket |
+| `DELETE` | `/api/buckets/{bucket}` | `s3:DeleteBucket` | Delete an empty bucket |
+| `PUT` | `/api/buckets/{bucket}/versioning` | `s3:PutBucketVersioning` | Enable or suspend versioning |
+| `GET` | `/api/buckets/{bucket}/objects` | `s3:ListBucket` | Folders and objects |
+| `DELETE` | `/api/buckets/{bucket}/objects` | `s3:DeleteObject` / `s3:DeleteObjectVersion` | Delete an object or a version |
+| `GET` | `/api/buckets/{bucket}/objects/versions` | `s3:ListBucketVersions` | Every version of one key |
+| `GET` | `/api/buckets/{bucket}/objects/content` | `s3:GetObject` / `s3:GetObjectVersion` | Download or preview |
+| `PUT` | `/api/buckets/{bucket}/objects/content` | `s3:PutObject` | Upload |
+| `GET` | `/api/buckets/{bucket}/changelog` | `admin:ServerInfo` | The bucket's change log |
+| `GET` | `/api/lifecycle` | `admin:ServerInfo` | Every bucket with lifecycle rules, and the last runs |
+| `GET` | `/api/buckets/{bucket}/lifecycle` | `s3:GetLifecycleConfiguration` | Rules and last run of one bucket |
+| `PUT` | `/api/buckets/{bucket}/lifecycle` | `s3:PutLifecycleConfiguration` | Replace the rules |
+| `DELETE` | `/api/buckets/{bucket}/lifecycle` | `s3:PutLifecycleConfiguration` | Remove the rules |
+| `POST` | `/api/buckets/{bucket}/lifecycle/run` | `s3:PutLifecycleConfiguration` | Apply the rules now |
+| `GET` | `/api/buckets/{bucket}/object-lock` | `s3:GetBucketObjectLockConfiguration` | Object Lock and default retention |
+| `PUT` | `/api/buckets/{bucket}/object-lock` | `s3:PutBucketObjectLockConfiguration` | Turn Object Lock on, set the default retention |
+| `PUT` | `/api/buckets/{bucket}/objects/lock` | `s3:PutObjectRetention` / `s3:PutObjectLegalHold` | Retention and legal hold of a version |
+| `GET` | `/api/buckets/{bucket}/tags` | `s3:GetBucketTagging` | Bucket tags |
+| `PUT`, `DELETE` | `/api/buckets/{bucket}/tags` | `s3:PutBucketTagging` | Set or remove bucket tags |
+| `GET` | `/api/buckets/{bucket}/quota` | `admin:ServerInfo` | Quota and usage |
+| `PUT`, `DELETE` | `/api/buckets/{bucket}/quota` | `admin:ConfigUpdate` | Set or remove the quota |
+| `GET` | `/api/buckets/{bucket}/encryption` | `s3:GetEncryptionConfiguration` | Default encryption |
+| `PUT`, `DELETE` | `/api/buckets/{bucket}/encryption` | `s3:PutEncryptionConfiguration` | Set or remove default encryption |
+| `GET` | `/api/kms` | `admin:ServerInfo` | KMS keys and encrypted buckets |
+| `POST` | `/api/kms/keys` | `admin:ConfigUpdate` | Create a KMS key |
+| `DELETE` | `/api/kms/keys/{name}` | `admin:ConfigUpdate` | Delete a KMS key |
+| `GET` | `/api/kms/external` | `admin:ServerInfo` | External KMS settings and state |
+| `PUT`, `DELETE` | `/api/kms/external` | `admin:ConfigUpdate` | Set or remove the external KMS |
+| `POST` | `/api/kms/external/test` | `admin:ConfigUpdate` | Try external KMS settings without saving |
+| `GET` | `/api/tiers` | `admin:ServerInfo` | Tiers, what this node keeps in each, health |
+| `POST` | `/api/tiers` | `admin:ConfigUpdate` | Add a tier |
+| `PUT` | `/api/tiers/{name}` | `admin:ConfigUpdate` | New credentials |
+| `DELETE` | `/api/tiers/{name}` | `admin:ConfigUpdate` | Remove an unused tier |
+| `POST` | `/api/tiers/{name}/check` | `admin:ConfigUpdate` | Check a tier now |
+
+Bucket policies are under [IAM](/api/admin-iam#bucket-policies), bucket replication under
+[Replication](/api/admin-replication), and event rules under
+[Events and audit](/api/admin-events-audit#bucket-rules).
+
+## Buckets
+
+### List buckets
+
+`GET /api/buckets` lists the buckets the caller has any access to.
+
+```json
+[
+  {
+    "name": "radiology", "created_ms": 1794834588308, "object_count": 812004, "total_bytes": 1759218604441,
+    "versioning": "Enabled", "peers": ["dc2"], "site_managed": true, "geo": false,
+    "quota_bytes": 2199023255552, "tags": { "team": "radiology" }, "object_lock": true
+  }
+]
+```
+
+| Field | Meaning |
+| --- | --- |
+| `versioning` | `Unversioned`, `Enabled` or `Suspended` |
+| `peers` | Peers the bucket replicates with; empty when it is not replicated |
+| `site_managed` | Replication is managed by site replication |
+| `geo` | New writes use geo erasure coding |
+| `quota_bytes` | The quota, or `null` |
+
+### Create a bucket
+
+`POST /api/buckets` answers `201`, or `409` when the name is taken.
+
+<ParamField body="name" type="string" required>
+  3 to 63 characters: lowercase letters, digits, dots and hyphens, starting and ending with a letter
+  or digit.
+</ParamField>
+
+<ParamField body="versioning" type="boolean" default="false">
+  Turn versioning on.
+</ParamField>
+
+<ParamField body="object_lock" type="boolean" default="false">
+  Turn Object Lock on, for good (it turns versioning on too).
+</ParamField>
+
+```bash
+curl -X POST http://127.0.0.1:9001/api/buckets -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"name": "radiology", "versioning": true}'
+```
+
+### One bucket
+
+`GET /api/buckets/{bucket}` answers `name`, `created_ms`, `object_count`, `total_bytes`,
+`versioning`, `replication` (the [replication configuration](/api/admin-replication#bucket-replication)
+or `null`) and `object_lock`.
+
+`DELETE /api/buckets/{bucket}` deletes the bucket when it is empty (`409` otherwise).
+
+### Versioning
+
+`PUT /api/buckets/{bucket}/versioning` with `{"status": "Enabled"}` or `{"status": "Suspended"}`.
+Suspending is refused with `409` on a bucket with Object Lock.
+
+## Objects
+
+### List objects
+
+`GET /api/buckets/{bucket}/objects` lists one level, split by `/`.
+
+<ParamField query="prefix" type="string">
+  The folder to list, like `2026/scans/`.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="200">
+  Entries per page, 1 to 1000.
+</ParamField>
+
+<ParamField query="cursor" type="string">
+  `next_cursor` from the previous page.
+</ParamField>
+
+```json
+{
+  "prefixes": ["2026/scans/ct/", "2026/scans/mri/"],
+  "objects": [
+    {
+      "key": "2026/scans/index.json", "size": 2048, "etag": "9b2cf535f27731c974343645a3985328",
+      "last_modified_ms": 1794921008881, "content_type": "application/json",
+      "version_id": "01a1e9a10ef174898fd760050032d518", "delete_marker": false, "is_latest": true,
+      "origin": "01a1e9a0-be79-7462-83e2-8685ea015598", "tags": {}, "user_metadata": {}, "geo": false,
+      "lock": { "mode": null, "retain_until_ms": null, "legal_hold": false },
+      "encryption": { "kind": "sse-kms", "key_id": "records-key", "kms": "internal" },
+      "tier": null
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `origin` | The node the version was written on |
+| `lock` | Retention mode (`governance`, `compliance` or `null`), retain-until time, legal hold |
+| `encryption` | `kind` is `sse-s3`, `sse-kms` or `sse-c`; `key_id` for SSE-KMS; `kms` is the KMS that sealed the data key (`internal`, `vault` or `kes`; none for SSE-C) |
+| `tier` | The tier holding the data once lifecycle moved it |
+
+### Versions of a key
+
+`GET /api/buckets/{bucket}/objects/versions?key=2026/a.jpg` answers every version of that key, newest
+first, in the same shape.
+
+### Download
+
+`GET /api/buckets/{bucket}/objects/content?key=...` streams the object.
+
+| Query | Meaning |
+| --- | --- |
+| `key` | Required |
+| `version` | A version id; default the current version |
+| `inline` | `true` for a preview (`Content-Disposition: inline`) instead of a download |
+
+Previews are sent with `Content-Security-Policy: sandbox` and `nosniff`; HTML, SVG and JavaScript come
+back as text. For a plain link, pass the token as `?token=`.
+
+### Upload
+
+`PUT /api/buckets/{bucket}/objects/content?key=...` with the file as the raw body and its type in
+`Content-Type`. The write takes the same path as an S3 `PutObject`: default encryption, compression,
+quota, replication and an `s3:ObjectCreated:Put` event. The answer is the new version, as in the
+object list.
+
+```bash
+curl -X PUT "http://127.0.0.1:9001/api/buckets/radiology/objects/content?key=2026/report.pdf" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/pdf" --data-binary @report.pdf
+```
+
+### Delete
+
+`DELETE /api/buckets/{bucket}/objects?key=...` deletes the object (a delete marker in a versioned
+bucket). Add `version=` to delete one version, and `bypass_governance=true` to delete a version under
+governance retention (needs `s3:BypassGovernanceRetention`).
+
+## Change log
+
+`GET /api/buckets/{bucket}/changelog?after=0&limit=100` returns the bucket's change log, the source of
+replication, oldest first. `limit` is at most 1000; pass the last `seq` as `after` for the next page.
+
+```json
+[
+  { "seq": 3, "hlc": "1794921008881.00000", "time_ms": 1794921008881, "origin": "01a1e9a0-be79-7462-83e2-8685ea015598",
+    "op": "put", "key": "tmp/a.log", "version_id": "01a1e9a10ef174898fd760050032d518", "size": 200000, "chunks": 1 }
+]
+```
+
+`op` is one of `create_bucket`, `delete_bucket`, `versioning_enabled`, `versioning_suspended`,
+`versioning_off`, `put`, `delete_marker`, `remove_version`, `update_tags`, `update_lock`, `rewrap`,
+`transition`, or a site replication change (`site_create_bucket`, `site_delete_bucket`,
+`site_set_versioning`, `site_set_replication`, `site_iam`).
+
+## Lifecycle
+
+`PUT /api/buckets/{bucket}/lifecycle` replaces a bucket's rules; an empty list removes them. See
+[Lifecycle](/storage/lifecycle) for how rules apply.
+
+```json
+{
+  "rules": [
+    {
+      "id": "logs-30d", "enabled": true, "prefix": "logs/", "tags": {},
+      "size_gt": null, "size_lt": null,
+      "expiration": { "days": 30, "date": null, "delete_marker": false },
+      "noncurrent": { "days": 7, "keep": 3 },
+      "transition": { "days": 90, "tier": "COLD" },
+      "noncurrent_transition": { "days": 30, "tier": "COLD" },
+      "abort_uploads_days": 7
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `prefix`, `tags`, `size_gt`, `size_lt` | Which objects the rule applies to |
+| `expiration` | Expire the current version `days` after it was written, or from `date` (`YYYY-MM-DD`, midnight UTC). `delete_marker: true` removes a delete marker once no other version is left |
+| `noncurrent` | Remove versions `days` after they stopped being current, always keeping the `keep` newest |
+| `transition` | Move the current version to a tier after `days` (0: at the next run), or from `date` |
+| `noncurrent_transition` | Move versions to a tier `days` after they stopped being current |
+| `abort_uploads_days` | Abort multipart uploads started this many days ago |
+
+`GET /api/buckets/{bucket}/lifecycle` answers `{"bucket", "config", "last_run"}`. `GET /api/lifecycle`
+answers `interval_secs` (the scanner interval), `day_secs` and every bucket with rules.
+
+`POST /api/buckets/{bucket}/lifecycle/run` applies the rules now and answers the run:
+
+```json
+{ "finished_ms": 1794921100000, "duration_ms": 412, "scanned": 1804, "expired": 120,
+  "noncurrent_removed": 33, "markers_removed": 4, "uploads_aborted": 1, "transitioned": 0,
+  "errors": 0, "last_error": null }
+```
+
+## Object Lock
+
+`GET /api/buckets/{bucket}/object-lock` answers `{"enabled", "default", "versioning"}`.
+
+`PUT /api/buckets/{bucket}/object-lock` turns Object Lock on and sets the default retention. It
+cannot be turned off, so `enabled` must be `true`:
+
+```json
+{ "enabled": true, "default": { "mode": "compliance", "years": 7 } }
+```
+
+`default` is `null` (no default retention), or a `mode` (`governance` or `compliance`) with either
+`days` (1 to 36500) or `years` (1 to 100).
+
+`PUT /api/buckets/{bucket}/objects/lock?key=...&version=...` changes one version (the current one
+without `version`). Send what changes:
+
+```json
+{ "retention": { "mode": "governance", "until_ms": 1826457600000 }, "legal_hold": true }
+```
+
+- `retention: null` removes the retention. The retain-until time must be in the future.
+- Compliance retention can only be extended. Shortening or removing governance retention needs
+  `bypass_governance: true` and `s3:BypassGovernanceRetention`.
+- The answer is the version's lock: `{"mode", "retain_until_ms", "legal_hold"}`.
+- A bucket without Object Lock answers `409`.
+
+See [Object Lock](/storage/object-lock).
+
+## Tags and quota
+
+`GET /api/buckets/{bucket}/tags` answers `{"tags": {...}}`; `PUT` takes the same shape (up to 50
+tags) and `DELETE` removes them.
+
+`GET /api/buckets/{bucket}/quota` answers `{"quota": {"max_bytes": 2199023255552}, "used_bytes": 1759218604441}`
+(`quota` is `null` without one). `PUT` takes `{"max_bytes": ...}`; `DELETE` removes the quota.
+Writes that would pass it are refused with `XMinioAdminBucketQuotaExceeded`. See
+[Tags and quota](/storage/tags-and-quota).
+
+## Encryption and KMS
+
+### Bucket default encryption
+
+`PUT /api/buckets/{bucket}/encryption`:
+
+```json
+{ "algorithm": "sse-kms", "key_id": "records-key" }
+```
+
+`algorithm` is `sse-s3` or `sse-kms`; `key_id` names the KMS key for `sse-kms`. `GET` answers
+`{"encryption", "keys"}`, where `keys` lists the keys new objects can use. `DELETE` removes the
+default.
+
+### KMS keys
+
+`GET /api/kms`:
+
+```json
+{
+  "kms": "internal",
+  "default_key": "z3-default",
+  "keys": [ { "name": "records-key", "created_ms": 1794834588308, "description": "Patient records",
+              "default": false, "buckets": ["radiology"], "source": "internal" } ],
+  "buckets": { "radiology": { "algorithm": "sse-kms", "key_id": "records-key" } },
+  "external_error": null
+}
+```
+
+`kms` is `internal`, `vault`, `kes`, or `unavailable` when an external KMS is set but cannot be used.
+
+`POST /api/kms/keys` with `{"name": "records-key", "description": "Patient records"}` creates a key
+(`201`). `DELETE /api/kms/keys/{name}` deletes one.
+
+### External KMS
+
+`PUT /api/kms/external` sets HashiCorp Vault (Transit) or MinIO KES as the KMS for new data keys:
+
+| Field | Meaning |
+| --- | --- |
+| `kind` | `vault` or `kes` |
+| `endpoint` | Like `https://vault.example:8200` |
+| `default_key` | The key SSE-S3 seals with (default `z3-default`, created when missing) |
+| `ca_pem` | PEM CA bundle for a private CA |
+| `mount` | Vault: the Transit mount (default `transit`) |
+| `namespace` | Vault Enterprise namespace |
+| `auth` | Vault: `token` (default) or `approle` |
+| `approle_mount`, `role_id` | Vault AppRole (mount default `approle`) |
+| `client_cert_pem` | KES: the client certificate for mutual TLS |
+| `token`, `secret_id`, `client_key_pem` | Credentials: the Vault token, the AppRole secret id, the KES client key. Stored sealed and never sent back; leave them out to keep the saved ones |
+
+`POST /api/kms/external/test` tries the settings without saving and answers
+`{"ok", "error", "latency_ms", "version", "keys"}`. `GET /api/kms/external` answers the settings
+(without credentials), an `error` and the `status`. `DELETE` goes back to the internal KMS; objects
+sealed by either keep opening. See [External KMS](/security/external-kms).
+
+## Tiers
+
+`POST /api/tiers` adds a tier, after checking it by writing a probe object (`201`):
+
+| Field | Meaning |
+| --- | --- |
+| `name` | 2 to 63 characters: uppercase letters, digits, `-` and `_`. It shows as the storage class |
+| `kind` | `s3` (AWS S3 or any S3-compatible store), `minio`, `gcs` or `azure` |
+| `endpoint` | The store's URL |
+| `bucket`, `prefix` | Where versions go |
+| `region` | The bucket's region |
+| `access_key`, `secret_key` | Credentials (Azure: the account name and key) |
+
+`GET /api/tiers`:
+
+```json
+{
+  "tiers": [
+    { "name": "COLD", "kind": "s3", "endpoint": "https://s3.eu-west-1.amazonaws.com", "bucket": "z3-cold",
+      "prefix": "jkt/", "region": "eu-west-1", "access_key": "AKIAEXAMPLE", "created_ms": 1794834588308,
+      "objects": 120443, "bytes": 912003344221, "health": { "checked_ms": 1794921000000, "error": null },
+      "used_by": ["radiology"] }
+  ],
+  "pending_deletes": 0
+}
+```
+
+`objects` and `bytes` are what **this node** keeps in the tier; `pending_deletes` counts remote
+objects waiting to be deleted. `PUT /api/tiers/{name}` takes `{"access_key", "secret_key"}`.
+`DELETE /api/tiers/{name}` refuses (`409`) a tier that lifecycle rules still use.
+`POST /api/tiers/{name}/check` answers `{"checked_ms", "error"}`. See [Tiers](/storage/tiers).

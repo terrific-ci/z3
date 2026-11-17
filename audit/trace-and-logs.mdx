@@ -1,0 +1,109 @@
+---
+title: "Trace and logs"
+description: "Watch requests and server logs live, on one node or on every node of the site group at once."
+---
+
+Two live views show what a node is doing right now:
+
+- **Trace**: S3 and admin API requests as they happen, with status, timing and headers.
+- **Logs**: the server's recent log lines and new ones as they are written.
+
+Both show the node you are signed in to, or every node of the group at once
+([All nodes](#all-nodes)). Reading them needs `admin:ServerInfo`. Secrets are
+[redacted](/audit/audit-log#redaction) as in the audit log.
+
+## Trace
+
+<Frame>
+  <img src="/images/trace.png" alt="The Trace page with live requests" />
+</Frame>
+
+The Trace page lists the latest requests (the node keeps the last 500), then new ones live. Filter
+by **S3**, **admin API** or both, show **errors only** (status 400 and up), and search by
+operation, path, bucket, key, access key or client address. **Pause** stops the stream without
+leaving the page. Click a row for the details and the request and response headers.
+
+<Frame>
+  <img src="/images/trace-detail.png" alt="A request's details and headers" />
+</Frame>
+
+- **Took** is the time until the response headers were sent.
+- Sizes come from `Content-Length` of the request and the response (`HEAD` sends no body).
+
+## Logs
+
+<Frame>
+  <img src="/images/logs.png" alt="The Logs page" />
+</Frame>
+
+The Logs page shows the latest log lines (the last 2,000 are kept in memory) and new lines live,
+with a level filter (a level shows itself and everything more severe) and a search in messages and
+fields.
+
+What the console keeps is set separately from what the server prints:
+
+| Setting | Startup default | Controls |
+| --- | --- | --- |
+| `logger.console_level` | `Z3_LOG_BUFFER` (`info`) | What the Logs page keeps |
+| `logger.level` | `RUST_LOG` (`info`) | What the server writes to standard output |
+
+Both are tracing filters (`info`, or `warn,z3_server=debug`) and can be changed at runtime in
+[Settings](/operations/settings#logging). With `RUST_LOG=warn`, for example, the Logs page still
+shows info lines.
+
+<Note>
+  Logs are not kept on disk. The console only has the last 2,000 lines since the node started.
+</Note>
+
+## All nodes
+
+On the Trace and Logs pages, **This node / All nodes** at the top right merges the requests or
+lines of every node into one list, ordered by time. The **Node** column shows where each row
+comes from (the site or peer name), and the node picker in the toolbar narrows it to one node.
+
+A node that cannot be reached shows in a line under the toolbar with the reason; the other nodes
+keep showing and z3 keeps retrying it.
+
+"All nodes" means this node plus the members of [site replication](/replication/site-replication)
+and the replication peers, each once (recognised by endpoint). In a hub-and-spoke topology, a
+spoke still sees every site, because the site configuration holds every site's endpoint and token.
+
+### How it works
+
+Every node serves its own trace and logs on the peer API (port 9002, `Z3_PEER_ADDR`), with the same
+token as replication (`Z3_PEER_TOKEN`):
+
+| Peer endpoint | Returns |
+| --- | --- |
+| `GET /v1/trace?kind=&errors=&q=&limit=` | Recent requests, as a JSON array |
+| `GET /v1/trace/stream?kind=&errors=&q=` | New requests, as newline-delimited JSON |
+| `GET /v1/logs?level=&q=&limit=` | Recent log lines |
+| `GET /v1/logs/stream?level=&q=` | New log lines |
+
+- Filters run on the node that has the data, so only matching rows cross the network.
+- Streams send an empty line every 10 seconds; a stream silent for 35 seconds counts as broken and
+  is reconnected, with a pause from 1 to 30 seconds.
+- Answers carry the serving node's id in `x-z3-node-id`.
+- Streams end when a node shuts down, so nodes still stop quickly.
+
+The node you opened in the console forwards your filters to every node, merges the answers, and
+tags each entry with `node` (the node id) and `node_name` (the site or peer name; for itself, its
+site name or the start of its node id).
+
+## API
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /api/trace?kind=&errors=&q=&limit=&scope=` | Recent requests, newest first (`limit` 200 by default, at most 500) |
+| `GET /api/trace/stream?kind=&errors=&q=&scope=` | New requests, as server-sent events |
+| `GET /api/logs?level=&q=&limit=&scope=` | Recent log lines, oldest first (`limit` 500 by default, at most 2,000) |
+| `GET /api/logs/stream?level=&q=&scope=` | New log lines, as server-sent events |
+
+With `scope=all` the lists become `{"entries": [...], "nodes": [...]}`, and the streams send a
+`nodes` event once at the start and again whenever a node's state changes. See
+[Events and audit API](/api/admin-events-audit#trace) for every field.
+
+```bash
+curl -N -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:9001/api/trace/stream?kind=s3&errors=true&scope=all"
+```

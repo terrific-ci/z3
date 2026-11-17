@@ -1,0 +1,113 @@
+---
+title: "SFTP"
+description: "Transfer files securely over SSH with sftp, WinSCP, FileZilla or rclone, signing in with an access key and its secret."
+---
+
+SFTP serves buckets over SSH, so transfers are encrypted without extra setup. It works with the
+`sftp` command, WinSCP, FileZilla, rclone and most backup tools. Read the
+[overview](/protocols/overview) first for how buckets look as files and how permissions work.
+
+## Settings
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `sftp.enabled` | `false` | Serve buckets over SFTP |
+| `sftp.address` | `0.0.0.0:8022` | Where SFTP listens on every node |
+| `sftp.host_key` | empty | An OpenSSH private key file on each node. Empty: an Ed25519 key generated once and kept in the data directory (`sftp_host_ed25519`). |
+
+## Turn it on
+
+<Tabs>
+  <Tab title="Console">
+
+    Open **Protocols** and turn on **SFTP**. The gear icon sets the **Address** and **Host key**.
+    When it's running, the panel shows a **Connect** command such as
+    `sftp -P 8022 AKEXAMPLE@z3.example.com` and the **Host key** fingerprint (SHA256).
+
+  </Tab>
+  <Tab title="z3 admin">
+
+    ```bash
+    z3 admin protocols enable sftp --address 0.0.0.0:8022
+    z3 admin protocols
+    # sftp     running  0.0.0.0:8022  host key SHA256:...
+    ```
+
+  </Tab>
+</Tabs>
+
+## Host key
+
+The first time SFTP starts, z3 creates an Ed25519 host key in the data directory and reuses it from
+then on. Its fingerprint is shown in the console and by `z3 admin protocols`. Compare it with what
+your client shows on the first connection.
+
+To use your own key, or the same key on every node of a site group (so clients see one host key
+whichever node they reach), point `sftp.host_key` at an OpenSSH private key file present on each
+node:
+
+```bash
+ssh-keygen -t ed25519 -N '' -f /etc/z3/sftp_host_ed25519
+z3 admin settings set sftp host_key=/etc/z3/sftp_host_ed25519
+```
+
+## Sign in
+
+The user name is an access key (or an IAM user name) and the password is its secret key. Only
+password sign-in is supported; SSH public keys aren't. Failed sign-ins are slowed down.
+
+## Connect a client
+
+<Tabs>
+  <Tab title="sftp">
+
+    ```bash
+    sftp -P 8022 AKEXAMPLE@z3.example.com
+    # password: the secret key
+    sftp> ls
+    sftp> cd backups
+    sftp> put db-2026-11-17.tar.gz
+    sftp> get db-2026-11-16.tar.gz
+    ```
+
+  </Tab>
+  <Tab title="WinSCP">
+
+    Create a site with **File protocol** SFTP, **Host name** `z3.example.com`, **Port number**
+    `8022`, and the access key and secret key as **User name** and **Password**. Accept the host
+    key after checking its fingerprint against the console.
+
+  </Tab>
+  <Tab title="FileZilla">
+
+    Create a site with **Protocol** "SFTP - SSH File Transfer Protocol", **Host**
+    `z3.example.com`, **Port** `8022`, **Logon type** Normal, and the access key and secret key.
+
+  </Tab>
+  <Tab title="rclone">
+
+    ```bash
+    rclone config create z3sftp sftp \
+      host=z3.example.com port=8022 user=AKEXAMPLE pass=$(rclone obscure SECRETEXAMPLE)
+
+    rclone ls z3sftp:backups
+    rclone sync ./backups z3sftp:backups/server-01
+    ```
+
+  </Tab>
+</Tabs>
+
+## How it behaves
+
+- Writes at any offset go to a temporary file on the node and become one object when the client
+  closes the file. So changing part of a file rewrites the whole object.
+- Reads support offsets, so resumed downloads work.
+- `setstat` (times, permissions) is accepted but has no effect.
+- Idle connections are closed after 30 minutes.
+- [Conditions](/access/conditions) see `aws:SecureTransport` = `true`, the client address, and
+  `aws:UserAgent` = `z3-sftp`.
+
+## Not supported yet
+
+- SSH public key sign-in, and LDAP or OIDC sign-in.
+- Appends, symlinks and per-file permissions.

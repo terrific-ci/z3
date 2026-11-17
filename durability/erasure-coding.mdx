@@ -1,0 +1,97 @@
+---
+title: "Erasure coding"
+description: "How z3 splits chunks into Reed-Solomon shards over a disk set, survives failed disks and detects bit rot."
+---
+
+With `Z3_DISKS`, one node stores every chunk across a set of disks with Reed-Solomon erasure
+coding, so a number of disks equal to the parity can fail without losing data. This page explains
+how it works; to set it up, see [Disks](/deploy/disks).
+
+```bash
+Z3_DATA_DIR=/var/lib/z3 \
+Z3_DISKS=/mnt/d1,/mnt/d2,/mnt/d3,/mnt/d4,/mnt/d5,/mnt/d6 \
+Z3_PARITY=2 \
+z3
+```
+
+## Shards
+
+Objects are already cut into chunks of about 1 MiB (see [Concepts](/get-started/concepts#chunks-and-deduplication)).
+On a set of `n` disks with parity `m`, each chunk is split into `k = n - m` **data shards** plus `m`
+**parity shards**, one shard per disk:
+
+- Any `k` shards are enough to rebuild the chunk, so any `m` disks can be missing.
+- The layout for six disks and parity 2 is **4+2**: two disks may fail, and the raw size is 1.5 times
+  the data.
+- The code is **systematic**: the data shards put together are the chunk itself. While every data
+  shard is intact, a read just concatenates them, with no decoding.
+
+Parity defaults to 2 from four disks up and 1 below. Choose it with `Z3_PARITY` before the first
+start; it can't change afterwards.
+
+## Placement
+
+Shard `p` of a chunk goes to disk `(start + p) mod n`, where `start` comes from the chunk's hash.
+Different chunks start on different disks, so reads, writes and space spread evenly over the set.
+
+## Small chunks
+
+Chunks under 64 KiB are stored as `m + 1` **whole copies** on different disks instead of shards.
+They survive the same number of failed disks, without the padding overhead of splitting tiny chunks
+into even tinier shards.
+
+## Writes
+
+A write succeeds once enough shards are on disk: `k` disks, or `k + 1` when `k` is not larger than
+`m` (as in 1+1 or 2+2 layouts). Shards that couldn't be written go to the **healing queue** and are
+written as soon as their disk is back. If too few disks are online, the write fails with
+`write quorum not met`.
+
+## Reads and bit rot
+
+Every shard file starts with a header holding the BLAKE3 hash of its contents.
+
+1. z3 reads the data shards and checks each one against its header.
+2. A missing or damaged shard is rebuilt from the others, so the read still succeeds.
+3. The assembled chunk is checked once more against its content address (the chunk's own hash).
+4. The damaged chunk is queued, and the healer repairs it within seconds.
+
+Silent corruption on a disk is therefore detected per shard and never returned to a client. See
+[Healing](/durability/healing).
+
+A chunk is only **lost** when fewer than `k` of its shards are readable. Lost chunks are reported by
+the heal pass; if the bucket is replicated, anti-entropy can bring the object back from another site.
+
+## The disk set is fixed
+
+Each disk holds a `z3-disk.json` with the set's id, the disk's position, the number of disks and the
+parity, written when the set is formatted on first start. Because placement depends on the number of
+disks, a set **can't grow or shrink**, and its parity can't change. To add capacity, add another
+disk set as a new [pool](/durability/pools); each pool has its own layout.
+
+## Metadata
+
+Erasure coding protects chunks. The metadata database (`meta.redb`) stays in `Z3_DATA_DIR`, so put
+that directory on a reliable disk, such as a RAID 1 mirror.
+
+## Erasure coding and other features
+
+- **Compression** happens per chunk before splitting, so shards hold the compressed form. See
+  [Compression](/storage/compression).
+- **Encryption** happens per chunk too: shards hold ciphertext.
+- **Geo erasure coding** splits chunks across sites instead of disks; each site's shards are stored
+  as ordinary chunks, so they're erasure-coded again on that site's disks. See
+  [Geo erasure coding](/replication/geo-erasure-coding).
+- **Inspect** shows exactly which shard of an object sits on which disk. See
+  [Support](/operations/support).
+
+## Watching it
+
+The console's **Disks** page and `GET /api/disks` show the layout, every disk's state, capacity and
+free space, and the healing totals. Prometheus metrics on `/metrics`:
+
+| Metric | Meaning |
+| --- | --- |
+| `z3_disk_online{disk,path}` | 1 while the disk is online |
+| `z3_heal_shards_repaired_total` | Shards rebuilt by healing |
+| `z3_heal_chunks_lost_total` | Chunks with fewer than `k` readable shards |

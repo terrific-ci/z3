@@ -1,0 +1,90 @@
+---
+title: "Quickstart"
+description: "Run z3 with Docker, sign in to the console, create a bucket and upload a file with the AWS CLI."
+---
+
+This gets z3 running on your machine with Docker, the quickest way to try it. For a server install,
+see [Install](/deploy/install).
+
+<Steps>
+  <Step title="Start z3">
+    ```bash
+    docker run -d --name z3 --restart unless-stopped \
+      -p 9000:9000 -p 9001:9001 \
+      -v z3-data:/data \
+      -e Z3_ACCESS_KEY=admin \
+      -e Z3_SECRET_KEY=change-me-please \
+      terrificci/z3:latest
+    ```
+
+    The S3 API listens on port **9000** and the console on **9001**. Data is kept in the `z3-data`
+    volume. For a Compose file and every setting, see [Docker](/deploy/docker).
+
+    <Warning>
+      `Z3_ACCESS_KEY` and `Z3_SECRET_KEY` are the root account. Without them z3 starts with
+      `z3admin` / `z3admin-secret` and logs a warning. Choose the secret before you store anything
+      you want to keep: user secrets and internal KMS keys are sealed with a key derived from it, so
+      changing it later makes them unreadable.
+    </Warning>
+  </Step>
+  <Step title="Sign in to the console">
+    Open `http://localhost:9001` and sign in with the access key and secret key you set
+    (`admin` and `change-me-please` above).
+
+    <Frame>
+      <img src="/images/login.png" alt="The z3 sign-in page" />
+    </Frame>
+  </Step>
+  <Step title="Create a bucket">
+    <Tabs>
+      <Tab title="Console">
+        Go to **Buckets**, choose **Create bucket** and name it `photos`.
+      </Tab>
+      <Tab title="AWS CLI">
+        ```bash
+        export AWS_ACCESS_KEY_ID=admin
+        export AWS_SECRET_ACCESS_KEY=change-me-please
+        export AWS_DEFAULT_REGION=us-east-1
+        aws --endpoint-url http://localhost:9000 s3 mb s3://photos
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Upload and list with the AWS CLI">
+    With the variables from the previous step:
+
+    ```bash
+    aws --endpoint-url http://localhost:9000 s3 cp ./photo.jpg s3://photos/
+    aws --endpoint-url http://localhost:9000 s3 ls s3://photos/
+    ```
+
+    Open the bucket in the console to see the object, preview it and download it.
+
+    <Frame>
+      <img src="/images/object-preview.png" alt="An object open in the console with its preview" />
+    </Frame>
+  </Step>
+</Steps>
+
+<Note>
+  z3 uses **path-style** addressing (`http://host:9000/bucket/key`). Most clients do that
+  automatically for a custom endpoint; see [Clients](/get-started/clients) for the settings of each
+  one.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Concepts" icon="sitemap" href="/get-started/concepts">
+    Buckets, versions, chunks, disks, pools, peers and sites.
+  </Card>
+  <Card title="Clients" icon="terminal" href="/get-started/clients">
+    AWS CLI, boto3, mc, rclone and s3cmd.
+  </Card>
+  <Card title="Deploy for real" icon="server" href="/deploy/install">
+    systemd, several disks, TLS and upgrades.
+  </Card>
+  <Card title="Users and keys" icon="users" href="/access/users-groups-keys">
+    Give applications their own credentials instead of the root account.
+  </Card>
+</CardGroup>

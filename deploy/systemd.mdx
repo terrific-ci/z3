@@ -1,0 +1,176 @@
+---
+title: "systemd"
+description: "Run the z3 binary as a systemd service on Linux, with the install script or by hand."
+---
+
+This runs the [Linux binary](/deploy/install#install-script) as a service under its own `z3` user.
+
+<Tabs>
+  <Tab title="Automatic">
+    One command installs `z3`, sets up the service and starts it:
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --service
+    ```
+
+    It asks for `sudo` when it needs to, and then:
+
+    - installs `z3` in `/usr/local/bin`,
+    - creates a system user `z3` and the data directory `/var/lib/z3`, owned by it,
+    - creates the settings file `/etc/z3/z3.env` with the root access key `admin` and a **random
+      root secret key**, readable only by root and the `z3` group. An existing file is left alone,
+    - writes the unit to `/etc/systemd/system/z3.service`,
+    - enables and starts `z3`.
+
+    The root credentials are in `/etc/z3/z3.env`:
+
+    ```bash
+    sudo cat /etc/z3/z3.env
+    ```
+
+    The S3 API listens on port 9000 on every address. The console listens only on
+    `127.0.0.1:9001`, so from your computer use an SSH tunnel
+    (`ssh -L 9001:127.0.0.1:9001 you@server`, then open `http://localhost:9001`) or put a
+    [reverse proxy](/deploy/tls-and-proxies) in front.
+  </Tab>
+  <Tab title="Manual">
+    <Steps>
+      <Step title="Install the binary">
+        ```bash
+        curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
+        ```
+
+        See [Install](/deploy/install) for the options.
+      </Step>
+      <Step title="Create the user and directories">
+        ```bash
+        sudo useradd --system --home /var/lib/z3 --shell /usr/sbin/nologin z3
+        sudo mkdir -p /var/lib/z3 /etc/z3
+        sudo chown z3:z3 /var/lib/z3
+        ```
+
+        If you use separate disks, give the `z3` user their directories too
+        (`sudo chown z3:z3 /mnt/disk1/z3 ...`).
+      </Step>
+      <Step title="Create the settings file">
+        Save this as `/etc/z3/z3.env`, with your own secret:
+
+        ```bash /etc/z3/z3.env
+        Z3_DATA_DIR=/var/lib/z3
+        Z3_S3_ADDR=0.0.0.0:9000
+        # Keep the console on 127.0.0.1 behind a TLS reverse proxy.
+        Z3_ADMIN_ADDR=127.0.0.1:9001
+        Z3_PEER_ADDR=0.0.0.0:9002
+        Z3_ACCESS_KEY=admin
+        Z3_SECRET_KEY=a-long-random-secret
+
+        # Erasure coding over several disks (order matters, can't change later):
+        #Z3_DISKS=/mnt/disk1/z3,/mnt/disk2/z3,/mnt/disk3/z3,/mnt/disk4/z3
+        # Let other nodes pull from this one:
+        #Z3_PEER_TOKEN=
+        #Z3_SITE_NAME=dc1
+        #RUST_LOG=info
+        ```
+
+        ```bash
+        sudo chown root:z3 /etc/z3/z3.env
+        sudo chmod 0640 /etc/z3/z3.env
+        ```
+      </Step>
+      <Step title="Create the unit">
+        Save this as `/etc/systemd/system/z3.service`:
+
+        ```ini /etc/systemd/system/z3.service
+        [Unit]
+        Description=z3 S3-compatible object storage
+        After=network-online.target
+        Wants=network-online.target
+
+        [Service]
+        User=z3
+        Group=z3
+        EnvironmentFile=/etc/z3/z3.env
+        ExecStart=/usr/local/bin/z3
+        Restart=on-failure
+        LimitNOFILE=65536
+
+        [Install]
+        WantedBy=multi-user.target
+        ```
+
+        This is the same unit the install script writes.
+      </Step>
+      <Step title="Start it">
+        ```bash
+        sudo systemctl daemon-reload
+        sudo systemctl enable --now z3
+        systemctl status z3
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Change a setting
+
+Edit `/etc/z3/z3.env` and restart:
+
+```bash
+sudo systemctl restart z3
+```
+
+Every variable is listed in [Configuration](/deploy/configuration). Intervals, limits, CORS, region
+and log levels can also be changed at runtime from the console's **Settings** page, without editing
+the file (see [Settings](/operations/settings)).
+
+<Warning>
+  Don't change `Z3_SECRET_KEY` once the node holds data: user secrets and internal KMS keys are
+  sealed with a key derived from it. See [Root credentials](/deploy/configuration#root-credentials).
+</Warning>
+
+## Logs
+
+z3 logs to standard output, which systemd keeps in the journal:
+
+```bash
+journalctl -u z3 -f
+journalctl -u z3 --since "1 hour ago"
+```
+
+`RUST_LOG` in `z3.env` chooses what is logged (`info` by default, or a filter like
+`warn,z3_server=debug`). The console's **Logs** page shows recent and live log lines without a
+shell on the server; see [Trace and logs](/audit/trace-and-logs).
+
+## Stopping
+
+`systemctl stop z3` sends `SIGTERM`: z3 finishes the requests in flight, keeps unsent audit entries
+for the next start, and exits.
+
+## Hardening
+
+The unit above is deliberately simple. If you add systemd sandboxing such as
+`ProtectSystem=strict`, list every directory z3 writes to in `ReadWritePaths=`: the data directory
+and every disk in `Z3_DISKS` or `Z3_POOLS`.
+
+```ini
+[Service]
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/z3 /mnt/disk1/z3 /mnt/disk2/z3 /mnt/disk3/z3 /mnt/disk4/z3
+```
+
+Put these lines in a drop-in (`sudo systemctl edit z3`) so the install script doesn't overwrite them
+when you upgrade.
+
+## Upgrading
+
+Run the install command again, then restart the service:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --service
+sudo systemctl restart z3
+```
+
+The settings file is kept. Back up first; see [Upgrading](/deploy/upgrading).

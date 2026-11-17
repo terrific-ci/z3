@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Refuses to push commits whose message carries AI attribution. This catches
+# anything commit-msg did not see: amends, rebases, cherry-picks, --no-verify,
+# commits made in another clone.
+set -euo pipefail
+
+patterns="$(git rev-parse --show-toplevel)/.githooks/forbidden-lines.regex"
+[ -f "$patterns" ] || { echo "pre-push: $patterns not found" >&2; exit 1; }
+
+zero=0000000000000000000000000000000000000000
+remote="$1"
+bad=""
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a ref
+  if [ "$remote_sha" = "$zero" ]; then
+    # New ref: check every commit not already on the remote.
+    range=$(git rev-list "$local_sha" --not --remotes="$remote")
+  else
+    range=$(git rev-list "$remote_sha..$local_sha")
+  fi
+  for c in $range; do
+    if git log -1 --format=%B "$c" | grep -qiE -f "$patterns"; then
+      bad="$bad $c"
+    fi
+  done
+done
+
+if [ -n "$bad" ]; then
+  echo "pre-push: push refused, these commits contain AI attribution:" >&2
+  for c in $bad; do echo "  $(git log -1 --format='%h %s' "$c")" >&2; done
+  echo "Fix with: git rebase -i <base>, reword those commits (the commit-msg hook strips the lines)." >&2
+  exit 1
+fi

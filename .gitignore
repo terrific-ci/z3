@@ -1,0 +1,13 @@
+node_modules/
+.mintlify/
+.DS_Store
+# AI assistant and editor files never belong in this repository.
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+.claude/
+.cursor/
+.cursorrules
+.aider*
+.codex/
+.github/copilot-instructions.md

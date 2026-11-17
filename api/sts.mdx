@@ -1,0 +1,190 @@
+---
+title: "STS API"
+description: "AssumeRoleWithWebIdentity and AssumeRoleWithLDAPIdentity on the S3 port: temporary S3 credentials for OpenID Connect and LDAP users."
+---
+
+Users who sign in through [OpenID Connect or LDAP](/access/openid-connect-ldap) have no IAM access
+key. STS gives them temporary S3 credentials, the AWS way: an application trades an OIDC ID token,
+or an LDAP user name and password, for an access key, a secret key and a session token that expire.
+
+STS is served on the **S3 port** (9000), not the admin port. For the concepts and setup, see
+[STS](/access/sts).
+
+## Actions
+
+| Action | Proof of identity | Policies from |
+| --- | --- | --- |
+| `AssumeRoleWithWebIdentity` | `WebIdentityToken`: an ID token (JWT) from the configured OpenID Connect provider | The token's policy claim, plus the policies every OIDC user gets (as for console sign-in) |
+| `AssumeRoleWithLDAPIdentity` | `LDAPUsername` and `LDAPPassword` (an LDAP bind) | The user's DN and group mappings (as for console sign-in) |
+
+A request is a form `POST /` (`Content-Type: application/x-www-form-urlencoded`), or a request to
+`/` with `Action` in the query. It does not need to be signed; a signature, if any, is ignored.
+
+## Parameters
+
+<ParamField body="Action" type="string" required>
+  `AssumeRoleWithWebIdentity` or `AssumeRoleWithLDAPIdentity`. Anything else answers `InvalidAction`.
+</ParamField>
+
+<ParamField body="Version" type="string">
+  `2011-06-15`. Another value answers `InvalidParameterValue`.
+</ParamField>
+
+<ParamField body="WebIdentityToken" type="string">
+  `AssumeRoleWithWebIdentity`: the ID token.
+</ParamField>
+
+<ParamField body="LDAPUsername" type="string">
+  `AssumeRoleWithLDAPIdentity`: the user name.
+</ParamField>
+
+<ParamField body="LDAPPassword" type="string">
+  `AssumeRoleWithLDAPIdentity`: the password. A wrong password answers after a 400 ms delay, as at
+  console sign-in.
+</ParamField>
+
+<ParamField body="DurationSeconds" type="integer" default="3600">
+  How long the credentials last: 900 to 43200 seconds, capped by the **longest session** setting.
+</ParamField>
+
+<ParamField body="RoleSessionName" type="string">
+  Shown in `AssumedRoleUser`. Does not change any rights.
+</ParamField>
+
+<ParamField body="RoleArn" type="string">
+  Accepted for compatibility with AWS SDKs. Does not change any rights.
+</ParamField>
+
+Session policies (`Policy`, `PolicyArns`) are refused with `InvalidParameterValue`, rather than
+ignored: the provider's policies apply.
+
+## ID token checks
+
+For `AssumeRoleWithWebIdentity`, z3 checks:
+
+- the **signature**, with a key from the provider's `jwks_uri` (RS256, RS384, RS512, PS256, PS384,
+  PS512, ES256, ES384; `none` and HS algorithms are refused). Keys are cached for 10 minutes and
+  fetched again when a signature does not match, so key rotation at the provider just works;
+- the issuer, the audience (`aud` or `azp` must be the client ID), `exp` and `nbf`, with 60 seconds of
+  clock leeway;
+- that the user (the user claim, else `sub`) has at least one z3 policy. Otherwise the answer is
+  `AccessDenied`.
+
+## Response
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AssumeRoleWithWebIdentityResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
+  <AssumeRoleWithWebIdentityResult>
+    <Credentials>
+      <AccessKeyId>ZSTS7Q2M9XK4D1VB8NPA</AccessKeyId>
+      <SecretAccessKey>...</SecretAccessKey>
+      <SessionToken>z3sts1....</SessionToken>
+      <Expiration>2026-11-17T10:30:00Z</Expiration>
+    </Credentials>
+    <AssumedRoleUser>
+      <Arn>arn:aws:sts:::assumed-role/z3/app</Arn>
+      <AssumedRoleId>ZSTS7Q2M9XK4D1VB8NPA:app</AssumedRoleId>
+    </AssumedRoleUser>
+    <SubjectFromWebIdentityToken>4f1c2e9a-...</SubjectFromWebIdentityToken>
+    <Audience>z3-console</Audience>
+    <Provider>https://sso.example.com/realms/main</Provider>
+  </AssumeRoleWithWebIdentityResult>
+  <ResponseMetadata><RequestId>8C3F1A2B4D5E6F70</RequestId></ResponseMetadata>
+</AssumeRoleWithWebIdentityResponse>
+```
+
+`AssumeRoleWithLDAPIdentity` answers the same way, without the last three elements of the result.
+Temporary access keys start with `ZSTS`.
+
+## Errors
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ErrorResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
+  <Error><Type>Sender</Type><Code>AccessDenied</Code><Message>wrong username or password</Message></Error>
+  <RequestId>8C3F1A2B4D5E6F70</RequestId>
+</ErrorResponse>
+```
+
+| Status | Code | When |
+| --- | --- | --- |
+| 400 | `MissingParameter` | `WebIdentityToken`, `LDAPUsername` or `LDAPPassword` is missing |
+| 400 | `ValidationError` | `DurationSeconds` is not a number, or outside 900 to 43200 |
+| 400 | `InvalidIdentityToken` | The ID token fails a check, or OpenID Connect is not set up |
+| 400 | `InvalidParameterValue` | A wrong `Version`, session policies, or LDAP is not set up |
+| 400 | `InvalidAction` | Another action |
+| 403 | `AccessDenied` | Wrong LDAP password, no z3 policy for the user, or STS is turned off |
+
+## Using the credentials
+
+Sign S3 requests with the access key and secret key as usual (SigV4), and send the session token in
+`x-amz-security-token` (or `X-Amz-Security-Token` in a presigned URL). Without the token the
+answer is `InvalidToken`; after expiry, `ExpiredToken`.
+
+<Tabs>
+  <Tab title="boto3">
+
+```python
+import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
+
+sts = boto3.client("sts", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+                   config=Config(signature_version=UNSIGNED))
+c = sts.assume_role_with_web_identity(
+    RoleArn="arn:aws:iam::000000000000:role/z3", RoleSessionName="app",
+    WebIdentityToken=id_token, DurationSeconds=3600)["Credentials"]
+
+s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000",
+                  aws_access_key_id=c["AccessKeyId"],
+                  aws_secret_access_key=c["SecretAccessKey"],
+                  aws_session_token=c["SessionToken"])
+```
+
+  </Tab>
+  <Tab title="curl">
+
+```bash
+curl -X POST http://z3.example.com:9000/ \
+  -d Action=AssumeRoleWithLDAPIdentity -d Version=2011-06-15 \
+  -d LDAPUsername=radiographer -d LDAPPassword='...' -d DurationSeconds=3600
+```
+
+  </Tab>
+</Tabs>
+
+## Sessions are stateless
+
+Nothing is stored per session:
+
+- The secret key is derived from the access key with the STS signing key, so z3 can check SigV4
+  signatures from the access key alone.
+- The session token carries the access key, expiry, provider, user and where the policies come
+  from (the OIDC policy claim, or the LDAP DN and groups), signed with the same key.
+- Every S3 request checks the token and its expiry, and works out the policies again from the
+  **current** provider settings. A session stops working as soon as its mapping no longer grants a
+  policy, the policy is deleted, the provider is turned off, or STS is turned off.
+- The signing key is kept sealed in the cluster, so sessions survive restarts, and with site
+  replication a session issued on one site works on every site.
+
+One session cannot be revoked on its own before it expires; revoke through the mapping, the
+policy, or by turning STS off.
+
+## Settings
+
+| Endpoint | What it does |
+| --- | --- |
+| `GET /api/idp/sts` | `{"enabled": true, "max_duration_secs": 43200}` |
+| `PUT /api/idp/sts` | Change them |
+
+<ParamField body="enabled" type="boolean" default="true">
+  Whether STS answers. When off, every STS request and every existing session is refused.
+</ParamField>
+
+<ParamField body="max_duration_secs" type="integer" default="43200">
+  The longest session a client may ask for, 900 to 43200 seconds. Longer requests are cut to it.
+</ParamField>
+
+These endpoints are on the admin port and need `admin:UserAdmin`. In the console:
+**Identity Providers → STS**.

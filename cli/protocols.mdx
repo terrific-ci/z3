@@ -1,0 +1,97 @@
+---
+title: "z3 admin protocols"
+description: "See the state of WebDAV, FTP, SFTP and NFS, and turn them on or off from the terminal."
+---
+
+`z3 admin protocols` shows the [file protocols](/protocols/overview) of a node and turns them on or
+off. Their settings are cluster settings (subsystems `webdav`, `ftp`, `sftp`, `nfs`), so a protocol
+turned on runs on every site, on the same address.
+
+| Command | What it does | Right |
+| --- | --- | --- |
+| `z3 admin protocols` | Same as `status` | `admin:ServerInfo` |
+| `z3 admin protocols status` | State of every protocol on this node | `admin:ServerInfo` |
+| `z3 admin protocols enable NAME [--address ADDR] [--set KEY=VALUE]...` | Turn a protocol on, optionally changing its settings | `admin:ConfigUpdate` |
+| `z3 admin protocols disable NAME` | Turn a protocol off | `admin:ConfigUpdate` |
+
+`NAME` is `webdav`, `ftp`, `sftp` or `nfs`.
+
+## status
+
+```bash
+z3 admin protocols
+```
+
+```
+s3       running  (always on)
+webdav   off      0.0.0.0:9005
+ftp      running  0.0.0.0:8021
+sftp     running  0.0.0.0:8022  host key SHA256:Ujlfbc1TnB+t9xW0WLl3qWtlu41h0SUQ60bQngnCiRc
+nfs      failed   0.0.0.0:2049  error: set nfs.access_key: the access key NFS clients act as
+```
+
+Each line shows the protocol, its state on **this node** (`off`, `starting`, `running`, `failed`) and
+its address. A failed protocol shows why, for example a port already in use or a missing
+certificate file. A running SFTP server shows its host key fingerprint, for clients to check on
+first connect.
+
+## enable
+
+```bash
+z3 admin protocols enable sftp --address 0.0.0.0:8022
+```
+
+| Option | What it does |
+| --- | --- |
+| `--address <ADDR>` | The listen address, like `0.0.0.0:8022` (the `address` key) |
+| `--set <KEY=VALUE>` | Any other key of the protocol; repeat it for more keys |
+
+Values follow the same rules as [`z3 admin settings set`](/cli/settings#set). After saving, the
+command waits half a second and prints the status, so you can see whether the protocol started.
+
+```bash
+# FTP with a passive port range opened in the firewall
+z3 admin protocols enable ftp --set passive_ports=30000-30100
+
+# FTPS only
+z3 admin protocols enable ftp --set tls_cert=/etc/z3/ftp.pem --set tls_key=/etc/z3/ftp.key --set tls_required=true
+
+# NFS for one subnet, acting as the access key nfs-client, read-only
+z3 admin protocols enable nfs --set access_key=nfs-client --set allowed_clients=10.0.0.0/24 --set read_only=true
+
+# WebDAV on another port
+z3 admin protocols enable webdav --address 0.0.0.0:8080
+```
+
+The keys of each protocol are listed under [File protocols](/operations/settings#file-protocols) in
+the settings reference.
+
+## disable
+
+```bash
+z3 admin protocols disable webdav
+# webdav: off
+```
+
+The protocol's other settings are kept for the next time it is turned on.
+
+## Settings of a protocol
+
+```bash
+z3 admin settings get ftp
+```
+
+```
+ftp.enabled = true  (set)
+ftp.address = 0.0.0.0:8021
+ftp.passive_ports = 30000-30100
+ftp.tls_cert = /etc/z3/ftp.pem  (set)
+ftp.tls_key = /etc/z3/ftp.key  (set)
+ftp.tls_required = true  (set)
+```
+
+To put a protocol entirely back to its defaults (which also turns it off):
+
+```bash
+z3 admin settings reset ftp
+```

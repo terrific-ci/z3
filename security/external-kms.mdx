@@ -1,0 +1,210 @@
+---
+title: "External KMS"
+description: "Seal data keys with HashiCorp Vault (Transit, token or AppRole, namespaces, private CA) or MinIO KES (mutual TLS), check its health, and move objects over from the internal KMS."
+---
+
+By default, data keys of [encrypted objects](/security/encryption) are sealed by z3's **internal
+KMS**. You can hand that job to an external key manager instead:
+
+| | HashiCorp Vault (Transit secrets engine) | MinIO KES |
+| --- | --- | --- |
+| Endpoint | `https://vault.example.com:8200` | `https://kes.example.com:7373` |
+| Authentication | A token, or AppRole (role id and secret id; z3 logs in again before the lease runs out or when a request is refused) | Mutual TLS: a client certificate and private key (PEM) |
+| Options | Transit mount (default `transit`), AppRole mount (default `approle`), namespace (Vault Enterprise, sent as `X-Vault-Namespace`) | |
+| API used | `transit/encrypt`, `transit/decrypt`, `transit/keys` (check, create, list), `sys/health` | `/v1/key/generate`, `/v1/key/encrypt`, `/v1/key/decrypt`, `/v1/key/create`, `/v1/key/describe`, `/v1/key/list`, `/v1/status` |
+
+Both take a **CA bundle** (PEM) for a server with a private CA. Empty means the public roots.
+
+Once an external KMS is saved, **every new data key** (SSE-S3 and SSE-KMS) is sealed there. SSE-C
+doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpdate`.
+
+## Prepare the KMS
+
+<Tabs>
+  <Tab title="Vault">
+
+    Turn on the Transit engine and give z3 a policy for it:
+
+    ```bash
+    vault secrets enable transit
+
+    vault policy write z3 - <<'EOF'
+    path "transit/encrypt/*" { capabilities = ["update"] }
+    path "transit/decrypt/*" { capabilities = ["update"] }
+    path "transit/keys/*"    { capabilities = ["create", "read", "update"] }
+    path "transit/keys"      { capabilities = ["list"] }
+    EOF
+    ```
+
+    Then either create a token with that policy, or an AppRole:
+
+    ```bash
+    vault auth enable approle
+    vault write auth/approle/role/z3 token_policies=z3 token_ttl=1h token_max_ttl=24h
+    vault read auth/approle/role/z3/role-id
+    vault write -f auth/approle/role/z3/secret-id
+    ```
+
+    Adjust the paths if Transit is mounted somewhere other than `transit`.
+
+  </Tab>
+  <Tab title="KES">
+
+    Create a client certificate for z3 and allow its identity the key APIs in the KES
+    configuration:
+
+    ```yaml
+    policy:
+      z3:
+        allow:
+          - /v1/key/create/*
+          - /v1/key/generate/*
+          - /v1/key/encrypt/*
+          - /v1/key/decrypt/*
+          - /v1/key/describe/*
+          - /v1/key/list/*
+          - /v1/status
+        identities:
+          - <identity of z3's client certificate>
+    ```
+
+    `kes identity of client.crt` prints the identity.
+
+  </Tab>
+</Tabs>
+
+## Connect
+
+<Tabs>
+  <Tab title="Console">
+
+    1. Open **Encryption**. Under **Key store**, click **Connect Vault or KES**.
+    2. Pick **HashiCorp Vault** or **MinIO KES** and fill in the **Connection**:
+       **Endpoint**, **Default key (SSE-S3)**, and for Vault the **Transit mount** and an optional
+       **Namespace**.
+    3. Under **Credentials**: for Vault pick **Token** (paste the token) or **AppRole** (**Role
+       ID**, **Secret ID**, **AppRole mount**); for KES paste the **Client certificate** and
+       **Client private key**.
+    4. Under **TLS**, paste a **CA bundle** if the server uses a private CA.
+    5. Click **Test connection**. When it succeeds, click **Connect**.
+
+    Credential fields left empty when editing keep the saved values.
+
+  </Tab>
+  <Tab title="Admin API">
+
+    ```bash
+    # Vault with AppRole
+    curl -X PUT http://127.0.0.1:9001/api/kms/external \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+      -d '{"kind": "vault", "endpoint": "https://vault.example.com:8200",
+           "auth": "approle", "role_id": "...", "secret_id": "...",
+           "namespace": "", "mount": "transit", "ca_pem": "", "default_key": "z3-default"}'
+
+    # KES with mutual TLS
+    curl -X PUT http://127.0.0.1:9001/api/kms/external \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+      -d "{\"kind\": \"kes\", \"endpoint\": \"https://kes.example.com:7373\",
+           \"client_cert_pem\": $(jq -Rs . < client.crt),
+           \"client_key_pem\": $(jq -Rs . < client.key),
+           \"ca_pem\": $(jq -Rs . < ca.pem)}"
+    ```
+
+    `POST /api/kms/external/test` takes the same body and tries it without saving. Token auth
+    uses `"auth": "token", "token": "..."`. Empty credentials keep the saved ones.
+
+  </Tab>
+</Tabs>
+
+## Keys
+
+- The **default key** (default `z3-default`) seals SSE-S3 data keys. z3 creates it in the KMS
+  when it's missing.
+- Named keys for SSE-KMS must **already exist** in the KMS. z3 checks first, because Transit would
+  otherwise quietly create a mistyped key on `encrypt`.
+- **Create key** on the Encryption page creates the key in Vault or KES.
+- External keys aren't deleted from z3. Delete them in the KMS itself, and only once no object
+  needs them.
+- Opened data keys are cached in memory for 5 minutes (at most 10,000), so repeated GETs don't
+  always call the KMS.
+
+## Health
+
+The **Key store** panel shows which KMS seals new keys, the endpoint, the authentication and the
+default key, and its health: reachable, authenticated (by listing keys), the number of keys, the
+version and the latency. Errors are shown as the KMS reports them.
+
+<Warning>
+  While the KMS is down, encrypted writes fail with `KMS.KMSInternalException` (HTTP 503), and
+  objects whose data key isn't in the cache can't be read. Run Vault or KES highly available, and
+  watch its health.
+</Warning>
+
+## Older objects stay readable
+
+Every sealed data key records the KMS that sealed it:
+
+| Sealed key starts with | Sealed by |
+| --- | --- |
+| `v1:` | The internal KMS |
+| `kms:vault:` | Vault, with the version's key id |
+| `kms:kes:` | KES, with the version's key id |
+
+So objects from the internal KMS are still opened with the internal key after Vault or KES is
+connected. Only one external KMS is connected at a time: an object sealed by an external KMS that
+isn't the connected one fails with a clear error ("…sealed by vault, which is not configured on
+this node"). Before switching from one external KMS to another, make sure no object still needs
+the old one. The object details in the
+console show the KMS of each object.
+
+## Move objects to the external KMS
+
+A **rotate** [batch job](/storage/batch) seals data keys again with the **active** KMS. With Vault
+connected, objects from the internal KMS move to Vault; only the data keys change, the data isn't
+rewritten. Objects already on the target key and KMS are skipped.
+
+```json
+{ "type": "rotate", "source": { "bucket": "records" }, "key_id": "" }
+```
+
+```bash
+z3 admin batch start rotate.json --wait
+```
+
+Run one job per bucket. Once every object has moved, old internal keys may be deleted (the internal
+`z3-default` stays). A `CopyObject` with the same encryption but a different KMS also reseals with
+the active KMS.
+
+## Disconnect
+
+**Disconnect** on the Encryption page (or `DELETE /api/kms/external`) goes back to the internal KMS
+for new data keys.
+
+<Warning>
+  Objects sealed by an external KMS can only be opened while that KMS is the one connected. After
+  a disconnect they can't be read (apart from data keys still in the 5-minute cache) until you
+  connect the same Vault or KES again.
+</Warning>
+
+## With replication
+
+The external KMS settings are stored as an IAM document with the credentials sealed. With
+[site replication](/replication/site-replication) they reach every site, resealed with the site
+group's key. Every site must be able to reach the same Vault or KES.
+
+## Admin API
+
+| Endpoint | What it does |
+| --- | --- |
+| `GET /api/kms/external` | `{config, error, status}`: the settings without credentials (`has_token`, `has_secret_id`, `has_client_key`) and the health |
+| `PUT /api/kms/external` | Connect or change the external KMS |
+| `POST /api/kms/external/test` | Try settings without saving |
+| `DELETE /api/kms/external` | Go back to the internal KMS |
+
+## Not supported yet
+
+- AWS KMS, Azure Key Vault and GCP KMS.
+- Setting the external KMS with environment variables at startup (only the console and the admin
+  API), and including it in a configuration export.
+- Vault authentication other than token and AppRole (Kubernetes, TLS certificates). z3 makes its
+  own data keys and Transit wraps them; Transit `datakey` isn't used.

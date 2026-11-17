@@ -1,0 +1,71 @@
+---
+title: "z3 admin metrics"
+description: "Traffic and storage over a past range, for the whole node or one bucket, from the terminal."
+---
+
+`z3 admin metrics` summarises the node's [historical metrics](/operations/metrics) over a range:
+requests, errors, traffic and what is stored, node-wide with a table of buckets, or for one bucket.
+
+```bash
+z3 admin metrics [--range RANGE] [--bucket BUCKET]
+```
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--range <RANGE>` | `24h` | How far back: a number and `m`, `h`, `d`, `w` or `y`, like `90m`, `24h`, `7d`, `30d`, `1y`. From 1 minute to 3 years |
+| `--bucket <BUCKET>` | – | One bucket instead of the whole node |
+
+It needs `admin:ServerInfo` (the built-in `diagnostics` policy has it).
+
+## The node
+
+```bash
+z3 admin metrics --range 7d
+```
+
+```
+node over 7d, 168 points of 1 h:
+  requests  18422113 (2311 errors), peak 412.6/s
+  traffic   91.6 GiB in, 383.8 GiB out
+  stored    1204331 objects, 2.1 TiB
+  bucket                     requests   errors          in         out        size
+  radiology                   9120443     1204     60.2 GiB    301.4 GiB      1.6 TiB
+  lab-results                 6201872      870     22.1 GiB     70.3 GiB    402.9 GiB
+  backups                      812004       12      9.3 GiB      2.0 GiB     88.0 GiB
+  public-assets               2287794      225    0.0 B         10.1 GiB      1.2 GiB
+```
+
+- The first line says how many points cover the range and how long each is. The point length
+  follows the [tier](/operations/metrics#tiers-and-retention) the range uses, merged so a range has
+  at most 180 points.
+- `requests` and `errors` are summed over the range. `peak` is the busiest point's requests divided
+  by its length.
+- `traffic` is the bytes received and sent over S3.
+- `stored` is the latest point's objects and logical bytes (all versions).
+- The table lists up to 20 buckets, busiest first, with their traffic over the range and their
+  size now.
+
+## One bucket
+
+```bash
+z3 admin metrics --range 30d --bucket radiology
+```
+
+```
+bucket radiology over 30d, 180 points of 4 h:
+  requests  38110293 (5102 errors), peak 318.0/s
+  traffic   251.7 GiB in, 1.2 TiB out
+  stored    812004 objects, 1.6 TiB
+```
+
+Requests count for a bucket by their path (path-style addressing).
+
+## Errors
+
+```bash
+z3 admin metrics --range 5y
+# Error: range must look like 90m, 24h, 7d or 1y (1 minute to 3 years)
+```
+
+A node with no data for the range (just started, or down during it) prints zeros and no `stored`
+line.

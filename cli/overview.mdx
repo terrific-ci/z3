@@ -1,0 +1,134 @@
+---
+title: "Command line"
+description: "Manage a running z3 node from the terminal with the same z3 binary: connection options, sign-in and output."
+---
+
+The `z3` binary that runs the server also manages it. Without a command, `z3` runs a node.
+`z3 admin ...` manages a **running** node through its [admin API](/api/overview).
+
+Because the CLI goes through the API:
+
+- it follows the **same rights** as the console: the identity you sign in with needs the admin
+  rights the command needs;
+- it **validates input the same way**, with the same error messages;
+- every change it makes shows up in the [audit log](/audit/audit-log) under that identity.
+
+Use it over SSH, on a server without a browser, in scripts and cron jobs.
+
+## A quick example
+
+On the server itself, where `Z3_ACCESS_KEY` and `Z3_SECRET_KEY` are already set for the node:
+
+```bash
+z3 admin support health
+z3 admin settings set compression enabled=true
+z3 admin protocols enable sftp
+z3 admin metrics --range 7d
+```
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| [`z3 admin settings`](/cli/settings) | Show, set and reset cluster settings |
+| [`z3 admin protocols`](/cli/protocols) | File protocols: state, turn one on or off |
+| [`z3 admin batch`](/cli/batch) | Batch jobs: replicate, expire or rotate keys over many objects |
+| [`z3 admin support`](/cli/support) | Health report, speed tests, CPU profiles, object inspection |
+| [`z3 admin pools`](/cli/pools) | Pools: usage, rebalance, decommission |
+| [`z3 admin metrics`](/cli/metrics) | Traffic and storage over a past range, node-wide or per bucket |
+
+Everything else (buckets, IAM, replication, events) is managed in the [console](/operations/console),
+through the [admin API](/api/overview), or with any S3 client.
+
+## Connecting and signing in
+
+| Option | Environment | Default | What it is |
+| --- | --- | --- | --- |
+| `--url <URL>` | `Z3_ADMIN_URL` | `http://127.0.0.1:9001` | The node's admin API |
+| `--access-key <KEY>` | `Z3_ACCESS_KEY` | `z3admin` | Who to sign in as |
+| `--secret-key <SECRET>` | `Z3_SECRET_KEY` | `z3admin-secret` | Its secret |
+
+The options belong to `admin`, so they go **between `admin` and the command**:
+
+```bash
+z3 admin --url https://z3-admin.example.com --access-key ops --secret-key "$OPS_SECRET" pools
+```
+
+Or set them once in the environment:
+
+```bash
+export Z3_ADMIN_URL=https://z3-admin.example.com
+export Z3_ACCESS_KEY=ops
+export Z3_SECRET_KEY=...
+z3 admin pools
+```
+
+Each command signs in with `POST /api/auth/login`, runs, and is done; nothing is saved between
+commands. Any identity the console accepts works: the root account, an IAM user (user name and
+secret key), an access key and its secret, or an LDAP account when LDAP is set up. Using the same
+variables as the server means that on the server itself, commands sign in as root without extra
+options.
+
+<Tip>
+  For scripts, create a user or access key with only the rights the script needs, for example the
+  built-in `diagnostics` policy for health checks and metrics. See
+  [Users, groups and keys](/access/users-groups-keys).
+</Tip>
+
+## Getting help
+
+`--help` works at every level:
+
+```bash
+z3 --help
+z3 admin --help
+z3 admin support --help
+z3 admin support speedtest --help
+```
+
+```
+Manage a running node (settings, file protocols) through its admin API
+
+Usage: z3 admin [OPTIONS] <COMMAND>
+
+Commands:
+  settings   Cluster settings
+  protocols  File protocols: state, or turn one on or off
+  batch      Batch jobs: replicate, expire or rotate keys over many objects
+  support    Health report, speed tests, CPU profiles, object inspection
+  metrics    Traffic and storage over a past range, node-wide or per bucket
+  pools      Pools: usage, rebalance, decommission
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+      --url <URL>                Admin API of the node [env: Z3_ADMIN_URL=] [default: http://127.0.0.1:9001]
+      --access-key <ACCESS_KEY>  [env: Z3_ACCESS_KEY=] [default: z3admin]
+      --secret-key <SECRET_KEY>  [env: Z3_SECRET_KEY] [default: z3admin-secret]
+  -h, --help                     Print help
+```
+
+`z3 --version` prints the version.
+
+## Output and errors
+
+Commands print plain text meant for people, one line per item. On success they exit with status
+`0`. On an error they print `Error:` and the API's message, and exit with status `1`:
+
+```bash
+z3 admin settings set api requests_max=abc
+# Error: api.requests_max is a whole number
+```
+
+| Message | Meaning |
+| --- | --- |
+| `cannot reach http://...` | Nothing answers at `--url`: wrong address, or the admin port only listens on `127.0.0.1` of another machine |
+| `sign-in failed: Wrong access key or secret key, or the account is disabled` | Check `--access-key` and `--secret-key` |
+| `this needs the admin:ConfigUpdate permission` | The identity lacks the right; see [Rights](/api/overview#rights) |
+
+For machine-readable output, call the [admin API](/api/overview) directly; it answers JSON.
+`z3 admin support health --json` prints the whole health report as JSON.
+
+## Container health checks
+
+`z3 healthcheck` asks the local node's `/api/health` (on `Z3_ADMIN_ADDR`) and exits with `0` when it
+answers. It needs no credentials, which makes it a fit for a Docker `HEALTHCHECK`.

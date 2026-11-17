@@ -1,0 +1,236 @@
+---
+title: "IAM"
+description: "Admin API endpoints for users, groups, policies, access keys, bucket policies, OpenID Connect, LDAP and STS settings."
+---
+
+These endpoints manage identities and what they may do. For the concepts, see
+[Users, groups and keys](/access/users-groups-keys) and [Policies](/access/policies).
+
+`/api/iam/*` and `/api/idp/*` need `admin:UserAdmin`, except access keys, which every user manages
+for themselves. Bucket policies check the S3 bucket policy actions. With site replication, all of
+this reaches every site.
+
+## Endpoints
+
+| Method | Path | Right | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/iam/users` | `admin:UserAdmin` | Users |
+| `POST` | `/api/iam/users` | `admin:UserAdmin` | Create a user |
+| `PUT` | `/api/iam/users/{name}` | `admin:UserAdmin` | Enable or disable, set policies, new secret key |
+| `DELETE` | `/api/iam/users/{name}` | `admin:UserAdmin` | Delete a user |
+| `GET` | `/api/iam/groups` | `admin:UserAdmin` | Groups |
+| `POST` | `/api/iam/groups` | `admin:UserAdmin` | Create a group |
+| `PUT` | `/api/iam/groups/{name}` | `admin:UserAdmin` | Replace a group's members, policies and state |
+| `DELETE` | `/api/iam/groups/{name}` | `admin:UserAdmin` | Delete a group |
+| `GET` | `/api/iam/policies` | `admin:UserAdmin` | Built-in and custom policies, with where they are attached |
+| `PUT` | `/api/iam/policies/{name}` | `admin:UserAdmin` | Create or replace a policy |
+| `DELETE` | `/api/iam/policies/{name}` | `admin:UserAdmin` | Delete a policy |
+| `GET` | `/api/iam/access-keys` | own keys; everyone's with `admin:UserAdmin` | Access keys |
+| `POST` | `/api/iam/access-keys` | own keys; others' with `admin:UserAdmin` | Create an access key |
+| `PUT` | `/api/iam/access-keys/{key}` | own keys; others' with `admin:UserAdmin` | Change a key |
+| `DELETE` | `/api/iam/access-keys/{key}` | own keys; others' with `admin:UserAdmin` | Delete a key |
+| `GET` | `/api/buckets/{bucket}/policy` | `s3:GetBucketPolicy` | The bucket policy |
+| `PUT` | `/api/buckets/{bucket}/policy` | `s3:PutBucketPolicy` | Set the bucket policy |
+| `DELETE` | `/api/buckets/{bucket}/policy` | `s3:DeleteBucketPolicy` | Remove the bucket policy |
+| `GET`, `PUT`, `DELETE` | `/api/idp/oidc` | `admin:UserAdmin` | OpenID Connect settings |
+| `GET`, `PUT`, `DELETE` | `/api/idp/ldap` | `admin:UserAdmin` | LDAP settings |
+| `POST` | `/api/idp/ldap/test` | `admin:UserAdmin` | Try an LDAP sign-in |
+| `GET`, `PUT` | `/api/idp/sts` | `admin:UserAdmin` | STS settings |
+
+## Users
+
+`GET /api/iam/users`:
+
+```json
+[
+  { "name": "analyst", "enabled": true, "policies": ["readwrite"], "groups": ["radiology"],
+    "access_keys": 2, "created_ms": 1794834588308 }
+]
+```
+
+`access_keys` counts the user's keys. Secret keys are never returned.
+
+### Create a user
+
+`POST /api/iam/users` answers `201`.
+
+<ParamField body="name" type="string" required>
+  The user name, which is also what the user signs in with.
+</ParamField>
+
+<ParamField body="secret_key" type="string" required>
+  The user's secret key (their password).
+</ParamField>
+
+<ParamField body="policies" type="string[]">
+  Policy names attached to the user.
+</ParamField>
+
+```bash
+curl -X POST http://127.0.0.1:9001/api/iam/users -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "analyst", "secret_key": "a-long-secret", "policies": ["readwrite"]}'
+```
+
+### Change a user
+
+`PUT /api/iam/users/{name}` takes any of `enabled`, `policies` (replaces the list) and `secret_key`;
+fields left out stay as they are. Disabling a user stops their S3 requests and console sessions at
+once, since the identity is checked again on every request. Deleting a user also deletes their
+access keys and takes them out of every group.
+
+## Groups
+
+`GET /api/iam/groups`:
+
+```json
+[ { "name": "radiology", "members": ["analyst", "radiographer"], "policies": ["radiology-rw"], "enabled": true, "created_ms": 1794834588308 } ]
+```
+
+`POST /api/iam/groups` takes `name`, `members`, `policies` and `enabled` (default `true`) and answers
+`201`. `PUT /api/iam/groups/{name}` **replaces** `members`, `policies` and `enabled`: send the whole
+group. Members get the group's policies on top of their own.
+
+## Policies
+
+`GET /api/iam/policies` lists the [built-in policies](/api/overview#built-in-policies) and custom ones:
+
+```json
+[
+  { "name": "radiology-rw", "description": "Read and write the radiology bucket", "builtin": false,
+    "doc": { "Version": "2012-10-17", "Statement": [
+      { "Effect": "Allow", "Action": ["s3:*"], "Resource": ["arn:aws:s3:::radiology", "arn:aws:s3:::radiology/*"] } ] },
+    "users": [], "groups": ["radiology"] }
+]
+```
+
+`users` and `groups` say where the policy is attached.
+
+`PUT /api/iam/policies/{name}` creates or replaces a policy:
+
+```json
+{
+  "description": "Read and write the radiology bucket",
+  "doc": {
+    "Version": "2012-10-17",
+    "Statement": [
+      { "Effect": "Allow", "Action": ["s3:*"], "Resource": ["arn:aws:s3:::radiology", "arn:aws:s3:::radiology/*"] }
+    ]
+  }
+}
+```
+
+`doc` is an AWS-style policy document, with `Condition` support (see [Conditions](/access/conditions)).
+Built-in policies cannot be changed or deleted.
+
+## Access keys
+
+`GET /api/iam/access-keys` lists the caller's own keys, or every key for an IAM admin:
+
+```json
+[
+  { "access_key": "Z3K1F3Q9Z2M4X7BPLW8C", "parent": "analyst", "name": "backup-job", "description": "Nightly backup",
+    "expires_ms": 1826457600000, "enabled": true, "policy": null, "created_ms": 1794834588308 }
+]
+```
+
+### Create a key
+
+`POST /api/iam/access-keys` answers `201` with the new key. The secret key is shown **only here**.
+
+```json
+{ "access_key": "Z3K1F3Q9Z2M4X7BPLW8C", "secret_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" }
+```
+
+<ParamField body="parent" type="string">
+  The user the key belongs to; default the caller. Only IAM admins create keys for other users.
+</ParamField>
+
+<ParamField body="name" type="string">
+  A label.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Free text.
+</ParamField>
+
+<ParamField body="expires_ms" type="integer">
+  When the key stops working, in Unix milliseconds. Default: never.
+</ParamField>
+
+<ParamField body="policy" type="object">
+  A policy document that narrows the key: it can do only what both the user and this policy allow.
+</ParamField>
+
+A user signed in through OpenID Connect or LDAP cannot create access keys (they belong to IAM users),
+and a session opened with an access key cannot create keys unless it has `admin:UserAdmin`.
+
+### Change or delete a key
+
+`PUT /api/iam/access-keys/{key}` takes any of `enabled`, `name`, `description`, `expires_ms` and
+`policy`. `clear_expiry: true` removes the expiry and `clear_policy: true` removes the narrowing
+policy. `DELETE /api/iam/access-keys/{key}` deletes it. Changing someone else's key answers
+`403 not your access key` without `admin:UserAdmin`.
+
+## Bucket policies
+
+`GET /api/buckets/{bucket}/policy` answers the policy document, or `null`. `PUT` takes the document;
+`DELETE` removes it.
+
+```bash
+curl -X PUT http://127.0.0.1:9001/api/buckets/public-assets/policy \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": "*",
+       "Action": ["s3:GetObject"], "Resource": ["arn:aws:s3:::public-assets/*"]}]}'
+```
+
+See [Bucket policies](/access/bucket-policies).
+
+## OpenID Connect
+
+`PUT /api/idp/oidc`:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `true` | Offer single sign-on |
+| `display_name` | | The sign-in button's label (default "single sign-on") |
+| `issuer` | | Required: the base URL with `/.well-known/openid-configuration` under it |
+| `client_id` | | Required |
+| `secret` | | The client secret. Stored sealed; leave it out to keep the saved one |
+| `scopes` | `openid profile email` | |
+| `user_claim` | `preferred_username` | The claim naming the user (`email`, `sub`, ...) |
+| `policy_claim` | `policy` | The claim listing z3 policy names (an array or comma-separated) |
+| `default_policies` | `[]` | Policies every OIDC user gets |
+| `redirect_url` | | The callback registered at the provider; empty: this console's `/api/auth/oidc/callback` |
+
+`GET` answers the settings with `has_secret` instead of the secret, or `null`. `DELETE` removes them.
+
+## LDAP
+
+`PUT /api/idp/ldap`:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `true` | Offer LDAP sign-in |
+| `url` | | Required: `ldap://host:389` or `ldaps://host:636` |
+| `lookup_bind_dn` | | The account that searches for users and groups |
+| `secret` | | Its password. Stored sealed; leave it out to keep the saved one |
+| `user_search_base` | | Required: where users are searched |
+| `user_search_filter` | `(uid=%s)` | `%s` is the user name, e.g. `(sAMAccountName=%s)` for Active Directory |
+| `group_search_base` | | Where groups are searched |
+| `group_search_filter` | `(&(objectClass=groupOfNames)(member=%d))` | `%d` is the user's DN |
+| `policy_map` | `{}` | User or group DN (case-insensitive) to z3 policies: `{"cn=radiology,ou=groups,dc=example,dc=com": ["radiology-rw"]}` |
+
+`POST /api/idp/ldap/test` with `{"username", "password"}` tries a sign-in without opening a session:
+
+```json
+{ "ok": true, "dn": "uid=radiographer,ou=people,dc=example,dc=com",
+  "groups": ["cn=radiology,ou=groups,dc=example,dc=com"], "policies": ["radiology-rw"] }
+```
+
+On failure: `{"ok": false, "error": "..."}`.
+
+## STS
+
+`GET /api/idp/sts` and `PUT /api/idp/sts` read and change `{"enabled", "max_duration_secs"}`. See
+[STS API](/api/sts#settings).

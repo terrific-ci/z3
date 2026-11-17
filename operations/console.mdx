@@ -1,0 +1,111 @@
+---
+title: "Web console"
+description: "A tour of the z3 console: every page, what it shows, who sees it, and Find (Cmd K)."
+---
+
+The console is z3's web interface. The same `z3` binary serves it on the admin port
+(`Z3_ADMIN_ADDR`, `http://127.0.0.1:9001` by default), next to the [admin API](/api/overview) it
+uses. There is nothing else to install.
+
+<Frame>
+  <img src="/images/overview.png" alt="The console's Overview page" />
+</Frame>
+
+## Signing in
+
+Sign in with any identity z3 knows:
+
+- the root account (`Z3_ACCESS_KEY` and `Z3_SECRET_KEY`),
+- an IAM user (user name and secret key),
+- an access key and its secret,
+- an LDAP account, or **single sign-on** through OpenID Connect, when an
+  [identity provider](/access/openid-connect-ldap) is set up.
+
+A session lasts 12 hours and is extended each time it is used. Sessions live in memory, so a
+restart signs everyone out. Disabling a user or a key ends its sessions at once.
+
+<Note>
+  The admin port listens on `127.0.0.1` by default. To open the console to the network, set
+  `Z3_ADMIN_ADDR=0.0.0.0:9001` and put an HTTPS reverse proxy in front of it
+  ([TLS and proxies](/deploy/tls-and-proxies)).
+</Note>
+
+## The menu follows your rights
+
+Each page needs a right. A user without admin rights sees only **Buckets** and **Access Keys**, and
+only the buckets their policies let them use. See [Admin rights](/api/overview#rights).
+
+| Section | Page | What it shows | Needs |
+| --- | --- | --- | --- |
+| Storage | Overview | Objects, data stored and on disk, dedup ratio, uptime, largest buckets, replication and disk summary | `admin:ServerInfo` |
+| | Buckets | Every bucket with size and quota, tags, Object Lock, versioning, replication; create and delete buckets | – |
+| | Lifecycle | Buckets with lifecycle rules, a summary of the rules and the last run | `admin:ServerInfo` |
+| | Tiers | Remote tiers with health, contents and the buckets using them; add, check, change credentials, remove | `admin:ServerInfo` |
+| | Events | [Event destinations](/events/destinations) with delivery status, and every bucket's rules | `admin:ServerInfo` |
+| Identity | Access Keys | Your own access keys (everyone's, for IAM admins); a new secret is shown once | – |
+| | Users, Groups, Policies | [IAM](/access/users-groups-keys), with a JSON policy editor | `admin:UserAdmin` |
+| | Identity Providers | OpenID Connect, LDAP / Active Directory and STS settings, DN-to-policy mapping, a test sign-in | `admin:UserAdmin` |
+| Operations | Running Status | Live throughput, CPU and memory ([Running status](/operations/running-status)) | `admin:ServerInfo` |
+| | Metrics | Traffic and storage over time, per bucket too ([Metrics](/operations/metrics)) | `admin:ServerInfo` |
+| | Trace | Live S3 and admin requests ([Trace and logs](/audit/trace-and-logs)) | `admin:ServerInfo` |
+| | Logs | Live server logs | `admin:ServerInfo` |
+| | Audit | [Audit targets](/audit/audit-log) with delivery status | `admin:ServerInfo` |
+| | Encryption | KMS keys, the default SSE-S3 key, an external KMS, buckets encrypted by default | `admin:ServerInfo` |
+| | Replication | Live state of each link; peers; site replication | `admin:ServerInfo` |
+| | Protocols | S3 and the file protocols: on or off, settings, state, sessions, connect commands | `admin:ServerInfo` |
+| | Disks | Disk state and capacity, erasure layout, healing, **Verify and repair** | `admin:ServerInfo` |
+| | Pools | Pools, rebalance and decommission ([Pools](/durability/pools)) | `admin:ServerInfo` |
+| | Batch | [Batch jobs](/storage/batch): replicate, expire, rotate keys | `admin:ServerInfo` |
+| | Import/Export | Import jobs from MinIO or S3, and [config export and import](/operations/config-export) | `admin:ServerInfo` |
+| | Settings | [Cluster settings](/operations/settings) by subsystem | `admin:ServerInfo` |
+| | Support | Health check, speed tests, CPU profile, inspect ([Support](/operations/support)) | `admin:ServerInfo` |
+
+Changing things on these pages needs `admin:ConfigUpdate` on top (or `admin:UserAdmin` for IAM).
+Speed tests and profiles need `admin:Profiling`, inspecting an object `admin:InspectData`.
+
+## A bucket
+
+Opening a bucket shows its objects and folders. You can:
+
+- browse folders, upload files (button or drag and drop, with progress), download, and preview
+  images, video and text;
+- see an object's version history, tags, metadata, encryption, lock and tier;
+- open **Settings**, split into tabs: **General** (versioning, tags, quota, delete the bucket),
+  **Lifecycle**, **Replication**, **Protection** (Object Lock, default encryption), **Events** and
+  **Access** (bucket policy).
+
+A link can open a tab directly: `?tab=settings&section=lifecycle`.
+
+<Frame>
+  <img src="/images/bucket-settings.png" alt="A bucket's settings tabs" />
+</Frame>
+
+Previews are served with `Content-Security-Policy: sandbox` and `nosniff`, and HTML, SVG and
+JavaScript are shown as text, so a bucket's contents can never run as part of the console.
+
+## Find
+
+**Find** opens with <kbd>⌘</kbd> <kbd>K</kbd> on macOS, <kbd>Ctrl</kbd> <kbd>K</kbd> on Windows and
+Linux, or the **Find…** button in the top bar. It searches:
+
+- pages;
+- settings inside pages, by the words people use: "cors", "sftp", "rebalance", "flame graph",
+  "default credentials";
+- buckets, and each bucket's settings tabs ("photos lifecycle");
+- quick actions: create a bucket, run a health check, switch the theme, sign out.
+
+Every word must match, in any order. Results follow your rights, and picking a setting opens its
+page and highlights that part.
+
+<Frame>
+  <img src="/images/find.png" alt="Find, searching settings and buckets" />
+</Frame>
+
+## Themes and phones
+
+Dark, light, or follow the system: pick it from the account menu. On a phone the menu moves to a
+dock at the bottom.
+
+<Frame>
+  <img src="/images/overview-light.png" alt="The Overview page in the light theme" />
+</Frame>
