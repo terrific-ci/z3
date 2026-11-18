@@ -21,6 +21,7 @@ zee3 --help     # every flag with its variable and default
 | `ZEE3_DISKS` | `--disks` | empty | Comma-separated disk directories for an erasure-coded chunk store, such as `/mnt/d1,/mnt/d2,/mnt/d3,/mnt/d4`. Order matters and the set can't grow. See [Disks](/deploy/disks) |
 | `ZEE3_PARITY` | `--parity` | 2 from four disks up, otherwise 1 | Parity shards per chunk: how many disks of a set may fail. Fixed once the set is formatted |
 | `ZEE3_POOLS` | `--pools` | empty | Several pools separated by `;`, each a comma-separated disk set or one directory. Replaces `ZEE3_DISKS`. See [Pools](/durability/pools) |
+| `ZEE3_IO_URING` | | `0` | Linux only: `1` reads chunks through io_uring, one ring per worker thread. Faster downloads (see [Benchmarks](/deploy/benchmarks#io_uring)); in Docker it needs a seccomp profile that allows `io_uring_setup`, `io_uring_enter` and `io_uring_register`, otherwise Zee3 logs a warning and reads the usual way. Not for data on tmpfs, where it is slower. Erasure-coded disk sets keep the usual read path |
 
 ### Network
 

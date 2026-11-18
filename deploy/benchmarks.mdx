@@ -49,6 +49,26 @@ Zee3 1.0.0 matches 0.1.0 on every workload (within 2%). Uploads now write severa
 downloads read ahead, which made no difference on this machine, where the drive sets the upload
 limit; both help on faster drives and more cores.
 
+### io_uring
+
+With `ZEE3_IO_URING=1` on Linux, Zee3 reads chunks through io_uring, with one ring per worker thread
+and the read-ahead of a download sent in one batch. Same machine (Zee3 on 2 CPUs and 2 GiB, one
+drive), one binary with the switch off and on, a fresh server for every workload, median of three
+rounds:
+
+| Workload | Off | On | Change |
+| --- | --- | --- | --- |
+| GET 1 MiB | 1481 MiB/s | 1655 MiB/s | +12% |
+| GET 16 KiB | 5638 obj/s | 5963 obj/s | +6% |
+| GET 64 MiB, 4 clients | 1946 MiB/s | 2090 MiB/s | +7% |
+| GET 64 MiB, 1 client | 1524 MiB/s | 1631 MiB/s | +7% |
+| PUT 1 MiB, 16 KiB and 64 MiB | | | within 1% |
+
+Server memory during GET 1 MiB was about 40 MiB with io_uring against about 120 MiB without. The
+gain comes from not handing every chunk read to a thread pool. It is off by default; Docker's default
+seccomp profile blocks io_uring, so a container needs `--security-opt seccomp=unconfined` or a
+profile that allows the three io_uring calls. See [Configuration](/deploy/configuration#storage).
+
 <Note>
   This is a single-drive setup on one machine. Erasure-coded disk sets, several nodes and replication
   change the picture for every server; measure the layout you plan to run.
