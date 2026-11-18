@@ -85,7 +85,8 @@
               "replication/bucket-replication",
               "replication/site-replication",
               "replication/geo-erasure-coding",
-              "replication/edge"
+              "replication/edge",
+              "replication/lean-replica"
             ]
           },
           {

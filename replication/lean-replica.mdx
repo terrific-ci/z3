@@ -1,0 +1,185 @@
+---
+title: "Lean Replica"
+description: "Keep only recent data on a small node while a bigger peer keeps everything: a keep window by size or age, eviction confirmed by the full replica, read-through for older data, an emergency floor, and failover in either direction."
+---
+
+A Lean Replica keeps only **recent object data** on its own disks, while another node in the
+replication group, the **full replica**, keeps all of it. Older data is evicted from the lean
+node, and read back from the full replica when a client asks for it.
+
+Typical setup: a small production server that applications talk to, and a large backup server
+that holds everything and takes over if production fails. Both accept writes (replication is
+[active-active](/replication/overview)); only the backup needs room for every byte.
+
+What stays the same on the lean node:
+
+- **Every object is still listed**, with its size, ETag, tags, metadata, retention and versions.
+  Only the data bytes are evicted, not the metadata.
+- **Reads keep working**: GET, range GET, the console, WebDAV, FTP, SFTP and NFS read evicted
+  data from the full replica, decrypting locally (the full replica only ever sends ciphertext).
+- **Quotas** count every version, evicted or not, the same on both nodes.
+- **Replication is not affected**: eviction is local to the lean node. It is never replicated
+  as a delete, and anti-entropy does not pull the data back.
+
+## Turn it on
+
+On the lean node only. In the console: **Replication** page, **Lean Replica** tab.
+
+```bash
+curl -X PUT localhost:9001/api/lean -H 'content-type: application/json' -d '{
+  "enabled": true,
+  "max_bytes": 139586437120,
+  "max_age_days": 30,
+  "order": "fifo",
+  "read_through": true,
+  "exclude_buckets": []
+}'
+```
+
+Or with the [CLI](#command-line): `z3 admin lean set --max-bytes 130GiB --max-age-days 30`.
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `enabled` | `false` | Makes this node a Lean Replica |
+| `max_bytes` | | Bytes of object data stored on this node (after deduplication, all buckets). Above it, the oldest data is evicted |
+| `max_age_days` | | Data of versions older than this is evicted, even with room left |
+| `order` | `fifo` | `fifo` evicts the oldest written first; `lru` evicts the least recently read first |
+| `read_through` | `true` | Read evicted data from the full replica. Off: reading evicted data answers 503 |
+| `exclude_buckets` | `[]` | Buckets whose data always stays whole on this node |
+| `low_watermark` | `0.9` | Above `max_bytes`, evict down to this share of it (0.5 to 1) |
+| `emergency_free` | `0.05` | Client writes are refused while free disk space is at or below this share (0 to 0.5) |
+
+Set `max_bytes`, `max_age_days`, or both: whichever is reached first applies. `GET /api/lean`
+suggests a `max_bytes` of about 65% of the disk (`suggested_max_bytes`), which leaves room for
+metadata, for writes while the full replica is offline, and for the emergency floor. On a
+200 GB disk that is about 130 GB.
+
+<Tip>
+  Replicate the lean node's buckets with consistency **All peers** and **Answer locally**
+  (`"mode": "all", "on_offline": "local"`, see [Edge](/replication/edge#on_offline)). Writes are
+  then on the full replica before they are acknowledged, so a failover loses nothing, and the
+  lean node keeps answering if the full replica is down. The console warns about buckets that
+  replicate asynchronously.
+</Tip>
+
+## What can be evicted
+
+A bucket's data can be evicted when the bucket is replicated to at least one peer, is not
+[geo erasure coded](/replication/geo-erasure-coding) (no site holds a full copy there), and is
+not in `exclude_buckets`. Data in buckets that are not replicated always stays: no other node
+holds it. Delete markers, empty objects and versions moved to a [tier](/storage/tiers) are
+skipped.
+
+Before anything is evicted, the full replica must **confirm** that it holds the version with
+every chunk on its disks. So:
+
+- data that has not replicated yet (backlog) is never evicted;
+- a peer that is itself a Lean Replica never confirms: if every peer of a bucket is lean,
+  nothing is evicted and the console warns. At least one node must keep all the data;
+- a full replica that lost data (a failed disk) does not confirm what it lost.
+
+Noncurrent versions go before current ones. Chunks shared with other objects on the lean node
+(identical content, copies) stay as long as something there uses them.
+
+The evictor runs every 30 seconds, after the settings change, and on demand
+(**Evict now**, `POST /api/lean/run`). Every evicted version raises the bucket event
+`s3:ObjectEvicted:Lean`, which you can select in a bucket's [event rules](/events/bucket-events).
+
+## Reading evicted data
+
+Reads of evicted data go to the full replica (online peers first) over the peer API, are
+verified by checksum, decrypted locally, and streamed to the client without being stored.
+CopyObject from an evicted version stores the data again, since the copy is a new version.
+
+If no full replica can be reached, or `read_through` is off, the lean node answers
+**503 ServiceUnavailable**, for example `Object data is held by peer backup, which is offline`,
+instead of a misleading 404. Data within the keep window keeps reading normally.
+
+## When the full replica is offline
+
+- The lean node keeps accepting writes. With `on_offline: local` they answer at once once the
+  peer is marked offline (after about 10 seconds).
+- Nothing is evicted while nothing can be confirmed, so stored data may grow past the keep window.
+  The state shows **Over the keep window** with the reason, and the health check warns.
+- When the full replica is back and has caught up, eviction resumes and brings the node back
+  under the keep window.
+
+### Emergency floor
+
+When free disk space on the lean node falls to `emergency_free` (5% by default), client writes
+(PUT, copy, multipart) are refused with `XMinioStorageFull` (HTTP 507), so metadata keeps room
+until data can be evicted or deleted. Deletes are still accepted. Writes are accepted again as
+soon as space is back. Replicated writes from peers are not refused: keep the floor's room in
+mind when sizing the keep window.
+
+## Failover in either direction
+
+Which node applications use (DNS, a load balancer, a virtual IP) and which node keeps all the
+data are separate choices:
+
+| Role | Means | Set in |
+| --- | --- | --- |
+| Traffic: primary or standby | Where applications read and write | DNS, load balancer, VIP |
+| Storage: lean or full | Which node holds every byte | Lean Replica |
+
+To fail over to the full replica, point applications at it; nothing changes in z3. The lean node
+keeps receiving replication and serving recent data. To fail back, point them at the lean node
+again; there is no data to move.
+
+## Turn it off
+
+Turn the switch off in the console, `z3 admin lean disable`, or `PUT /api/lean` with
+`"enabled": false`. The lean node then fetches every evicted version back from the full replica,
+in the background:
+
+- it is refused when free space above the emergency floor is smaller than the evicted data;
+- progress is shown in the console and in `status.refill`, and continues after a restart;
+- evicted data keeps reading through until it is back;
+- turning Lean Replica on again stops the refill.
+
+## Monitoring
+
+`GET /api/lean` returns the settings, the state (`off`, `idle`, `evicting`, `blocked`,
+`refilling`, with a reason), stored and evicted bytes, disk space, read-through counts per peer,
+and per bucket whether it can be evicted, how much of it is held only by the full replica, and
+whether it replicates asynchronously.
+
+Prometheus series on `/metrics`:
+
+| Metric | Labels | What it is |
+| --- | --- | --- |
+| `z3_lean_enabled` | | 1 when this node is a Lean Replica |
+| `z3_lean_local_bytes` | | Object data stored on this node, after deduplication |
+| `z3_lean_max_bytes` | | Keep window in bytes (0 when only by age) |
+| `z3_lean_stub_versions`, `z3_lean_stub_bytes` | `bucket` | Versions and bytes held only by the full replica |
+| `z3_lean_evicted_versions_total`, `z3_lean_evicted_bytes_total` | | Evicted since Lean Replica was first turned on |
+| `z3_lean_readthrough_requests_total` | `result`: `ok`, `peer_offline`, `disabled`, `error` | Fetches from the full replica |
+| `z3_lean_readthrough_bytes_total` | `peer` | Bytes read through from each peer |
+| `z3_lean_evict_blocked` | | 1 when over the keep window and nothing could be evicted |
+| `z3_lean_disk_floor` | | 1 while client writes are refused at the emergency floor |
+
+Example alert: `z3_lean_evict_blocked == 1` for 30 minutes (the full replica has been
+unreachable, or is lean too).
+
+The **Lean Replica** check in the [health report](/operations/support) fails at the emergency
+floor and warns while eviction is blocked or a refill is running.
+
+## Command line
+
+```bash
+z3 admin lean                      # settings, state, usage
+z3 admin lean set --max-bytes 130GiB --max-age-days 30 --order lru --exclude config
+z3 admin lean set --read-through off
+z3 admin lean run                  # evict now
+z3 admin lean disable              # turn off and fetch everything back
+```
+
+`--max-bytes none` or `--max-age-days 0` removes that limit.
+
+## Limits
+
+- Not available in [cluster mode](/deploy/cluster).
+- Every node of the replication group should run the same z3 version: a node without Lean
+  Replica support cannot confirm, so nothing is evicted.
+- The change log and tombstones are not pruned yet, so metadata keeps growing slowly even with a
+  keep window.
