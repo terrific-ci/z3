@@ -194,19 +194,21 @@ record's `eventTime`. With `namespace`, a write upserts the row (`ON CONFLICT` /
 
 | Field | Value |
 | --- | --- |
-| `endpoint` | nsqd's TCP address `host:4150`, or its HTTP API `http://host:4151` |
+| `endpoint` | nsqd's TCP address `host:4150` (`tls://host:4150` for TLS), or its HTTP API `http://host:4151` |
 | `key` | Required: the topic (letters, digits, `.`, `_`, `-`, at most 64) |
+| `secret` | Optional: the secret for nsqd's `AUTH` (when nsqd runs with `--auth-http-address`) |
 
-TLS and `AUTH` over NSQ's TCP protocol are not supported; use nsqd's HTTP API behind HTTPS
-instead.
+Over TCP, z3 negotiates with `IDENTIFY` when TLS is on or a secret is set: TLS starts once nsqd
+agrees (start nsqd with `--tls-cert` and `--tls-key`), and the secret is sent with `AUTH` when nsqd
+says it requires auth. If nsqd requires auth and no secret is set, the destination reports that.
 
 ## TLS
 
-Redis, NATS, Kafka, AMQP, MQTT, PostgreSQL and MySQL take these options:
+Redis, NATS, Kafka, AMQP, MQTT, PostgreSQL, MySQL and NSQ over TCP take these options:
 
 | Field | Meaning |
 | --- | --- |
-| `tls` | Connect with TLS. A TLS scheme in the endpoint turns it on as well: `rediss://`, `tls://`, `amqps://`, `mqtts://`, `ssl://`, or `sslmode=require` for PostgreSQL |
+| `tls` | Connect with TLS. A TLS scheme in the endpoint turns it on as well: `rediss://`, `tls://` (NATS, NSQ), `amqps://`, `mqtts://`, `ssl://`, or `sslmode=require` for PostgreSQL |
 | `tls_ca` | PEM certificates of the CAs to trust instead of the public ones (one or more, at most 64 KiB) |
 | `tls_skip_verify` | Accept any certificate. Only for tests |
 
