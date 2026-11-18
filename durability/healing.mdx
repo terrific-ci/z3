@@ -16,6 +16,7 @@ that remain. It runs by itself; you rarely need to start it.
 | **On a schedule** | Every `Z3_HEAL_INTERVAL` seconds (7 days by default), every referenced chunk is verified and repaired |
 | **On demand** | **Verify and repair now** on the console's **Disks** page, or `POST /api/heal` |
 | **Geo shards lost on this site** | Rebuilt from the other sites; see [Geo erasure coding](#geo-erasure-coding) |
+| **Shards lost on a cluster member** | With [erasure coding across members](/deploy/cluster#repair-and-rebalance), the placement sweep rebuilds them from the other members' shards, not the healer |
 
 A full pass reads every chunk, so on large nodes it takes a while and adds disk load. The read path
 and the queue keep damage found in normal use from waiting for the next full pass.

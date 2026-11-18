@@ -1,6 +1,6 @@
 ---
 title: "z3 admin cluster"
-description: "See cluster members, start a cluster, add and remove nodes, and repair chunk copies."
+description: "See cluster members, start a cluster, add and remove nodes, repair chunk copies and shards, and turn on erasure coding across members."
 ---
 
 `z3 admin cluster` manages [cluster mode](/deploy/cluster).
@@ -8,11 +8,12 @@ description: "See cluster members, start a cluster, add and remove nodes, and re
 | Command | What it does | Right |
 | --- | --- | --- |
 | `z3 admin cluster` | Same as `status` | `admin:ServerInfo` |
-| `z3 admin cluster status` | Leader, members, their roles and how far each has caught up | `admin:ServerInfo` |
+| `z3 admin cluster status` | Leader, members, their roles and how far each has caught up, the data layout, shards and copies per member, redundancy | `admin:ServerInfo` |
 | `z3 admin cluster init` | Start a cluster with this node as its only member | `admin:ConfigUpdate` |
 | `z3 admin cluster add ADDR` | Add an empty node by its peer API address | `admin:ConfigUpdate` |
-| `z3 admin cluster remove ID` | Remove a member; it hands its chunk copies over, then leaves | `admin:ConfigUpdate` |
-| `z3 admin cluster sweep` | Repair and rebalance chunk copies on every member now | `admin:ConfigUpdate` |
+| `z3 admin cluster remove ID` | Remove a member; it hands its chunk copies and shards over, then leaves | `admin:ConfigUpdate` |
+| `z3 admin cluster sweep` | Repair and rebalance chunk copies and shards on every member now | `admin:ConfigUpdate` |
+| `z3 admin cluster ec LAYOUT [--min-size N]` | Store large chunks as `data+parity` shards across members, or `off` for full copies | `admin:ConfigUpdate` |
 
 ## status
 
@@ -22,14 +23,32 @@ z3 admin cluster
 
 ```
 term 3  leader 2200471768134479368  copies 2
-2200471768134479368  z3-1       leader    http://10.0.0.11:9002      v0.1.0    log 1840
-5168186497781187492  z3-2       follower  http://10.0.0.12:9002      v0.1.0    log 1840  (this node)
-7709925377133580712  z3-3       follower  http://10.0.0.13:9002      v0.1.0    log 1838
+2200471768134479368  z3-1       leader    http://10.0.0.11:9002      v1.0.3    log 1840  0 shards 0 B, 32140 copies 41.2 GiB
+5168186497781187492  z3-2       follower  http://10.0.0.12:9002      v1.0.3    log 1840  0 shards 0 B, 32087 copies 41.1 GiB  (this node)
+7709925377133580712  z3-3       follower  http://10.0.0.13:9002      v1.0.3    log 1838  0 shards 0 B, 32195 copies 41.3 GiB
 ```
 
 Each line shows the member id, name, role (`leader`, `follower`, or `leaving` while a removed member
-drains), peer address, version, and the last log entry it matches on the leader. A node outside a
-cluster prints `not in a cluster` with its member id.
+drains), peer address, version, the last log entry it matches on the leader, and the shards and
+copies it held at its last placement sweep (missing until it has run one). A node outside a cluster
+prints `not in a cluster` with its member id.
+
+With [erasure coding](#ec), the first line shows the layout, and a last line sums up the
+redundancy the leader found at its last sweep:
+
+```
+term 4  leader 2200471768134479368  erasure coding 4+2 (chunks from 256.0 KiB, 3 copies below)
+2200471768134479368  z3-1       leader    http://10.0.0.11:9002      v1.0.3    log 2410  24102 shards 10.4 GiB, 3911 copies 401.2 MiB
+5168186497781187492  z3-2       follower  http://10.0.0.12:9002      v1.0.3    log 2410  24077 shards 10.4 GiB, 3925 copies 403.0 MiB  (this node)
+7709925377133580712  z3-3       follower  http://10.0.0.13:9002      v1.0.3    log 2410  24131 shards 10.5 GiB, 3902 copies 399.8 MiB
+1093384251740098230  z3-4       follower  http://10.0.0.14:9002      v1.0.3    log 2409  24050 shards 10.4 GiB, 3917 copies 402.1 MiB
+8840018827714631655  z3-5       follower  http://10.0.0.15:9002      v1.0.3    log 2410  24098 shards 10.4 GiB, 3920 copies 402.6 MiB
+3317402957198144021  z3-6       follower  http://10.0.0.16:9002      v1.0.3    log 2410  24088 shards 10.4 GiB, 3913 copies 401.5 MiB
+redundancy: 24091 erasure-coded (0 missing a shard, 0 at risk, 0 unreadable), 7829 as copies
+```
+
+A chunk is **at risk** with only `data` shards left (one more loss makes it unreadable), and
+**unreadable** with fewer than `data`.
 
 ## add
 
@@ -47,8 +66,9 @@ follower forwards it) and returns once the node is a voting member. With
 z3 admin cluster remove 7709925377133580712
 ```
 
-Returns at once. The member shows as `leaving` until its copies are on the other members, then
-disappears from the status.
+Returns at once. The member shows as `leaving` until its copies and shards are on the other members,
+then disappears from the status. With erasure coding, removing a member that would leave fewer
+members than `data + parity` is refused.
 
 ## sweep
 
@@ -57,10 +77,37 @@ z3 admin cluster sweep
 ```
 
 ```
-http://10.0.0.11:9002  checked    48211  pulled      0  pushed      0  dropped  11920  failed    0
-http://10.0.0.12:9002  checked    48211  pulled      0  pushed      0  dropped  12044  failed    0
-http://10.0.0.14:9002  checked    48211  pulled  23964  pushed      0  dropped      0  failed    0
+http://10.0.0.11:9002  checked    48211  pulled      0  pushed      0  dropped  11920  rebuilt      0  converted      0  failed    0
+http://10.0.0.12:9002  checked    48211  pulled      0  pushed      0  dropped  12044  rebuilt      0  converted      0  failed    0
+http://10.0.0.14:9002  checked    48211  pulled  23964  pushed      0  dropped      0  rebuilt      0  converted      0  failed    0
 ```
 
 `failed` counts chunks that couldn't be placed this time, for example because an owner is down; the
-next sweep retries them.
+next sweep retries them. With erasure coding, `rebuilt` counts shards no member held, rebuilt from
+the other shards, and `converted` counts chunks the leader moved to the current layout (only the
+leader converts).
+
+## ec
+
+```bash
+z3 admin cluster ec 4+2                     # chunks of 256 KiB and more as 4 data + 2 parity shards
+z3 admin cluster ec 4+2 --min-size 1048576  # only chunks of 1 MiB and more
+z3 admin cluster ec off                     # back to full copies
+```
+
+```
+new chunks are stored as 4+2 shards; existing chunks are converted in the background
+```
+
+Sets [erasure coding across members](/deploy/cluster#erasure-coding-across-members) for the whole
+cluster. Run it on any member.
+
+| Argument | Meaning |
+| --- | --- |
+| `LAYOUT` | `data+parity`, such as `4+2` or `3+2`: at least 2 data shards and 1 parity shard, at most 32 shards. `off` (or `copies`) goes back to `Z3_CLUSTER_COPIES` full copies |
+| `--min-size N` | Smallest chunk, in bytes, stored as shards; smaller chunks stay full copies. Default `262144` (256 KiB) |
+
+The cluster needs at least `data + parity` members: `4+2` on five members fails with
+`4+2 needs at least 6 members, the cluster has 5`. The leader converts existing chunks during its
+placement sweeps, up to `Z3_CLUSTER_EC_CONVERT_MB` per sweep. Upgrade every member before the
+first `ec` command.

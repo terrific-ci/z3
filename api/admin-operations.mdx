@@ -19,11 +19,12 @@ These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing
 | `POST` | `/api/support/speedtest` | `admin:Profiling` | Drive or network speed test |
 | `POST` | `/api/support/profile` | `admin:Profiling` | CPU profile (zip) |
 | `GET` | `/api/support/inspect` | `admin:InspectData` | How an object is stored (zip) |
-| `GET` | `/api/cluster` | `admin:ServerInfo` | Cluster status: leader, members, progress, last sweep |
+| `GET` | `/api/cluster` | `admin:ServerInfo` | Cluster status: leader, members, progress, data layout, shards per member, redundancy, last sweep |
 | `POST` | `/api/cluster/init` | `admin:ConfigUpdate` | Start a cluster with this node |
 | `POST` | `/api/cluster/members` | `admin:ConfigUpdate` | Add an empty node: `{"addr": "http://10.0.0.12:9002"}` |
 | `DELETE` | `/api/cluster/members/{id}` | `admin:ConfigUpdate` | Remove a member (it drains first) |
-| `POST` | `/api/cluster/sweep` | `admin:ConfigUpdate` | Repair and rebalance chunk copies on every member |
+| `POST` | `/api/cluster/sweep` | `admin:ConfigUpdate` | Repair and rebalance chunk copies and shards on every member |
+| `PUT` | `/api/cluster/ec` | `admin:ConfigUpdate` | Erasure coding across members: `{"layout": "4+2", "min_size": 262144}` or `{"layout": "off"}` |
 | `GET` | `/api/pools` | `admin:ServerInfo` | Pools and the current operation |
 | `POST` | `/api/pools/rebalance` | `admin:ConfigUpdate` | Start a rebalance |
 | `POST` | `/api/pools/{index}/decommission` | `admin:ConfigUpdate` | Start emptying a pool |
@@ -196,10 +197,17 @@ With data, the files may total at most 1 GiB; above that the answer is `413`.
   "state": "Follower", "term": 3, "leader": "2200471768134479368", "leader_log": 1840,
   "last_log": 1840, "last_applied": 1840,
   "members": [
-    { "id": "2200471768134479368", "name": "z3-1", "addr": "http://10.0.0.11:9002", "version": "1.0.2",
-      "voter": true, "leader": true, "me": false, "role": "leader", "matched": 1840 }
+    { "id": "2200471768134479368", "name": "z3-1", "addr": "http://10.0.0.11:9002", "version": "1.0.3",
+      "voter": true, "leader": true, "me": false, "role": "leader", "matched": 1840,
+      "chunks": { "at": 1794921000000, "shards": 24102, "shard_bytes": 11166914560, "copies": 3911,
+                  "copy_bytes": 420688691, "rebuilt": 0, "converted": 1840, "failed": 0 } }
   ],
   "copies": 3, "copies_configured": 3, "consistent_reads": true,
+  "layout": { "mode": "erasure", "data": 4, "parity": 2, "min_size": 262144, "write_quorum": 5, "fits": true },
+  "redundancy": {
+    "at": 1794921000000,
+    "audit": { "copy_chunks": 7829, "ec_chunks": 24091, "degraded": 0, "at_risk": 0, "lost": 0, "at_risk_chunks": [] }
+  },
   "sweep": { "at": 1794921000000, "report": { "...": "..." } },
   "replication_worker": "z3-1"
 }
@@ -210,6 +218,36 @@ With data, the files may total at most 1 GiB; above that the answer is `413`.
 - `replication_worker` is the member running the
   [replication links](/deploy/cluster#replication-with-other-z3-nodes) (the leader), or `null`
   outside a cluster or while there is no leader.
+- `layout` is `{"mode": "copies"}`, or with
+  [erasure coding across members](/deploy/cluster#erasure-coding-across-members)
+  `{"mode": "erasure", ...}`: `data` and `parity` shards, `min_size` (smaller chunks stay copies),
+  `write_quorum` (shards a write must store, `data + ceil(parity / 2)`) and `fits` (`false` while the
+  cluster has fewer voting members than shards).
+- A member's `chunks` comes from its last placement sweep: the shards and copies it holds with their
+  bytes, plus `rebuilt`, `converted` and `failed` from that sweep. It is `null` until the member has
+  run a sweep or when it doesn't answer.
+- `redundancy` is the leader's last audit of erasure-coded chunks: `degraded` chunks miss at least
+  one shard, `at_risk` chunks have `data` shards or fewer left, `lost` chunks have fewer than `data`
+  and can't be read until members come back. `at_risk_chunks` lists up to 20 of them. It is `null`
+  before the leader's first sweep.
+
+The sweep report (`sweep.report` here and each member's `report` from `POST /api/cluster/sweep`)
+has `checked`, `pulled`, `pushed`, `dropped`, `failed`, and with erasure coding `rebuilt` (shards
+rebuilt from the others), `converted` (chunks moved to the current layout, on the leader),
+`shards`, `shard_bytes`, `copies` and `copy_bytes`.
+
+`PUT /api/cluster/ec` sets the layout for the whole cluster through any member and answers with the
+new status:
+
+```bash
+curl -X PUT http://127.0.0.1:9001/api/cluster/ec -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"layout": "4+2", "min_size": 262144}'
+```
+
+`layout` is `data+parity` (at least 2 data and 1 parity shard, at most 32 shards) or `off`.
+`min_size` is optional (default `262144`). A bad layout, or one with more shards than voting
+members (`4+2 needs at least 6 members, the cluster has 5`), answers `400` with the reason. The
+leader then converts existing chunks in the background.
 
 ## Pools
 

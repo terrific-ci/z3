@@ -55,6 +55,7 @@ only the buckets their policies let them use. See [Admin rights](/api/overview#r
 | | Logs | Server logs, live or from the history on disk ([Trace and logs](/audit/trace-and-logs#logs)) | `admin:ServerInfo` |
 | | Audit | [Audit targets](/audit/audit-log) with delivery status | `admin:ServerInfo` |
 | | Encryption | KMS keys, the default SSE-S3 key, an external KMS (Vault, KES, AWS, Azure, Google Cloud) and retired key stores, buckets encrypted by default | `admin:ServerInfo` |
+| | Cluster | [Cluster](/deploy/cluster) members with role, log progress, version, and shards and copies each holds; add and remove members; the **Erasure coding** panel with the layout and the leader's redundancy audit (chunks missing a shard, at risk, unreadable), **Turn on** or **Change layout**; the last placement sweep | `admin:ServerInfo` |
 | | Replication | Live state of each link; peers; site replication | `admin:ServerInfo` |
 | | Protocols | S3 and the file protocols: on or off, settings, state, sessions, connect commands | `admin:ServerInfo` |
 | | Disks | Disk state and capacity, erasure layout, healing (with geo shards rebuilt from other sites, geo chunks not rebuildable now and the last geo check), **Verify and repair**, the **Orphaned chunks** panel with **Sweep now** | `admin:ServerInfo` |

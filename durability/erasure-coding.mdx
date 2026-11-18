@@ -82,6 +82,10 @@ that directory on a reliable disk, such as a RAID 1 mirror.
 - **Geo erasure coding** splits chunks across sites instead of disks; each site's shards are stored
   as ordinary chunks, so they're erasure-coded again on that site's disks. See
   [Geo erasure coding](/replication/geo-erasure-coding).
+- **Erasure coding across cluster members** splits chunks across the members of a
+  [cluster](/deploy/cluster#erasure-coding-across-members), so a cluster survives lost members at
+  1.5 times the data with 4+2, instead of 3 times with copies. Each member stores its shards as
+  ordinary chunks, so they're erasure-coded again on that member's disks.
 - **Inspect** shows exactly which shard of an object sits on which disk. See
   [Support](/operations/support).
 

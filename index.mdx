@@ -44,10 +44,11 @@ every node without losing either version.
     existing chunks. Every chunk is verified when it is read. See [Concepts](/get-started/concepts).
   </Accordion>
   <Accordion title="Erasure coding and healing" icon="hard-drive">
-    Spread chunks over several disks with Reed-Solomon parity, keep serving when disks fail, and
-    repair damaged or missing shards automatically. Add capacity with new disk pools, then
-    rebalance or decommission. See [Erasure coding](/durability/erasure-coding),
-    [Healing](/durability/healing) and [Pools](/durability/pools).
+    Spread chunks over several disks, or over the members of a cluster, with Reed-Solomon parity,
+    keep serving when disks or members fail, and repair damaged or missing shards automatically.
+    Add capacity with new disk pools, then rebalance or decommission. See
+    [Erasure coding](/durability/erasure-coding), [Healing](/durability/healing),
+    [Pools](/durability/pools) and [Cluster](/deploy/cluster#erasure-coding-across-members).
   </Accordion>
   <Accordion title="Active-active replication" icon="arrows-rotate">
     Every node accepts writes. Changes arrive in milliseconds over long-polling, only missing chunks

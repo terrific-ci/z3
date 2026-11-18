@@ -39,6 +39,7 @@ Each check is `ok`, `warn` or `fail`; the report takes the worst level.
 | Log history | The [log history on disk](/audit/trace-and-logs#log-history-on-disk): size, files, lines dropped | **Warn**: the history can't be written (disk full or unwritable), lines were dropped since the start, or it could not be opened |
 | Root credentials | Whether root still uses the default keys | **Warn** |
 | Key store | The [external KMS](/security/external-kms#health) and any retired key stores: reachable, error, latency | **Fail**: the active KMS is down, so encrypted writes fail. **Warn**: a [retired key store](/security/external-kms#retired-key-stores) is down, so objects it sealed can't be read |
+| Cluster redundancy | Only on [cluster](/deploy/cluster#erasure-coding-across-members) members with erasure coding across members, or with erasure-coded chunks still to convert back: erasure-coded chunks, chunks as copies, and chunks missing shards, as the leader's last placement sweep found them | **Fail**: a chunk has fewer than `data` shards available, so it can't be read until members come back. **Warn**: a chunk has fewer than `data + 1` shards available, so one more loss makes it unreadable. Chunks missing one shard with more left stay `ok`: the placement sweep rebuilds them |
 
 In the console, open a check to see its details. **Report** downloads the whole report as JSON, to
 attach when asking for help.

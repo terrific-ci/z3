@@ -48,9 +48,10 @@ Each address is `IP:port`. z3 serves plain HTTP on the S3 API and the console; s
 | `Z3_PEER_TOKEN` | `--peer-token` | empty | Token peers must present to pull from this node. The replication API is off while it is empty (this node can still pull from others). Also enables [cluster mode](/deploy/cluster) |
 | `Z3_CLUSTER_ADDR` | `--cluster-addr` | `http://127.0.0.1:<peer port>` (`https://` with peer TLS in `mtls` or `tls` mode) | This node's peer API as other cluster members reach it |
 | `Z3_NODE_NAME` | `--node-name` | host name | This node's name in a cluster |
-| `Z3_CLUSTER_COPIES` | `--cluster-copies` | `3` | Copies of each chunk in a cluster, capped at the member count |
+| `Z3_CLUSTER_COPIES` | `--cluster-copies` | `3` | Copies of each chunk in a cluster, capped at the member count. With [erasure coding across members](/deploy/cluster#erasure-coding-across-members), copies of chunks below the smallest size to shard |
 | `Z3_CLUSTER_READS` | `--cluster-reads` | `consistent` | `consistent` (followers catch up with the leader before reads) or `local` |
 | `Z3_CLUSTER_SWEEP_INTERVAL` | `--cluster-sweep-interval` | `600` | Seconds between placement sweeps in a cluster |
+| `Z3_CLUSTER_EC_CONVERT_MB` | | `4096` | MiB of existing chunks the cluster leader [converts](/deploy/cluster#converting-existing-chunks) to the current erasure coding layout per placement sweep. `0` never converts existing chunks |
 | `Z3_SITE_NAME` | `--site-name` | empty | This node's site name for residency rules and geo erasure coding when site replication isn't configured |
 | `Z3_ANTI_ENTROPY_INTERVAL` | `--anti-entropy-interval` | `300` | Seconds between Merkle anti-entropy runs on each replication link (at least 10) |
 | `Z3_LOG_RETENTION_DAYS` | | `30` | Days a bucket's change log is kept once every peer applied it; also how far back [point-in-time rollback](/storage/point-in-time) goes. `0` keeps it forever ([pruning](/replication/overview#change-log-pruning)) |

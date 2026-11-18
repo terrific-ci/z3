@@ -1,6 +1,6 @@
 ---
 title: "Cluster"
-description: "Run several nodes as one z3: metadata replicated through Raft, each chunk on a few members, any member answering S3 requests, and replication with other z3 nodes as one node."
+description: "Run several nodes as one z3: metadata replicated through Raft, each chunk as copies or erasure-coded shards on several members, any member answering S3 requests, and replication with other z3 nodes as one node."
 ---
 
 In cluster mode several nodes act as one z3. Metadata is replicated to every member through Raft,
@@ -34,9 +34,10 @@ z3
 | `Z3_PEER_TOKEN` | (required) | Peer API token, the same on every member |
 | `Z3_CLUSTER_ADDR` | `http://127.0.0.1:<peer port>` (`https://` with [mutual TLS](#mutual-tls)) | This node's peer API as the other members reach it |
 | `Z3_NODE_NAME` | host name | The node's name in the console and the CLI |
-| `Z3_CLUSTER_COPIES` | `3` | Copies of each chunk, capped at the number of members |
+| `Z3_CLUSTER_COPIES` | `3` | Copies of each chunk, capped at the number of members. With [erasure coding](#erasure-coding-across-members), copies of chunks below the smallest size to shard |
 | `Z3_CLUSTER_READS` | `consistent` | `consistent`: followers catch up with the leader before reads; `local`: read at once |
 | `Z3_CLUSTER_SWEEP_INTERVAL` | `600` | Seconds between placement sweeps |
+| `Z3_CLUSTER_EC_CONVERT_MB` | `4096` | MiB of existing chunks the leader [converts](#converting-existing-chunks) to the current layout per sweep. `0` never converts existing chunks |
 
 ## Form the cluster
 
@@ -88,6 +89,8 @@ The **Cluster** page in the console does the same.
   with BLAKE3.
 - Adding or removing a member moves only that member's share: a fourth member takes over about a
   quarter of the copies.
+- With [erasure coding across members](#erasure-coding-across-members), large chunks are stored as
+  data and parity shards on several members instead of full copies.
 
 ### Placement sweep
 
@@ -98,6 +101,9 @@ seconds:
 2. It drops copies it no longer owns, but only once every owner holds one, handing the copy over
    first when an owner lacks it.
 
+With erasure coding, the sweep does the same for shards and also rebuilds and converts them; see
+[Repair and rebalance](#repair-and-rebalance).
+
 The console shows the last sweep's counts. `z3 admin cluster sweep`, or **Repair copies** in the
 console, runs a sweep on every member now.
 
@@ -107,6 +113,152 @@ owner that is down are still referenced, so they are kept. Because other members
 before the commit that references them arrives, its minimum age in a cluster is the larger of
 `Z3_GC_GRACE` and `Z3_UPLOAD_TTL`.
 
+## Erasure coding across members
+
+Instead of `Z3_CLUSTER_COPIES` full copies, a cluster can store large chunks as Reed-Solomon shards:
+`data` shards plus `parity` shards, each on a different member. Any `data` shards rebuild the chunk,
+so the cluster stays readable with `parity` members lost, at `(data + parity) / data` times the data.
+
+| Layout | Members needed | Members that may be lost | Raw size |
+| --- | --- | --- | --- |
+| 3 copies (the default) | 3 | 2 | 3x |
+| 3+2 | 5 | 2 | 1.67x |
+| 4+2 | 6 | 2 | 1.5x |
+| 8+3 | 11 | 3 | 1.38x |
+
+This is separate from [erasure coding over disks](/durability/erasure-coding) (`Z3_DISKS`) inside a
+node, and from [geo erasure coding](/replication/geo-erasure-coding) across sites. All three can be
+used together.
+
+<Warning>
+  Upgrade **every** member before you turn erasure coding on. A member on an older version can't
+  read the new Raft commands: it stops following the log until it is upgraded.
+</Warning>
+
+### Turn it on
+
+<Tabs>
+  <Tab title="Command line">
+    ```bash
+    z3 admin cluster ec 4+2                     # chunks of 256 KiB and more as 4+2 shards on six members
+    z3 admin cluster ec 4+2 --min-size 1048576  # chunks under 1 MiB stay full copies
+    z3 admin cluster ec off                     # back to full copies
+    z3 admin cluster status                     # layout, shards per member, redundancy
+    ```
+  </Tab>
+  <Tab title="Console">
+    **Cluster → Erasure coding → Turn on** (or **Change layout**). Enter a layout such as `4+2`, or
+    `off`, and the smallest chunk to shard in KiB.
+  </Tab>
+  <Tab title="Admin API">
+    ```bash
+    curl -X PUT http://127.0.0.1:9001/api/cluster/ec \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+      -d '{"layout": "4+2", "min_size": 262144}'
+    ```
+    `{"layout": "off"}` goes back to full copies.
+  </Tab>
+</Tabs>
+
+- The layout is a **cluster-wide setting** stored in the Raft log: identical on every member, and
+  changed through any member. A member that joins later receives it with the snapshot.
+- A layout has at least 2 data shards and 1 parity shard, and at most 32 shards.
+- The cluster needs at least `data + parity` voting members. A larger layout is refused
+  (`4+2 needs at least 6 members, the cluster has 5`), and so is removing a member that would leave
+  fewer. Choose a smaller layout or turn erasure coding off first.
+- Chunks smaller than `min_size` (256 KiB by default) stay as `Z3_CLUSTER_COPIES` full copies. Large
+  objects are cut into chunks of 256 KiB to 4 MiB, so all their chunks are sharded, while small
+  objects and the tail of large objects stay as copies: spreading a few KiB over six files and six
+  requests costs more than a few copies.
+- Each chunk records its own layout, so chunks as copies, 4+2 chunks and 3+2 chunks live side by
+  side. Changing the setting never leaves a chunk unreadable, and the leader
+  [converts existing chunks](#converting-existing-chunks) in the background.
+
+### Shard placement
+
+- Each shard is stored as an ordinary chunk with its own BLAKE3 hash. Disks, pools, healing, garbage
+  collection and the orphan sweep inside a member treat it like any other chunk.
+- The owner of each shard index is picked by **rendezvous hashing** over the voting members, and every
+  shard of a chunk goes to a different member.
+- Adding or removing a member moves only the shards it wins or holds: going from six members to seven
+  moves about a seventh of the shards.
+- A chunk stored as shards isn't stored whole anywhere.
+
+### Writes
+
+1. The member that receives the upload cuts each chunk into shards and sends every shard to its
+   owner in parallel. A shard whose owner is down goes to another member that holds none of the
+   chunk's shards, and the sweep hands it to the owner once it is back.
+2. The write succeeds once `data + ceil(parity / 2)` shards are stored: 5 for 4+2, 4 for 3+2, 10 for
+   8+4. Right after the write, the chunk survives losing half the parity members, as a majority
+   write of full copies does.
+3. With too few members up for that, the chunk is stored as full copies, so writes keep working.
+   The leader converts it to shards later.
+4. The record of a chunk's shards goes through the Raft log before the commit that references the
+   chunk, so no version points at a chunk that can't be put together.
+
+### Reads
+
+A read gathers `data` shards of each chunk: the ones on the member itself first, then data shards
+from their owners in parallel, then parity shards, then any member. Each shard is checked against
+its hash, and the rebuilt chunk against its content address. Range reads only rebuild the chunks the
+range touches. A damaged shard is noted, and the sweep replaces it.
+
+### Repair and rebalance
+
+The placement sweep on every member also takes care of shards:
+
+1. It fetches shards the member owns but lacks. When no member holds one, it **rebuilds** the shard
+   from the other shards.
+2. It hands over shards held for an owner that was down, or that a new member now owns, and drops
+   them once the owner holds them.
+3. It replaces a shard or copy that failed verification with good data from another member or
+   rebuilt from the other shards.
+
+A member whose disks were wiped rebuilds all its shards on the next sweep. A member being removed
+stays a learner and serves reads until every shard it held is on its new owner, then leaves.
+
+Shards of a member that is down but not removed aren't rebuilt on other members, the same as copies.
+Reads use the remaining shards, the health check warns, and the shards are back when the member is,
+or move when you remove it.
+
+### Converting existing chunks
+
+On the leader, each sweep converts chunks whose layout differs from the setting: copies to shards,
+one layout to another, and shards back to copies (with `off`, or for chunks below a new `min_size`).
+
+- Each sweep converts up to `Z3_CLUSTER_EC_CONVERT_MB` (4096 MiB by default). With `0`, only new
+  chunks use the new layout.
+- The new shards are stored on all their owners before the switch is recorded. Every member then
+  drops its full copy, and garbage collection deletes the old shards.
+- Changing the layout runs a sweep on every member at once. `z3 admin cluster sweep` runs the next
+  one now.
+
+### With other features
+
+- **Geo erasure coding**: the cluster stays one site. Full chunks before they are cut down and the
+  site's geo shards are ordinary chunks in the cluster, so they are sharded across members too when
+  large enough. See [Geo erasure coding](#geo-erasure-coding).
+- **Encryption**: shards are cut from ciphertext; keys aren't part of them.
+- **Compression**: shards from writes are compressed like chunks, which rarely saves space for
+  parity or ciphertext. Shards from the sweep and from conversions are stored uncompressed.
+- **Disks and pools** inside a member: shards go to the member's disk sets and pools like any chunk,
+  so both layers of erasure coding work together.
+- [Lean Replica](/replication/lean-replica) stays unavailable in clusters.
+
+### Watching it
+
+- `z3 admin cluster status` shows the layout, the shards and copies each member holds, and the
+  redundancy summary. See [z3 admin cluster](/cli/cluster#status).
+- The **Cluster** page in the console shows shards and bytes per member, and the **Erasure coding**
+  panel: erasure-coded chunks, chunks as copies, chunks missing a shard, at risk, and unreadable.
+- `GET /api/cluster` returns `layout`, `members[].chunks` and `redundancy`. See the
+  [Admin API](/api/admin-operations#cluster).
+- The **Cluster redundancy** [health check](/operations/support#health) warns while a chunk has
+  fewer than `data + 1` shards available, and fails when a chunk has fewer than `data`.
+
+The redundancy figures come from the leader's last sweep, not from a continuous check.
+
 ## Remove a member
 
 ```bash
@@ -114,8 +266,12 @@ z3 admin cluster remove <member id>
 ```
 
 The member stops owning chunks at once and stays as a learner (**Leaving**), still serving chunk
-reads. The leader runs a sweep on every voter, and once every copy is on its new owners, the member
-leaves the cluster. Wipe its `Z3_DATA_DIR` before using it again.
+reads. The leader runs a sweep on every voter, and once every copy and shard is on its new owners,
+the member leaves the cluster. Wipe its `Z3_DATA_DIR` before using it again.
+
+With [erasure coding](#erasure-coding-across-members), removing a member that would leave fewer
+voting members than `data + parity` is refused. Choose a smaller layout or turn erasure coding off
+first.
 
 A removed member still holds the cluster's node id and its old metadata. Within a few seconds it
 learns from the leader that it was removed: it stops replicating and answers the peer API with
@@ -187,7 +343,9 @@ curl -X PUT http://127.0.0.1:9001/api/buckets/data/replication \
 ### Geo erasure coding
 
 A cluster is one site in the geo layout. Its shards are ordinary chunks, placed on
-`Z3_CLUSTER_COPIES` members and moved by the placement sweep like any other chunk.
+`Z3_CLUSTER_COPIES` members and moved by the placement sweep like any other chunk. With
+[erasure coding across members](#erasure-coding-across-members), geo shards large enough are
+sharded across members in turn.
 
 - Cutting full chunks down to shards runs on the leader. Every member drops its full copy when it
   applies that step.
@@ -267,6 +425,10 @@ read. Upgrade every member first, then configure peers, bucket replication, site
 erasure coding on the cluster. A member still on the old version stops following the log when the
 first new command arrives, and catches up once it is upgraded.
 
+[Erasure coding across members](#erasure-coding-across-members) adds Raft commands too. Upgrade every
+member before you turn it on. The on-disk format doesn't change, and chunks stored as copies stay
+readable by every version.
+
 ## Limitations
 
 - [Lean Replica](/replication/lean-replica) isn't available on cluster members.
@@ -280,5 +442,10 @@ first new command arrives, and catches up once it is upgraded.
 - Every member holds all the metadata, so its size is bounded by one node.
 - Writes are slower than on a single node, since each change waits for Raft and for chunk copies on
   several members.
-- Copies fetched by the sweep are stored uncompressed.
-- Data is protected with full copies; erasure coding across members isn't available yet.
+- Copies and shards fetched, rebuilt or converted by the sweep are stored uncompressed.
+- With erasure coding, shards of a member that is down but not removed aren't rebuilt on other
+  members. Chunks stay readable from the remaining shards, and the health check warns.
+- Only the leader converts existing chunks, up to `Z3_CLUSTER_EC_CONVERT_MB` per sweep. Changing the
+  layout or `min_size` cuts the affected chunks again.
+- The redundancy figures in the console and the health check are computed at the leader's sweep, not
+  continuously.

@@ -99,6 +99,11 @@ on the cluster. A member still on the old version stops following the log when t
 arrives, and catches up once it is upgraded. Older single-node peers keep replicating with the
 cluster, but give them one URL or a VIP instead of a comma-separated list.
 
+[Erasure coding across members](/deploy/cluster#erasure-coding-across-members) adds Raft commands
+too. Upgrade every member before you run `z3 admin cluster ec`: a member on an older version stops
+following the log when the layout is set, until it is upgraded. The on-disk format doesn't change,
+and chunks stored as copies stay readable by every version.
+
 ## From 1.0.0 to 1.0.1
 
 Replace the binary or the image and restart. The metadata format is unchanged, and 1.0.0 and 1.0.1

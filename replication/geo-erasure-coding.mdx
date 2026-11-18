@@ -26,7 +26,9 @@ that node's site, since the bucket's peers stand for its sites.
 
 A site can be a [cluster](/deploy/cluster#geo-erasure-coding). Give every member the same
 `Z3_SITE_NAME`, or none and use site replication. The cluster's shards are ordinary chunks placed on
-its members, and cutting chunks down to shards and repair from other sites run on its leader.
+its members (as copies, or split again with
+[erasure coding across members](/deploy/cluster#erasure-coding-across-members)), and cutting chunks
+down to shards and repair from other sites run on its leader.
 
 ## Turn it on
 
