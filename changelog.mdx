@@ -6,17 +6,26 @@ rss: true
 
 {/* Written by the z3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.0.1**, released November 18, 2026. To install or upgrade to it:
+The latest release is **v1.0.2**, released November 18, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/z3:1.0.1
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.0.1
+docker pull terrificci/z3:1.0.2
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.0.2
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.0.1" description="November 18, 2026" tags={["Latest"]}>
+<Update label="v1.0.2" description="November 18, 2026" tags={["Latest"]}>
+
+- **Security:** LDAP sign-in and STS with LDAP now use a current TLS library, fixing known weaknesses of the old one in certificate checks and key exchange. Nothing to change in the LDAP settings.
+- **Security:** the archive library behind support downloads (profiles, inspect) is updated to a version without known vulnerabilities.
+- **Platforms:** release binaries are for Linux (amd64 and arm64). On macOS, run z3 with Docker; the install script still installs the macOS binaries of 1.0.1 with `--version 1.0.1`.
+- **Upgrading:** no change to the metadata format; replace the binary or the image, one node after another.
+
+</Update>
+
+<Update label="v1.0.1" description="November 18, 2026">
 
 - **Memory:** the metadata cache is capped at 128 MiB by default (`Z3_META_CACHE_MB`), so z3's memory levels off instead of growing with the number of objects: about 160 MiB at 200,000 objects, or about 100 MiB with `Z3_META_CACHE_MB=64`, with writes just as fast. The historical metrics and the cluster log have their own small caps (`Z3_METRICS_CACHE_MB`, `Z3_RAFT_CACHE_MB`).
 - **Healing:** the weekly full verification pauses between batches and uses at most `Z3_HEAL_DUTY` percent of the time (25 by default), so the disk and CPU stay with requests and other programs. See [Healing](/durability/healing).
