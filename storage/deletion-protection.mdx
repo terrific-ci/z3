@@ -100,6 +100,10 @@ Reading the setting and the trash needs `admin:ServerInfo`; changing it and rest
 A restored version comes back with the same version id, data, metadata, tags and lock, and becomes
 current again when it's the newest version of its key. Purged versions can't be restored.
 
+To put a whole bucket or prefix back as it was before an attack, a
+[point-in-time rollback](/storage/point-in-time) restores the versions it needs from the trash and
+makes them current again, in one job.
+
 <Tabs>
   <Tab title="Console">
 

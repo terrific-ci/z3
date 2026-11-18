@@ -1,6 +1,6 @@
 ---
 title: "Batch jobs"
-description: "Run one-off jobs over many objects in the background: copy them elsewhere, delete what matches, or move encrypted objects to another KMS key."
+description: "Run one-off jobs over many objects in the background: copy them elsewhere, delete what matches, move encrypted objects to another KMS key, or roll a bucket back to a point in time."
 ---
 
 A **batch job** is one-off work over many objects that runs in the background on the node where
@@ -11,8 +11,9 @@ you start it.
 | **replicate** | Copies matching objects (current versions) to another bucket in this cluster or to any S3-compatible store (AWS S3, MinIO, another z3). Metadata, content type and tags come along. Objects already in the target with the same content are skipped, so you can run the job again at any time. |
 | **expire** | Deletes matching objects: current versions (a delete marker in a versioned bucket), older versions, or all versions including delete markers. Versions held by [Object Lock](/storage/object-lock) are skipped. |
 | **rotate** | Moves SSE-S3 and SSE-KMS objects to another KMS key. Each version's data key is sealed again **in place**, without rewriting data, older versions included. SSE-C objects are skipped: their key only exists at the client. |
+| **rollback** | Brings a versioned bucket, a prefix or one key back to how it looked at a point in time, by adding versions and delete markers. See [Point-in-time rollback](/storage/point-in-time). |
 
-Expire and rotate have a **dry run** that only counts the objects the job would touch and lists up
+Expire and rotate have a **dry run**; a rollback has a **preview** instead, that only counts the objects the job would touch and lists up
 to 100 of them.
 
 <Frame>

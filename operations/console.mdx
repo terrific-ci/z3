@@ -21,6 +21,10 @@ Sign in with any identity z3 knows:
 - an LDAP account, or **single sign-on** through OpenID Connect, when an
   [identity provider](/access/openid-connect-ldap) is set up.
 
+The sign-in page has a mascot, Zee: it follows the pointer, reads along while you type the access
+key, covers its eyes while you type the secret (and peeks when you pause), shakes its head when a
+sign-in fails and hops when it works.
+
 A session lasts 12 hours and is extended each time it is used. Sessions live in memory, so a
 restart signs everyone out. Disabling a user or a key ends its sessions at once.
 
@@ -37,7 +41,7 @@ only the buckets their policies let them use. See [Admin rights](/api/overview#r
 
 | Section | Page | What it shows | Needs |
 | --- | --- | --- | --- |
-| Storage | Overview | Objects, data stored and on disk, dedup ratio, uptime, largest buckets, replication and disk summary | `admin:ServerInfo` |
+| Storage | Overview | A status pill, objects, data stored and on disk, dedup ratio, uptime; a card per site (this node and each peer, with its lag), each disk's fill, the largest buckets, and recent activity (batch jobs, rollbacks, lifecycle runs) | `admin:ServerInfo` |
 | | Buckets | Every bucket with size and quota, tags, Object Lock, versioning, replication; create and delete buckets | – |
 | | Lifecycle | Buckets with lifecycle rules, a summary of the rules and the last run | `admin:ServerInfo` |
 | | Tiers | Remote tiers with health, contents and the buckets using them; add, check, change credentials, remove | `admin:ServerInfo` |
@@ -55,13 +59,25 @@ only the buckets their policies let them use. See [Admin rights](/api/overview#r
 | | Protocols | S3 and the file protocols: on or off, settings, state, sessions, connect commands | `admin:ServerInfo` |
 | | Disks | Disk state and capacity, erasure layout, healing, **Verify and repair** | `admin:ServerInfo` |
 | | Pools | Pools, rebalance and decommission ([Pools](/durability/pools)) | `admin:ServerInfo` |
-| | Batch | [Batch jobs](/storage/batch): replicate, expire, rotate keys | `admin:ServerInfo` |
+| | Batch | [Batch jobs](/storage/batch): replicate, expire, rotate keys, [roll back](/storage/point-in-time) | `admin:ServerInfo` |
 | | Import/Export | Import jobs from MinIO or S3, and [config export and import](/operations/config-export) | `admin:ServerInfo` |
 | | Settings | [Cluster settings](/operations/settings) by subsystem | `admin:ServerInfo` |
 | | Support | Health check, speed tests, CPU profile, inspect ([Support](/operations/support)) | `admin:ServerInfo` |
 
 Changing things on these pages needs `admin:ConfigUpdate` on top (or `admin:UserAdmin` for IAM).
 Speed tests and profiles need `admin:Profiling`, inspecting an object `admin:InspectData`.
+
+### The sidebar
+
+- **Search menu** (press <kbd>/</kbd>) filters the menu as you type.
+- Each section folds; the menu remembers which ones you folded.
+- Badges show the number of buckets and the batch jobs running.
+- **Pinned buckets** sit at the top: star a bucket to pin it. With nothing pinned, the largest
+  buckets are offered.
+- **+** creates a bucket, starts a rollback or a batch job, or adds a user, as your rights allow.
+- The button next to the logo folds the sidebar into a rail of icons.
+
+Folded sections, the rail and pins are kept in your browser.
 
 ## A bucket
 
@@ -70,6 +86,12 @@ Opening a bucket shows its objects and folders. You can:
 - browse folders, upload files (button or drag and drop, with progress), download, and preview
   images, video and text;
 - see an object's version history, tags, metadata, encryption, lock and tier;
+- open **Flow**: the bucket as a diagram of what writes into it and where its data goes (other
+  sites, tiers from lifecycle rules, event destinations, expiry), with its versions below. Drag
+  nodes, zoom, and click one for its details and a link to it; the versions node offers
+  **Roll back…**;
+- open **Roll back…** (versioned buckets) to bring the bucket or the open folder back to a point
+  in time; see [Point-in-time rollback](/storage/point-in-time);
 - open **Settings**, split into tabs: **General** (versioning, tags, quota, delete the bucket),
   **Lifecycle**, **Replication**, **Protection** (Object Lock, default encryption), **Events** and
   **Access** (bucket policy).

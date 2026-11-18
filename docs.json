@@ -96,6 +96,7 @@
               "storage/tiers",
               "storage/object-lock",
               "storage/deletion-protection",
+              "storage/point-in-time",
               "storage/tags-and-quota",
               "storage/compression",
               "storage/batch"

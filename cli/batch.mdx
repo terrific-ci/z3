@@ -1,6 +1,6 @@
 ---
 title: "z3 admin batch"
-description: "Start, follow, cancel and remove batch jobs that replicate, expire or re-key many objects."
+description: "Start, follow, cancel and remove batch jobs that replicate, expire or re-key many objects, or roll a bucket back to a point in time."
 ---
 
 `z3 admin batch` runs [batch jobs](/storage/batch): one-off work over many objects, in the
@@ -13,10 +13,11 @@ background on the node you talk to.
 | `z3 admin batch status ID` | One job's progress, last errors and dry-run samples | `admin:ServerInfo` |
 | `z3 admin batch cancel ID` | Stop a running job | `admin:ConfigUpdate` |
 | `z3 admin batch remove ID` | Forget a finished job | `admin:ConfigUpdate` |
+| `z3 admin batch rollback BUCKET --at TIME [--prefix P] [--key K] [--dry-run] [--wait]` | Roll a bucket, prefix or key back to a point in time, or preview it | `admin:ConfigUpdate` |
 
 ## Job definitions
 
-A job is a JSON document with a `type`: `replicate`, `expire` or `rotate`.
+A job is a JSON document with a `type`: `replicate`, `expire`, `rotate` or `rollback`.
 
 <Tabs>
   <Tab title="expire">
@@ -155,6 +156,45 @@ z3 admin batch remove expire-146d75b7b7a2775c
 ```
 
 A running job must be cancelled first. Removing forgets the job's record; what it did stays done.
+
+## rollback
+
+Rolls a versioned bucket, a prefix or one key back to how it looked at `--at`, any RFC 3339 time.
+See [Point-in-time rollback](/storage/point-in-time).
+
+```bash
+z3 admin batch rollback records --at 2026-11-18T09:30:00Z --prefix patients/ --dry-run
+```
+
+```
+records at 2026-11-18T09:30:00Z: restore 3  delete 3  missing 1  unchanged 1  (8 keys changed since, 24 log entries read)
+  restore  patients/del.txt (01a1ebdb32ad74bebf1338785669667b)
+  delete   patients/gone.txt
+  restore  patients/meta.txt (01a1ebdb32b87655abb391a2b5483abe)
+  delete   patients/new1.txt
+  delete   patients/new2.txt
+  restore  patients/over.txt (01a1ebdb32a0728cbe0adecbef9c9ae2)
+  missing  patients/purged.txt: the version current at that time was deleted since
+```
+
+`--dry-run` changes nothing and lists up to `--limit` planned changes (20 by default). Without it
+the command starts a `rollback` job; `--wait` follows it like `start --wait`. `status` on a rollback
+job also prints the keys per action and its changes:
+
+```
+rollback-cbebb96055763da2    rollback  done      matched 7  done 7  skipped 0  failed 0  12 bytes
+  restore 6  delete 1  missing 0  unchanged 0
+  change: restore patients/000.json (01a1ebe067f972fca9f0ac01e8e6a222)
+  change: delete patients/README.txt
+```
+
+The same job as a definition for `start`:
+
+```json
+{ "type": "rollback", "source": { "bucket": "records", "prefix": "patients/" }, "at": "2026-11-18T09:30:00Z" }
+```
+
+`"key": "patients/001.json"` limits it to one key.
 
 ## Scheduling
 

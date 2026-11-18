@@ -37,6 +37,7 @@ These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing
 | `GET` | `/api/batch/{id}` | `admin:ServerInfo` | One job |
 | `POST` | `/api/batch/{id}/cancel` | `admin:ConfigUpdate` | Stop a running job |
 | `DELETE` | `/api/batch/{id}` | `admin:ConfigUpdate` | Forget a finished job |
+| `POST` | `/api/batch/rollback/preview` | `admin:ConfigUpdate` | Plan a point-in-time rollback, changing nothing |
 | `GET` | `/api/disks` | `admin:ServerInfo` | Disks, erasure layout, healing totals |
 | `POST` | `/api/heal` | `admin:ConfigUpdate` | Verify and repair every chunk now |
 | `POST` | `/api/gc` | `admin:ConfigUpdate` | Run garbage collection now |
@@ -290,6 +291,31 @@ It is checked first: the bucket exists, a remote target answers, the KMS key exi
 A replicate job's target secret key is stored sealed and never sent back. `POST /api/batch/{id}/cancel`
 answers `400` for a job that is not running; `DELETE /api/batch/{id}` answers `400` for a running job
 (cancel it first) and `404` for an unknown one. See [Batch jobs](/storage/batch).
+
+### Point-in-time rollback
+
+`POST /api/batch/rollback/preview` takes `{"source": {"bucket", "prefix"}, "key": null, "at": "<RFC 3339>", "limit": 100}`
+and answers with the plan, changing nothing:
+
+```json
+{
+  "bucket": "records", "at_ms": 1794958373946, "from_seq": 1501, "until_seq": 3002,
+  "counts": { "log_entries": 1502, "keys": 10, "restore": 4, "delete": 4, "missing": 1, "unchanged": 1, "from_trash": 0 },
+  "changes": [
+    { "key": "patients/del.txt", "action": "restore", "version_id": "01a1ebdb32ad74bebf1338785669667b" },
+    { "key": "patients/new1.txt", "action": "delete" },
+    { "key": "patients/purged.txt", "action": "missing", "reason": "the version current at that time was deleted since" }
+  ]
+}
+```
+
+`from_seq` and `until_seq` are the part of the bucket's change log that was read. `from_trash` counts
+restores whose version comes back from the [trash](/storage/deletion-protection) (their `reason` is
+`from the trash`). A bucket that never had versioning, or has it suspended, answers `400`.
+
+To run it, `POST /api/batch` with `{"type": "rollback", "source": {...}, "key": null, "at": "..."}`; a
+time in the future answers `400`. A rollback job carries `rollback` with the same counts, and its
+`samples` list its changes. See [Point-in-time rollback](/storage/point-in-time).
 
 ## Disks, healing and garbage collection
 
