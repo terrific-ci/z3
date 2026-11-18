@@ -20,7 +20,7 @@ every node without losing either version.
     Run z3 with Docker, sign in to the console and upload a file in a few minutes.
   </Card>
   <Card title="Install" icon="download" href="/deploy/install">
-    Docker image, Linux and macOS binaries, or a systemd service in one command.
+    Docker image, Linux binaries, or a systemd service in one command.
   </Card>
   <Card title="Replication" icon="clone" href="/replication/overview">
     Active-active buckets, whole-site replication and geo erasure coding.
@@ -116,13 +116,13 @@ A node listens on three ports:
 | 9001 | `127.0.0.1:9001` | Console and admin API |
 | 9002 | `0.0.0.0:9002` | Replication API that peers pull from (only when `Z3_PEER_TOKEN` is set) |
 
-z3 runs on Linux (amd64 and arm64) as a [Docker image](/deploy/docker) or a
-[systemd service](/deploy/systemd), and on macOS from the [release binaries](/deploy/install).
+z3 runs on Linux (amd64 and arm64) as a [Docker image](/deploy/docker), a
+[systemd service](/deploy/systemd) or the [release binaries](/deploy/install), and on macOS in Docker.
 
 ## Source and releases
 
 z3 is on GitHub at [terrific-ci/z3](https://github.com/terrific-ci/z3). Every release is published
-there with binaries for Linux and macOS, and as the Docker image
+there with binaries for Linux, and as the Docker image
 [`terrificci/z3`](https://hub.docker.com/r/terrificci/z3).
 
 <CardGroup cols={2}>

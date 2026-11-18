@@ -1,6 +1,8 @@
 #!/bin/sh
-# Install z3 on Linux or macOS: downloads the z3 binary of a GitHub release
-# of terrific-ci/z3, checks it against SHA256SUMS and puts it in /usr/local/bin.
+# Install z3 on Linux: downloads the z3 binary of a GitHub release of
+# terrific-ci/z3, checks it against SHA256SUMS and puts it in /usr/local/bin.
+# Releases up to 1.0.1 also have macOS binaries (--version 1.0.1); on macOS,
+# run newer releases with Docker (terrificci/z3).
 #
 #   curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
 #
@@ -28,7 +30,7 @@ while [ $# -gt 0 ]; do
     --service) SERVICE=1 ;;
     --version) VERSION=${2:?--version needs a value}; shift ;;
     --dir) DIR=${2:?--dir needs a value}; shift ;;
-    -h|--help) sed -n '2,19p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,21p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option $1" >&2; exit 1 ;;
   esac
   shift
@@ -63,7 +65,10 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 say "Downloading z3 $VERSION for $os/$arch"
-curl -fsSL -o "$tmp/$asset" "$base/$asset" || die "no $asset in release v$VERSION"
+if ! curl -fsSL -o "$tmp/$asset" "$base/$asset"; then
+  [ "$os" = darwin ] && die "release v$VERSION has no macOS build (the last one is 1.0.1: --version 1.0.1); run z3 with Docker instead: docker run -p 9000:9000 -p 9001:9001 terrificci/z3"
+  die "no $asset in release v$VERSION"
+fi
 curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" || die "no SHA256SUMS in release v$VERSION"
 want=$(grep " $asset\$" "$tmp/SHA256SUMS" | cut -d' ' -f1)
 if command -v sha256sum >/dev/null 2>&1; then got=$(sha256sum "$tmp/$asset" | cut -d' ' -f1); else got=$(shasum -a 256 "$tmp/$asset" | cut -d' ' -f1); fi
