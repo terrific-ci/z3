@@ -1,6 +1,6 @@
 ---
 title: "Healing"
-description: "How z3 repairs damaged and missing shards: after reads, when a disk comes back or is replaced, on a schedule, on demand, and from other sites for geo erasure coding. And how it sweeps chunk files a crash left behind."
+description: "How Zee3 repairs damaged and missing shards: after reads, when a disk comes back or is replaced, on a schedule, on demand, and from other sites for geo erasure coding. And how it sweeps chunk files a crash left behind."
 ---
 
 Healing rebuilds shards that are missing or damaged on an erasure-coded disk set, from the shards
@@ -13,7 +13,7 @@ that remain. It runs by itself; you rarely need to start it.
 | **A read finds a bad shard** | The read is still served (rebuilt from parity) and the chunk is queued. The healer, which wakes every 5 seconds, repairs it |
 | **A write misses a disk** | Shards that couldn't be written are queued the same way |
 | **A disk comes back, or an empty replacement appears** | Disks are checked every 5 seconds. When one comes online, a full heal runs at once |
-| **On a schedule** | Every `Z3_HEAL_INTERVAL` seconds (7 days by default), every referenced chunk is verified and repaired |
+| **On a schedule** | Every `ZEE3_HEAL_INTERVAL` seconds (7 days by default), every referenced chunk is verified and repaired |
 | **On demand** | **Verify and repair now** on the console's **Disks** page, or `POST /api/heal` |
 | **Geo shards lost on this site** | Rebuilt from the other sites; see [Geo erasure coding](#geo-erasure-coding) |
 | **Shards lost on a cluster member** | With [erasure coding across members](/deploy/cluster#repair-and-rebalance), the placement sweep rebuilds them from the other members' shards, not the healer |
@@ -24,10 +24,10 @@ and the queue keep damage found in normal use from waiting for the next full pas
 ## Change the schedule
 
 A full pass pauses after every batch of 256 chunks for a time proportional to the batch, so it uses
-only `Z3_HEAL_DUTY` percent of the time (25 by default): on a machine shared with a database or
+only `ZEE3_HEAL_DUTY` percent of the time (25 by default): on a machine shared with a database or
 other services, the weekly verification does not take over the disk or the CPU.
 
-`Z3_HEAL_INTERVAL` sets the default at startup. The `scanner.heal_interval_secs` setting changes it
+`ZEE3_HEAL_INTERVAL` sets the default at startup. The `scanner.heal_interval_secs` setting changes it
 at runtime, for every site with site replication:
 
 <Tabs>
@@ -40,7 +40,7 @@ at runtime, for every site with site replication:
   </Tab>
   <Tab title="CLI">
     ```bash
-    z3 admin settings set scanner heal_interval_secs=1209600   # every 14 days
+    zee3 admin settings set scanner heal_interval_secs=1209600   # every 14 days
     ```
   </Tab>
 </Tabs>
@@ -56,11 +56,11 @@ healed. The [orphan sweep](#orphaned-chunks) then runs only on demand.
     health check reports it too.
   </Step>
   <Step title="Swap the disk">
-    Mount a new, empty disk at the **same path**. Create the directory z3 uses on it and give it to
-    the user z3 runs as.
+    Mount a new, empty disk at the **same path**. Create the directory Zee3 uses on it and give it to
+    the user Zee3 runs as.
   </Step>
   <Step title="Wait">
-    Within seconds z3 formats the empty disk into the same position (the log says
+    Within seconds Zee3 formats the empty disk into the same position (the log says
     `new empty disk formatted; healing will refill it`) and a full heal rebuilds its shards. No
     restart is needed.
   </Step>
@@ -71,16 +71,16 @@ missing at once.
 
 <Note>
   A disk that holds other files, belongs to another set or sits at a different position in
-  `Z3_DISKS` is marked `foreign` and left alone. z3 never overwrites it.
+  `ZEE3_DISKS` is marked `foreign` and left alone. Zee3 never overwrites it.
 </Note>
 
 ## Lost chunks
 
 A chunk is **lost** when fewer shards than its data shard count are readable, for example when more
 disks than the parity failed at once. The heal result lists such chunks under `lost_chunks`, and
-`z3_heal_chunks_lost_total` counts every one found since the start.
+`zee3_heal_chunks_lost_total` counts every one found since the start.
 
-`lost_now` in the healing totals (and the `z3_heal_chunks_lost` gauge) counts the chunks lost and not
+`lost_now` in the healing totals (and the `zee3_heal_chunks_lost` gauge) counts the chunks lost and not
 repaired since. The health check fails only while it is above zero, so a chunk that a later pass, or
 a rebuild from other sites, repaired no longer fails it.
 
@@ -97,26 +97,26 @@ between the two leaves chunk files that nothing references. Garbage collection n
 it only deletes chunks whose references dropped to zero. The **orphan sweep** finds and deletes them.
 
 It walks every chunk location of the node: the data directory, the shards and copies on every
-`Z3_DISKS` disk, every `Z3_POOLS` pool, and this site's
+`ZEE3_DISKS` disk, every `ZEE3_POOLS` pool, and this site's
 [geo erasure coding](/replication/geo-erasure-coding) shards. It deletes the chunk files no metadata
 references, and the temp files of interrupted writes.
 
 Writes in progress are never touched:
 
 - Only files last modified longer ago than the minimum age are deleted. By default that is the GC
-  grace period (`Z3_GC_GRACE`, 1 hour). A chunk reused by deduplication gets a new file time, so it
+  grace period (`ZEE3_GC_GRACE`, 1 hour). A chunk reused by deduplication gets a new file time, so it
   counts as recent.
 - Uploads, multipart parts, copies, replication pulls and geo shard fetches hold off the sweep while
   they run: files newer than the oldest write still in progress are kept.
 - Each delete checks the references and the file time again, in the same metadata transaction as
   garbage collection.
 
-The sweep runs after every full heal pass (`Z3_HEAL_INTERVAL`, every 7 days by default) and keeps to
-the same `Z3_HEAL_DUTY` limit. With the heal interval at `0` it runs only on demand.
+The sweep runs after every full heal pass (`ZEE3_HEAL_INTERVAL`, every 7 days by default) and keeps to
+the same `ZEE3_HEAL_DUTY` limit. With the heal interval at `0` it runs only on demand.
 
 In [cluster mode](/deploy/cluster) every member sweeps only its own disks. Other members may place
 chunks on it before the commit that references them arrives, so the minimum age there is the larger
-of `Z3_GC_GRACE` and `Z3_UPLOAD_TTL`.
+of `ZEE3_GC_GRACE` and `ZEE3_UPLOAD_TTL`.
 
 ### Sweep now
 
@@ -127,13 +127,13 @@ of `Z3_GC_GRACE` and `Z3_UPLOAD_TTL`.
   </Tab>
   <Tab title="CLI">
     ```bash
-    z3 admin sweep --dry-run   # only count
-    z3 admin sweep             # delete now
+    zee3 admin sweep --dry-run   # only count
+    zee3 admin sweep             # delete now
     ```
   </Tab>
   <Tab title="API">
     ```bash
-    curl -X POST "$Z3_ADMIN_URL/api/gc/sweep?dry_run=true" -H "Authorization: Bearer $TOKEN"
+    curl -X POST "$ZEE3_ADMIN_URL/api/gc/sweep?dry_run=true" -H "Authorization: Bearer $TOKEN"
     ```
   </Tab>
 </Tabs>
@@ -151,13 +151,13 @@ See [`POST /api/gc/sweep`](/api/admin-operations#orphan-sweep) for the parameter
 | --- | --- |
 | **Disks** page | Disk states, layout, healing totals and the **Orphaned chunks** panel |
 | `GET /api/disks` | The same as JSON, with `orphan_sweep` |
-| **Support** page, `z3 admin support health` | The **Healing** check: chunks checked, shards repaired, chunks lost. It fails while a chunk is lost and not repaired, and warns while some geo chunks can't be rebuilt from other sites |
-| `z3_heal_shards_repaired_total` | Shards rebuilt (Prometheus) |
-| `z3_heal_chunks_lost_total` | Chunks that couldn't be rebuilt, since the start (Prometheus) |
-| `z3_heal_chunks_lost` | Chunks lost and not repaired since (Prometheus) |
-| `z3_heal_geo_shards_repaired_total`, `z3_heal_geo_chunks_failed_total`, `z3_heal_geo_unrepairable` | Geo shards rebuilt from other sites, failed geo repairs, geo chunks the last pass couldn't rebuild (Prometheus) |
-| `z3_orphan_chunks_deleted_total`, `z3_orphan_bytes_freed_total` | Orphaned chunk files deleted and bytes freed by the sweep (Prometheus) |
-| `z3_disk_online{disk,path}` | 1 per online disk (Prometheus) |
+| **Support** page, `zee3 admin support health` | The **Healing** check: chunks checked, shards repaired, chunks lost. It fails while a chunk is lost and not repaired, and warns while some geo chunks can't be rebuilt from other sites |
+| `zee3_heal_shards_repaired_total` | Shards rebuilt (Prometheus) |
+| `zee3_heal_chunks_lost_total` | Chunks that couldn't be rebuilt, since the start (Prometheus) |
+| `zee3_heal_chunks_lost` | Chunks lost and not repaired since (Prometheus) |
+| `zee3_heal_geo_shards_repaired_total`, `zee3_heal_geo_chunks_failed_total`, `zee3_heal_geo_unrepairable` | Geo shards rebuilt from other sites, failed geo repairs, geo chunks the last pass couldn't rebuild (Prometheus) |
+| `zee3_orphan_chunks_deleted_total`, `zee3_orphan_bytes_freed_total` | Orphaned chunk files deleted and bytes freed by the sweep (Prometheus) |
+| `zee3_disk_online{disk,path}` | 1 per online disk (Prometheus) |
 
 ## Geo erasure coding
 
@@ -167,6 +167,6 @@ shards.
 
 When local parity can't rebuild this site's own geo shards (they're gone from every local copy), it
 fetches shards from the other sites and rebuilds them: at the end of every full heal, about 10
-seconds after start, shortly after a read finds a bad shard, every `Z3_GEO_HEAL_RETRY` seconds while
+seconds after start, shortly after a read finds a bad shard, every `ZEE3_GEO_HEAL_RETRY` seconds while
 some chunks can't be rebuilt, and on demand with `POST /api/heal/geo`. See
 [Healing across sites](/replication/geo-erasure-coding#healing-across-sites).

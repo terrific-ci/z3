@@ -1,28 +1,28 @@
 ---
 title: "Quickstart"
-description: "Run z3 with Docker, sign in to the console, create a bucket and upload a file with the AWS CLI."
+description: "Run Zee3 with Docker, sign in to the console, create a bucket and upload a file with the AWS CLI."
 ---
 
-This gets z3 running on your machine with Docker, the quickest way to try it. For a server install,
+This gets Zee3 running on your machine with Docker, the quickest way to try it. For a server install,
 see [Install](/deploy/install).
 
 <Steps>
-  <Step title="Start z3">
+  <Step title="Start Zee3">
     ```bash
-    docker run -d --name z3 --restart unless-stopped \
+    docker run -d --name zee3 --restart unless-stopped \
       -p 9000:9000 -p 9001:9001 \
-      -v z3-data:/data \
-      -e Z3_ACCESS_KEY=admin \
-      -e Z3_SECRET_KEY=change-me-please \
+      -v zee3-data:/data \
+      -e ZEE3_ACCESS_KEY=admin \
+      -e ZEE3_SECRET_KEY=change-me-please \
       terrificci/z3:latest
     ```
 
-    The S3 API listens on port **9000** and the console on **9001**. Data is kept in the `z3-data`
+    The S3 API listens on port **9000** and the console on **9001**. Data is kept in the `zee3-data`
     volume. For a Compose file and every setting, see [Docker](/deploy/docker).
 
     <Warning>
-      `Z3_ACCESS_KEY` and `Z3_SECRET_KEY` are the root account. Without them z3 starts with
-      `z3admin` / `z3admin-secret` and logs a warning. Choose the secret before you store anything
+      `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` are the root account. Without them Zee3 starts with
+      `zee3admin` / `zee3admin-secret` and logs a warning. Choose the secret before you store anything
       you want to keep: user secrets and internal KMS keys are sealed with a key derived from it, so
       changing it later makes them unreadable.
     </Warning>
@@ -32,7 +32,7 @@ see [Install](/deploy/install).
     (`admin` and `change-me-please` above).
 
     <Frame>
-      <img src="/images/login.png" alt="The z3 sign-in page" />
+      <img src="/images/login.png" alt="The Zee3 sign-in page" />
     </Frame>
   </Step>
   <Step title="Create a bucket">
@@ -67,7 +67,7 @@ see [Install](/deploy/install).
 </Steps>
 
 <Note>
-  z3 uses **path-style** addressing (`http://host:9000/bucket/key`). Most clients do that
+  Zee3 uses **path-style** addressing (`http://host:9000/bucket/key`). Most clients do that
   automatically for a custom endpoint; see [Clients](/get-started/clients) for the settings of each
   one.
 </Note>

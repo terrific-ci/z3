@@ -13,19 +13,19 @@ the data instead of 3 times, and objects stay readable when any one site is down
 ## Requirements
 
 - Every site has a **name**: from [site replication](/replication/site-replication), or from
-  `Z3_SITE_NAME` on each node. Without a name, z3 refuses with `geo erasure coding needs a site name`.
+  `ZEE3_SITE_NAME` on each node. Without a name, Zee3 refuses with `geo erasure coding needs a site name`.
 - Every site of the bucket pulls **directly** from every other site: a mesh. Hub-and-spoke and chain
   topologies don't work here.
 - At least two sites, and no site may hold more shards than the parity, so that losing one site
-  always leaves enough shards. z3 refuses a layout that breaks this, with
+  always leaves enough shards. Zee3 refuses a layout that breaks this, with
   `a site would keep N shards but only P may be lost; raise parity or add sites`.
 - At most 32 shards (`data + parity`), and at least as many shards as sites.
 
-Without site replication, name each node with `Z3_SITE_NAME` and give each peer the same name as
+Without site replication, name each node with `ZEE3_SITE_NAME` and give each peer the same name as
 that node's site, since the bucket's peers stand for its sites.
 
 A site can be a [cluster](/deploy/cluster#geo-erasure-coding). Give every member the same
-`Z3_SITE_NAME`, or none and use site replication. The cluster's shards are ordinary chunks placed on
+`ZEE3_SITE_NAME`, or none and use site replication. The cluster's shards are ordinary chunks placed on
 its members (as copies, or split again with
 [erasure coding across members](/deploy/cluster#erasure-coding-across-members)), and cutting chunks
 down to shards and repair from other sites run on its leader.
@@ -90,7 +90,7 @@ other sites keep. That happens when:
 - every disk of a set was replaced,
 - a shard is corrupt on every disk.
 
-z3 fetches shards from the other sites, puts the chunk together with Reed-Solomon, checks it against
+Zee3 fetches shards from the other sites, puts the chunk together with Reed-Solomon, checks it against
 its BLAKE3 hash, and writes back only this site's shards. A full chunk the writing site still keeps
 (not yet cut down to shards) is rebuilt the same way. No manual step is needed.
 
@@ -98,10 +98,10 @@ its BLAKE3 hash, and writes back only this site's shards. A full chunk the writi
 
 | Trigger | What happens |
 | --- | --- |
-| **A full heal** | At the end of every full heal (`POST /api/heal`, `Z3_HEAL_INTERVAL`, a disk that comes back or is replaced), the shards it found missing or damaged are rebuilt |
+| **A full heal** | At the end of every full heal (`POST /api/heal`, `ZEE3_HEAL_INTERVAL`, a disk that comes back or is replaced), the shards it found missing or damaged are rebuilt |
 | **Start** | About 10 seconds after start, missing shards only, without a full verification. A site that comes back with empty disks and its metadata fills up again by itself |
 | **A read finds a bad shard** | The chunk is rebuilt shortly after (within 30 seconds) |
-| **Retry** | While some chunks can't be rebuilt, again every `Z3_GEO_HEAL_RETRY` seconds (300 by default) |
+| **Retry** | While some chunks can't be rebuilt, again every `ZEE3_GEO_HEAL_RETRY` seconds (300 by default) |
 | **On demand** | `POST /api/heal/geo` rebuilds missing shards now, without verifying every chunk |
 
 A site rebuilt with **new** metadata (resynced from another site) gets its shards as it pulls the
@@ -114,7 +114,7 @@ versions, like any replica.
   to send shards of such objects to an excluded site.
 - Repair traffic follows each peer's [bandwidth limit](/replication/bucket-replication#bandwidth-limits-and-time-windows)
   (at low priority) and its time windows: a site outside its window isn't asked.
-- The repair pass keeps to `Z3_HEAL_DUTY`, like a full heal.
+- The repair pass keeps to `ZEE3_HEAL_DUTY`, like a full heal.
 
 ### How many sites must answer
 
@@ -131,7 +131,7 @@ A layout with more parity can rebuild from fewer sites, at the cost of more stor
 ### Limits
 
 - Versions in the [trash](/storage/deletion-protection) aren't repaired until they're restored.
-- Sites running an older z3 without the peer route `POST /v1/geo/repair` are skipped, like a site
+- Sites running an older Zee3 without the peer route `POST /v1/geo/repair` are skipped, like a site
   that doesn't answer.
 - In a [cluster](/deploy/cluster#geo-erasure-coding), this repair runs on the leader, and a shard
   counts as missing only when no member holds it. Call `POST /api/heal/geo` on the leader: on a
@@ -139,7 +139,7 @@ A layout with more parity can rebuild from fewer sites, at the cost of more stor
 
 ## Watching it
 
-`z3_replication_geo_chunks_total` on `/metrics` counts geo-coded chunks. The [Support](/operations/support)
+`zee3_replication_geo_chunks_total` on `/metrics` counts geo-coded chunks. The [Support](/operations/support)
 page's **Inspect** shows how an object's chunks are stored on this node.
 
 Repairs from other sites show in:
@@ -150,7 +150,7 @@ Repairs from other sites show in:
 | `POST /api/heal`, `POST /api/heal/geo` | The `geo` result: `checked`, `damaged`, `repaired`, `failed`, `skipped`, `failed_chunks`, `errors` ([API](/api/admin-operations#disks-healing-and-garbage-collection)) |
 | `GET /api/disks` | Healing totals: `geo_passes`, `geo_shards_repaired`, `geo_chunks_failed`, `geo_unrepairable`, `geo_skipped`, `last_geo_pass`, `last_geo_pass_ms` |
 | Health check | The **Healing** item warns while some geo chunks can't be rebuilt |
-| Prometheus | `z3_heal_geo_shards_repaired_total`, `z3_heal_geo_chunks_failed_total`, `z3_heal_geo_unrepairable` |
+| Prometheus | `zee3_heal_geo_shards_repaired_total`, `zee3_heal_geo_chunks_failed_total`, `zee3_heal_geo_unrepairable` |
 
 ## When not to use it
 

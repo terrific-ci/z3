@@ -1,10 +1,10 @@
 ---
 title: "Command line"
-description: "Manage a running z3 node from the terminal with the same z3 binary: connection options, sign-in and output."
+description: "Manage a running Zee3 node from the terminal with the same Zee3 binary: connection options, sign-in and output."
 ---
 
-The `z3` binary that runs the server also manages it. Without a command, `z3` runs a node.
-`z3 admin ...` manages a **running** node through its [admin API](/api/overview).
+The `zee3` binary that runs the server also manages it. Without a command, `zee3` runs a node.
+`zee3 admin ...` manages a **running** node through its [admin API](/api/overview).
 
 Because the CLI goes through the API:
 
@@ -17,32 +17,32 @@ Use it over SSH, on a server without a browser, in scripts and cron jobs.
 
 ## A quick example
 
-On the server itself, where `Z3_ACCESS_KEY` and `Z3_SECRET_KEY` are already set for the node:
+On the server itself, where `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` are already set for the node:
 
 ```bash
-z3 admin support health
-z3 admin settings set compression enabled=true
-z3 admin protocols enable sftp
-z3 admin metrics --range 7d
-z3 admin logs --all-nodes --since 24h --level warn
+zee3 admin support health
+zee3 admin settings set compression enabled=true
+zee3 admin protocols enable sftp
+zee3 admin metrics --range 7d
+zee3 admin logs --all-nodes --since 24h --level warn
 ```
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| [`z3 admin settings`](/cli/settings) | Show, set and reset cluster settings |
-| [`z3 admin protocols`](/cli/protocols) | File protocols: state, turn one on or off |
-| [`z3 admin batch`](/cli/batch) | Batch jobs: replicate, expire or rotate keys over many objects |
-| [`z3 admin support`](/cli/support) | Health report, speed tests, CPU profiles, object inspection |
-| [`z3 admin pools`](/cli/pools) | Pools: usage, rebalance, decommission |
-| [`z3 admin metrics`](/cli/metrics) | Traffic and storage over a past range, node-wide or per bucket |
-| [`z3 admin logs`](/cli/logs) | Server log lines: recent, a time range from the history on disk, or live; one node or all |
-| [`z3 admin trace`](/cli/logs#trace) | Requests served (S3 and admin API): recent or live; one node or all |
-| [`z3 admin lean`](/replication/lean-replica#command-line) | Lean Replica: state, keep window, evict now, turn off |
-| [`z3 admin import`](/deploy/migrate-from-minio#manage-jobs) | Imports from MinIO or S3: start, follow, mirror deletions, pause |
-| [`z3 admin gc`](#garbage-collection-and-the-orphan-sweep) | Run garbage collection now |
-| [`z3 admin sweep`](#garbage-collection-and-the-orphan-sweep) | Delete chunk files a crash left unreferenced on this node |
+| [`zee3 admin settings`](/cli/settings) | Show, set and reset cluster settings |
+| [`zee3 admin protocols`](/cli/protocols) | File protocols: state, turn one on or off |
+| [`zee3 admin batch`](/cli/batch) | Batch jobs: replicate, expire or rotate keys over many objects |
+| [`zee3 admin support`](/cli/support) | Health report, speed tests, CPU profiles, object inspection |
+| [`zee3 admin pools`](/cli/pools) | Pools: usage, rebalance, decommission |
+| [`zee3 admin metrics`](/cli/metrics) | Traffic and storage over a past range, node-wide or per bucket |
+| [`zee3 admin logs`](/cli/logs) | Server log lines: recent, a time range from the history on disk, or live; one node or all |
+| [`zee3 admin trace`](/cli/logs#trace) | Requests served (S3 and admin API): recent or live; one node or all |
+| [`zee3 admin lean`](/replication/lean-replica#command-line) | Lean Replica: state, keep window, evict now, turn off |
+| [`zee3 admin import`](/deploy/migrate-from-minio#manage-jobs) | Imports from MinIO or S3: start, follow, mirror deletions, pause |
+| [`zee3 admin gc`](#garbage-collection-and-the-orphan-sweep) | Run garbage collection now |
+| [`zee3 admin sweep`](#garbage-collection-and-the-orphan-sweep) | Delete chunk files a crash left unreferenced on this node |
 
 Everything else (buckets, IAM, replication, events) is managed in the [console](/operations/console),
 through the [admin API](/api/overview), or with any S3 client.
@@ -51,23 +51,23 @@ through the [admin API](/api/overview), or with any S3 client.
 
 | Option | Environment | Default | What it is |
 | --- | --- | --- | --- |
-| `--url <URL>` | `Z3_ADMIN_URL` | `http://127.0.0.1:9001` | The node's admin API |
-| `--access-key <KEY>` | `Z3_ACCESS_KEY` | `z3admin` | Who to sign in as |
-| `--secret-key <SECRET>` | `Z3_SECRET_KEY` | `z3admin-secret` | Its secret |
+| `--url <URL>` | `ZEE3_ADMIN_URL` | `http://127.0.0.1:9001` | The node's admin API |
+| `--access-key <KEY>` | `ZEE3_ACCESS_KEY` | `zee3admin` | Who to sign in as |
+| `--secret-key <SECRET>` | `ZEE3_SECRET_KEY` | `zee3admin-secret` | Its secret |
 
 The options belong to `admin`, so they go **between `admin` and the command**:
 
 ```bash
-z3 admin --url https://z3-admin.example.com --access-key ops --secret-key "$OPS_SECRET" pools
+zee3 admin --url https://zee3-admin.example.com --access-key ops --secret-key "$OPS_SECRET" pools
 ```
 
 Or set them once in the environment:
 
 ```bash
-export Z3_ADMIN_URL=https://z3-admin.example.com
-export Z3_ACCESS_KEY=ops
-export Z3_SECRET_KEY=...
-z3 admin pools
+export ZEE3_ADMIN_URL=https://zee3-admin.example.com
+export ZEE3_ACCESS_KEY=ops
+export ZEE3_SECRET_KEY=...
+zee3 admin pools
 ```
 
 Each command signs in with `POST /api/auth/login`, runs, and is done; nothing is saved between
@@ -87,16 +87,16 @@ options.
 `--help` works at every level:
 
 ```bash
-z3 --help
-z3 admin --help
-z3 admin support --help
-z3 admin support speedtest --help
+zee3 --help
+zee3 admin --help
+zee3 admin support --help
+zee3 admin support speedtest --help
 ```
 
 ```
 Manage a running node (settings, file protocols) through its admin API
 
-Usage: z3 admin [OPTIONS] <COMMAND>
+Usage: zee3 admin [OPTIONS] <COMMAND>
 
 Commands:
   settings   Cluster settings
@@ -110,13 +110,13 @@ Commands:
   help       Print this message or the help of the given subcommand(s)
 
 Options:
-      --url <URL>                Admin API of the node [env: Z3_ADMIN_URL=] [default: http://127.0.0.1:9001]
-      --access-key <ACCESS_KEY>  [env: Z3_ACCESS_KEY=] [default: z3admin]
-      --secret-key <SECRET_KEY>  [env: Z3_SECRET_KEY] [default: z3admin-secret]
+      --url <URL>                Admin API of the node [env: ZEE3_ADMIN_URL=] [default: http://127.0.0.1:9001]
+      --access-key <ACCESS_KEY>  [env: ZEE3_ACCESS_KEY=] [default: zee3admin]
+      --secret-key <SECRET_KEY>  [env: ZEE3_SECRET_KEY] [default: zee3admin-secret]
   -h, --help                     Print help
 ```
 
-`z3 --version` prints the version.
+`zee3 --version` prints the version.
 
 ## Output and errors
 
@@ -124,7 +124,7 @@ Commands print plain text meant for people, one line per item. On success they e
 `0`. On an error they print `Error:` and the API's message, and exit with status `1`:
 
 ```bash
-z3 admin settings set api requests_max=abc
+zee3 admin settings set api requests_max=abc
 # Error: api.requests_max is a whole number
 ```
 
@@ -135,30 +135,30 @@ z3 admin settings set api requests_max=abc
 | `this needs the admin:ConfigUpdate permission` | The identity lacks the right; see [Rights](/api/overview#rights) |
 
 For machine-readable output, call the [admin API](/api/overview) directly; it answers JSON.
-`z3 admin support health --json` prints the whole health report as JSON, and `z3 admin logs --json`
-and `z3 admin trace --json` print one JSON object per line.
+`zee3 admin support health --json` prints the whole health report as JSON, and `zee3 admin logs --json`
+and `zee3 admin trace --json` print one JSON object per line.
 
 ## Garbage collection and the orphan sweep
 
 | Command | What it does | Right |
 | --- | --- | --- |
-| `z3 admin gc [--grace-secs N]` | Delete unreferenced chunks and abort abandoned multipart uploads now. `--grace-secs` replaces the configured grace period (`0`: collect now) | `admin:ConfigUpdate` |
-| `z3 admin sweep [--dry-run] [--min-age-secs N]` | Walk this node's chunk directories and delete orphaned chunk files (written by uploads that crashed before their commit). `--dry-run` only counts; `--min-age-secs` replaces the minimum file age | `admin:ConfigUpdate` |
+| `zee3 admin gc [--grace-secs N]` | Delete unreferenced chunks and abort abandoned multipart uploads now. `--grace-secs` replaces the configured grace period (`0`: collect now) | `admin:ConfigUpdate` |
+| `zee3 admin sweep [--dry-run] [--min-age-secs N]` | Walk this node's chunk directories and delete orphaned chunk files (written by uploads that crashed before their commit). `--dry-run` only counts; `--min-age-secs` replaces the minimum file age | `admin:ConfigUpdate` |
 
 ```bash
-z3 admin gc
+zee3 admin gc
 # 120 chunks deleted (402331221 bytes freed), 1 uploads aborted
 
-z3 admin sweep --dry-run
+zee3 admin sweep --dry-run
 # 2203128 chunk files checked in 4096 directories: 14 orphaned, 2 too recent to delete; would delete 12 (50331648 bytes) and 1 temp files (4194304 bytes) in 41200 ms
 ```
 
 They call [`POST /api/gc`](/api/admin-operations#disks-healing-and-garbage-collection) and
 [`POST /api/gc/sweep`](/api/admin-operations#orphan-sweep). The sweep's default minimum age is the
-GC grace period (in cluster mode, at least `Z3_UPLOAD_TTL`); keep it on a node that serves traffic.
+GC grace period (in cluster mode, at least `ZEE3_UPLOAD_TTL`); keep it on a node that serves traffic.
 See [Orphaned chunks](/durability/healing#orphaned-chunks).
 
 ## Container health checks
 
-`z3 healthcheck` asks the local node's `/api/health` (on `Z3_ADMIN_ADDR`) and exits with `0` when it
+`zee3 healthcheck` asks the local node's `/api/health` (on `ZEE3_ADMIN_ADDR`) and exits with `0` when it
 answers. It needs no credentials, which makes it a fit for a Docker `HEALTHCHECK`.

@@ -1,16 +1,16 @@
 ---
-title: "z3 admin logs and trace"
+title: "zee3 admin logs and trace"
 description: "Read server log lines and served requests from the terminal: recent ones, a time range from the log history on disk, or live, for one node or every node of the site group."
 ---
 
-`z3 admin logs` and `z3 admin trace` show from a shell what the console's
+`zee3 admin logs` and `zee3 admin trace` show from a shell what the console's
 [Trace and Logs](/audit/trace-and-logs) pages show: server log lines and the requests a node
 serves. Both read the node you connect to, or with `--all-nodes` every node of the site group,
 merged by time.
 
 ```bash
-z3 admin logs [--all-nodes] [--level L] [--search S] [--since T] [--until T] [--history] [--limit N] [-f|--follow] [--json]
-z3 admin trace [--all-nodes] [--kind s3|admin] [--errors] [--search S] [--limit N] [-f|--follow] [--json]
+zee3 admin logs [--all-nodes] [--level L] [--search S] [--since T] [--until T] [--history] [--limit N] [-f|--follow] [--json]
+zee3 admin trace [--all-nodes] [--kind s3|admin] [--errors] [--search S] [--limit N] [-f|--follow] [--json]
 ```
 
 Both need `admin:ServerInfo` (the built-in `diagnostics` policy has it).
@@ -38,10 +38,10 @@ node started). With any of them, they come from the log history on disk, also fr
 restart. `--until` does not go with `--follow`.
 
 ```bash
-z3 admin logs --level warn --search unreachable      # lines in this node's memory
-z3 admin logs --all-nodes --since 24h --until 2h     # history on disk, every node
-z3 admin logs --history --limit 1000 --json          # history without a range, JSON lines
-z3 admin logs --all-nodes --follow                   # new lines from every node
+zee3 admin logs --level warn --search unreachable      # lines in this node's memory
+zee3 admin logs --all-nodes --since 24h --until 2h     # history on disk, every node
+zee3 admin logs --history --limit 1000 --json          # history without a range, JSON lines
+zee3 admin logs --all-nodes --follow                   # new lines from every node
 ```
 
 ```
@@ -65,8 +65,8 @@ level, the node (with `--all-nodes`), the module, the message and its fields.
 | `--json` | – | One JSON object per line, as the [API](/api/admin-events-audit#trace) answers it |
 
 ```bash
-z3 admin trace --all-nodes --kind s3 --errors        # recent failed requests, every node
-z3 admin trace --follow --search medical-records     # new requests, live
+zee3 admin trace --all-nodes --kind s3 --errors        # recent failed requests, every node
+zee3 admin trace --follow --search medical-records     # new requests, live
 ```
 
 ```
@@ -91,8 +91,8 @@ node sby: not reachable: error sending request ...
 node mdn: no history on disk; only its lines since it started
 ```
 
-The second line is for a node on an older z3, or with the history turned off: only its recent
+The second line is for a node on an older Zee3, or with the history turned off: only its recent
 lines in memory are shown. While following, a node that comes back prints `node sby: connected`.
 
-Other `z3 admin` commands answer for the node you connect to only. To ask another node, use its
+Other `zee3 admin` commands answer for the node you connect to only. To ask another node, use its
 `--url`. See [Connecting and signing in](/cli/overview#connecting-and-signing-in).

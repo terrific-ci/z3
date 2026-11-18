@@ -1,23 +1,23 @@
 ---
-title: "z3 admin pools"
+title: "zee3 admin pools"
 description: "See pool usage, spread data over pools, and empty a pool before removing it."
 ---
 
-`z3 admin pools` shows a node's [pools](/durability/pools) and runs the two pool operations:
+`zee3 admin pools` shows a node's [pools](/durability/pools) and runs the two pool operations:
 **rebalance** and **decommission**.
 
 | Command | What it does | Right |
 | --- | --- | --- |
-| `z3 admin pools` | Same as `status` | `admin:ServerInfo` |
-| `z3 admin pools status` | Pools, their state and usage, and the current or last operation | `admin:ServerInfo` |
-| `z3 admin pools rebalance [--wait]` | Spread chunks over the active pools by capacity | `admin:ConfigUpdate` |
-| `z3 admin pools decommission INDEX [--wait]` | Move everything off a pool so it can be removed from `Z3_POOLS` | `admin:ConfigUpdate` |
-| `z3 admin pools cancel` | Stop the running rebalance or decommission | `admin:ConfigUpdate` |
+| `zee3 admin pools` | Same as `status` | `admin:ServerInfo` |
+| `zee3 admin pools status` | Pools, their state and usage, and the current or last operation | `admin:ServerInfo` |
+| `zee3 admin pools rebalance [--wait]` | Spread chunks over the active pools by capacity | `admin:ConfigUpdate` |
+| `zee3 admin pools decommission INDEX [--wait]` | Move everything off a pool so it can be removed from `ZEE3_POOLS` | `admin:ConfigUpdate` |
+| `zee3 admin pools cancel` | Stop the running rebalance or decommission | `admin:ConfigUpdate` |
 
 ## status
 
 ```bash
-z3 admin pools
+zee3 admin pools
 ```
 
 ```
@@ -27,13 +27,13 @@ rebalance: done, 182344 chunks moved (612.4 GiB), 0 failed
 ```
 
 Each line shows the pool's index, its state, its layout (`N disks, data+parity`, or `directory` for
-one plain directory), the bytes z3 stores in it (measured every minute) and its free space.
+one plain directory), the bytes Zee3 stores in it (measured every minute) and its free space.
 
 | State | Meaning |
 | --- | --- |
 | `active` | Takes new data |
 | `draining` | Being decommissioned: no new data, everything moving out |
-| `decommissioned` | Empty and taking no data; remove it from `Z3_POOLS` and restart |
+| `decommissioned` | Empty and taking no data; remove it from `ZEE3_POOLS` and restart |
 
 The last line describes the current or last operation, with its state (`running`, `done`, `failed`,
 `cancelled`), chunks and bytes moved, failures, and while it runs, how many directories it has gone
@@ -42,7 +42,7 @@ through.
 ## rebalance
 
 ```bash
-z3 admin pools rebalance --wait
+zee3 admin pools rebalance --wait
 ```
 
 ```
@@ -63,7 +63,7 @@ Error: rebalancing needs at least two active pools
 ## decommission
 
 ```bash
-z3 admin pools decommission 0 --wait
+zee3 admin pools decommission 0 --wait
 ```
 
 ```
@@ -73,14 +73,14 @@ decommission of pool 0: running, 5120 chunks moved (17.6 GiB), 0 failed, 40/256 
 decommission of pool 0: done, 412904 chunks moved (1.4 TiB), 0 failed
 ```
 
-`INDEX` is the pool's number in `z3 admin pools`. Decommission stops new data going to the pool,
+`INDEX` is the pool's number in `zee3 admin pools`. Decommission stops new data going to the pool,
 then moves everything in it to the other pools. Another active pool must be there to take the
-data. When it is done, the pool is `decommissioned`: remove it from `Z3_POOLS` and restart.
+data. When it is done, the pool is `decommissioned`: remove it from `ZEE3_POOLS` and restart.
 
 ## cancel
 
 ```bash
-z3 admin pools cancel
+zee3 admin pools cancel
 # cancelling
 ```
 
@@ -92,5 +92,5 @@ answer is `Error: no pool operation is running`.
 
 With `--wait`, `rebalance` and `decommission` print the operation's state every second until it
 ends, and exit with status 1 if it fails. Without it they return at once; check on them later with
-`z3 admin pools`. Only one operation runs on a node at a time (`409` from the API otherwise), and an
+`zee3 admin pools`. Only one operation runs on a node at a time (`409` from the API otherwise), and an
 operation interrupted by a restart continues where it stopped.

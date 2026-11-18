@@ -36,7 +36,7 @@ curl -X PUT localhost:9001/api/lean -H 'content-type: application/json' -d '{
 }'
 ```
 
-Or with the [CLI](#command-line): `z3 admin lean set --max-bytes 130GiB --max-age-days 30`.
+Or with the [CLI](#command-line): `zee3 admin lean set --max-bytes 130GiB --max-age-days 30`.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
@@ -122,13 +122,13 @@ data are separate choices:
 | Traffic: primary or standby | Where applications read and write | DNS, load balancer, VIP |
 | Storage: lean or full | Which node holds every byte | Lean Replica |
 
-To fail over to the full replica, point applications at it; nothing changes in z3. The lean node
+To fail over to the full replica, point applications at it; nothing changes in Zee3. The lean node
 keeps receiving replication and serving recent data. To fail back, point them at the lean node
 again; there is no data to move.
 
 ## Turn it off
 
-Turn the switch off in the console, `z3 admin lean disable`, or `PUT /api/lean` with
+Turn the switch off in the console, `zee3 admin lean disable`, or `PUT /api/lean` with
 `"enabled": false`. The lean node then fetches every evicted version back from the full replica,
 in the background:
 
@@ -148,17 +148,17 @@ Prometheus series on `/metrics`:
 
 | Metric | Labels | What it is |
 | --- | --- | --- |
-| `z3_lean_enabled` | | 1 when this node is a Lean Replica |
-| `z3_lean_local_bytes` | | Object data stored on this node, after deduplication |
-| `z3_lean_max_bytes` | | Keep window in bytes (0 when only by age) |
-| `z3_lean_stub_versions`, `z3_lean_stub_bytes` | `bucket` | Versions and bytes held only by the full replica |
-| `z3_lean_evicted_versions_total`, `z3_lean_evicted_bytes_total` | | Evicted since Lean Replica was first turned on |
-| `z3_lean_readthrough_requests_total` | `result`: `ok`, `peer_offline`, `disabled`, `error` | Fetches from the full replica |
-| `z3_lean_readthrough_bytes_total` | `peer` | Bytes read through from each peer |
-| `z3_lean_evict_blocked` | | 1 when over the keep window and nothing could be evicted |
-| `z3_lean_disk_floor` | | 1 while client writes are refused at the emergency floor |
+| `zee3_lean_enabled` | | 1 when this node is a Lean Replica |
+| `zee3_lean_local_bytes` | | Object data stored on this node, after deduplication |
+| `zee3_lean_max_bytes` | | Keep window in bytes (0 when only by age) |
+| `zee3_lean_stub_versions`, `zee3_lean_stub_bytes` | `bucket` | Versions and bytes held only by the full replica |
+| `zee3_lean_evicted_versions_total`, `zee3_lean_evicted_bytes_total` | | Evicted since Lean Replica was first turned on |
+| `zee3_lean_readthrough_requests_total` | `result`: `ok`, `peer_offline`, `disabled`, `error` | Fetches from the full replica |
+| `zee3_lean_readthrough_bytes_total` | `peer` | Bytes read through from each peer |
+| `zee3_lean_evict_blocked` | | 1 when over the keep window and nothing could be evicted |
+| `zee3_lean_disk_floor` | | 1 while client writes are refused at the emergency floor |
 
-Example alert: `z3_lean_evict_blocked == 1` for 30 minutes (the full replica has been
+Example alert: `zee3_lean_evict_blocked == 1` for 30 minutes (the full replica has been
 unreachable, or is lean too).
 
 The **Lean Replica** check in the [health report](/operations/support) fails at the emergency
@@ -167,11 +167,11 @@ floor and warns while eviction is blocked or a refill is running.
 ## Command line
 
 ```bash
-z3 admin lean                      # settings, state, usage
-z3 admin lean set --max-bytes 130GiB --max-age-days 30 --order lru --exclude config
-z3 admin lean set --read-through off
-z3 admin lean run                  # evict now
-z3 admin lean disable              # turn off and fetch everything back
+zee3 admin lean                      # settings, state, usage
+zee3 admin lean set --max-bytes 130GiB --max-age-days 30 --order lru --exclude config
+zee3 admin lean set --read-through off
+zee3 admin lean run                  # evict now
+zee3 admin lean disable              # turn off and fetch everything back
 ```
 
 `--max-bytes none` or `--max-age-days 0` removes that limit.
@@ -179,7 +179,7 @@ z3 admin lean disable              # turn off and fetch everything back
 ## Limits
 
 - Not available in [cluster mode](/deploy/cluster).
-- Every node of the replication group should run the same z3 version: a node without Lean
+- Every node of the replication group should run the same Zee3 version: a node without Lean
   Replica support cannot confirm, so nothing is evicted.
 - Metadata of every version stays on the lean node. The change log and tombstones are
   [pruned](/replication/overview#change-log-pruning) after 30 days by default.

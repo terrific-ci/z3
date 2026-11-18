@@ -1,9 +1,9 @@
 ---
 title: "Introduction"
-description: "z3 is S3-compatible object storage in one binary, with erasure coding, active-active replication, IAM, encryption and a web console."
+description: "Zee3 is S3-compatible object storage in one binary, with erasure coding, active-active replication, IAM, encryption and a web console."
 ---
 
-z3 is **one binary**, `z3`, that serves the S3 API, a web console and an admin API. Point any S3
+Zee3 is **one binary**, `zee3`, that serves the S3 API, a web console and an admin API. Point any S3
 client at it (the AWS CLI, boto3, rclone, `mc`, s3cmd) and store objects on one disk, on a set of
 disks with erasure coding, or across several sites that all accept writes.
 
@@ -12,12 +12,12 @@ peers pull only the chunks they don't have yet, and concurrent writes are resolv
 every node without losing either version.
 
 <Frame>
-  <img src="/images/overview.png" alt="The z3 console overview: objects, stored data, deduplication ratio, largest buckets, replication and disks" />
+  <img src="/images/overview.png" alt="The Zee3 console overview: objects, stored data, deduplication ratio, largest buckets, replication and disks" />
 </Frame>
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/get-started/quickstart">
-    Run z3 with Docker, sign in to the console and upload a file in a few minutes.
+    Run Zee3 with Docker, sign in to the console and upload a file in a few minutes.
   </Card>
   <Card title="Install" icon="download" href="/deploy/install">
     Docker image, Linux binaries, or a systemd service in one command.
@@ -30,7 +30,7 @@ every node without losing either version.
   </Card>
 </CardGroup>
 
-## What z3 does
+## What Zee3 does
 
 <AccordionGroup>
   <Accordion title="S3 API" icon="bucket">
@@ -72,7 +72,7 @@ every node without losing either version.
     Cloud KMS). See [Encryption](/security/encryption).
   </Accordion>
   <Accordion title="Data management" icon="clock-rotate-left">
-    Lifecycle rules, transitions to remote tiers (S3, MinIO or another z3, Google Cloud Storage,
+    Lifecycle rules, transitions to remote tiers (S3, MinIO or another Zee3, Google Cloud Storage,
     Azure Blob), Object Lock, bucket tags and quotas, compression and batch jobs. See
     [Lifecycle](/storage/lifecycle) and [Tiers](/storage/tiers).
   </Accordion>
@@ -92,7 +92,7 @@ every node without losing either version.
 On one machine with the same limits for each server (2 CPUs, 2 GiB of memory, one drive), measured
 with warp:
 
-| Workload | z3 1.0.0 | MinIO | RustFS |
+| Workload | Zee3 1.0.0 | MinIO | RustFS |
 |---|---|---|---|
 | PUT 1 MiB | **150.7 MiB/s** | 124.4 MiB/s | 102.2 MiB/s |
 | GET 1 MiB | **1,486 MiB/s** | 1,265 MiB/s | 609 MiB/s |
@@ -106,7 +106,7 @@ The setup, every workload and how to run it yourself are on [Benchmarks](/deploy
 ## One program
 
 The console is built into the binary, and so are the database, the replication protocol and the
-`z3 admin` command line. Run it without arguments to start a node; `z3 admin ...` manages a running
+`zee3 admin` command line. Run it without arguments to start a node; `zee3 admin ...` manages a running
 node through its admin API (see the [CLI](/cli/overview)).
 
 A node listens on three ports:
@@ -115,14 +115,14 @@ A node listens on three ports:
 | --- | --- | --- |
 | 9000 | `0.0.0.0:9000` | S3 API |
 | 9001 | `127.0.0.1:9001` | Console and admin API |
-| 9002 | `0.0.0.0:9002` | Replication API that peers pull from (only when `Z3_PEER_TOKEN` is set) |
+| 9002 | `0.0.0.0:9002` | Replication API that peers pull from (only when `ZEE3_PEER_TOKEN` is set) |
 
-z3 runs on Linux (amd64 and arm64) as a [Docker image](/deploy/docker), a
+Zee3 runs on Linux (amd64 and arm64) as a [Docker image](/deploy/docker), a
 [systemd service](/deploy/systemd) or the [release binaries](/deploy/install), and on macOS in Docker.
 
 ## Source and releases
 
-z3 is on GitHub at [terrific-ci/z3](https://github.com/terrific-ci/z3). Every release is published
+Zee3 is on GitHub at [terrific-ci/z3](https://github.com/terrific-ci/z3). Every release is published
 there with binaries for Linux, and as the Docker image
 [`terrificci/z3`](https://hub.docker.com/r/terrificci/z3).
 
@@ -135,11 +135,11 @@ there with binaries for Linux, and as the Docker image
   </Card>
 </CardGroup>
 
-## Support z3
+## Support Zee3
 
-z3 is free to use. If it is useful to you, you can support its development with a
+Zee3 is free to use. If it is useful to you, you can support its development with a
 contribution through [PayPal](https://www.paypal.com/paypalme/alfianlensun).
 
-<Card title="Support z3" icon="heart" href="https://www.paypal.com/paypalme/alfianlensun">
-  A one-time contribution through PayPal helps keep z3 going.
+<Card title="Support Zee3" icon="heart" href="https://www.paypal.com/paypalme/alfianlensun">
+  A one-time contribution through PayPal helps keep Zee3 going.
 </Card>

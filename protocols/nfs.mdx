@@ -3,7 +3,7 @@ title: "NFS"
 description: "Export buckets over NFSv3 to servers on a trusted network: one access key decides what clients may do, and only allowed addresses may mount."
 ---
 
-NFS lets Linux and Unix servers mount buckets as a file system. z3 serves **NFSv3 over TCP**, with
+NFS lets Linux and Unix servers mount buckets as a file system. Zee3 serves **NFSv3 over TCP**, with
 the mount service on the same port. Read the [overview](/protocols/overview) first for how buckets
 look as files and how permissions work.
 
@@ -48,30 +48,30 @@ turned off, NFS shows **Failed** with the reason.
         clients** (and **Read only** if needed), then turn on the switch.
 
       </Tab>
-      <Tab title="z3 admin">
+      <Tab title="zee3 admin">
 
         ```bash
-        z3 admin protocols enable nfs --set access_key=nfs-client --set allowed_clients=10.0.0.0/24
-        z3 admin settings set nfs read_only=true
+        zee3 admin protocols enable nfs --set access_key=nfs-client --set allowed_clients=10.0.0.0/24
+        zee3 admin settings set nfs read_only=true
         ```
 
       </Tab>
     </Tabs>
   </Step>
   <Step title="Mount on the client">
-    The **Mount** line on the Protocols page has the command. z3 serves NFS and the mount service on
+    The **Mount** line on the Protocols page has the command. Zee3 serves NFS and the mount service on
     one port, so pass both ports explicitly:
 
     ```bash
-    sudo mkdir -p /mnt/z3
-    sudo mount -t nfs -o vers=3,tcp,nolock,port=2049,mountport=2049 z3.example.com:/ /mnt/z3
-    ls /mnt/z3            # one folder per bucket
+    sudo mkdir -p /mnt/zee3
+    sudo mount -t nfs -o vers=3,tcp,nolock,port=2049,mountport=2049 zee3.example.com:/ /mnt/zee3
+    ls /mnt/zee3            # one folder per bucket
     ```
 
     In `/etc/fstab`:
 
     ```text
-    z3.example.com:/  /mnt/z3  nfs  vers=3,tcp,nolock,port=2049,mountport=2049,_netdev  0  0
+    zee3.example.com:/  /mnt/zee3  nfs  vers=3,tcp,nolock,port=2049,mountport=2049,_netdev  0  0
     ```
   </Step>
 </Steps>
@@ -86,7 +86,7 @@ turned off, NFS shows **Failed** with the reason.
   mount again.
 - **Locking** isn't supported: mount with `nolock`.
 - Symlinks and hard links aren't supported.
-- [Conditions](/access/conditions) see `aws:UserAgent` = `z3-nfs`. NFS requests carry no source
+- [Conditions](/access/conditions) see `aws:UserAgent` = `zee3-nfs`. NFS requests carry no source
   address for policies; the address check is `nfs.allowed_clients`.
 
 ## Not supported yet

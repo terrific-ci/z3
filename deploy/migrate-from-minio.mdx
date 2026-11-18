@@ -1,32 +1,32 @@
 ---
 title: "Migrate from MinIO"
-description: "Import every bucket, version and delete marker from MinIO or another S3 store, cut over with continuous import, and copy z3 configuration between nodes."
+description: "Import every bucket, version and delete marker from MinIO or another S3 store, cut over with continuous import, and copy Zee3 configuration between nodes."
 ---
 
-z3 can pull everything from MinIO, or any service that speaks the S3 API with Signature V4 (AWS S3,
-Ceph RGW, Garage, SeaweedFS, another z3). Give it an endpoint and credentials: it creates every
+Zee3 can pull everything from MinIO, or any service that speaks the S3 API with Signature V4 (AWS S3,
+Ceph RGW, Garage, SeaweedFS, another Zee3). Give it an endpoint and credentials: it creates every
 bucket with its versioning state and copies every version and delete marker, keeping version ids,
 timestamps and ETags.
 
 ## What is copied
 
-| From the source | In z3 |
+| From the source | In Zee3 |
 | --- | --- |
 | Buckets | Created with the same names |
 | Versioning state (`Enabled`, `Suspended`) | The same |
 | Every object version and delete marker | Copied |
-| Version ids | Kept. MinIO's UUIDs are used as they are; AWS-style ids are turned into stable z3 ids |
+| Version ids | Kept. MinIO's UUIDs are used as they are; AWS-style ids are turned into stable Zee3 ids |
 | Last-Modified | Kept, to the millisecond |
 | ETag | Kept, including multipart ETags (`...-N`) |
 | Content-Type, `x-amz-meta-*` metadata, tags | Kept |
 | Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Expires | Kept. Bodies are copied as they are, never decompressed |
 
-Old version ids keep working in `GET ?versionId=` on any version. z3 shows UUIDs without dashes but
+Old version ids keep working in `GET ?versionId=` on any version. Zee3 shows UUIDs without dashes but
 accepts them with dashes too.
 
 With `bucket_config` on, each bucket's lifecycle rules, bucket policy, tags, Object Lock
 configuration and default encryption come along too (see [Bucket configuration](#bucket-configuration)).
-Event notifications, quotas, users and IAM policies stay on the source. Set them up again in z3 (see
+Event notifications, quotas, users and IAM policies stay on the source. Set them up again in Zee3 (see
 [Users, groups and keys](/access/users-groups-keys)).
 
 **Verification.** A body is checked against the source's ETag when that ETag is a plain MD5, and its
@@ -79,7 +79,7 @@ Starting and managing imports needs the `admin:ConfigUpdate` right (root has it)
 | `continuous` | `false` | Repeat the import every `interval_secs`, so changes on the source keep arriving until you cut over |
 | `interval_secs` | `300` | Pause between rounds in continuous mode |
 | `bucket_config` | `false` | Also copy each bucket's lifecycle, policy, tags, Object Lock and default encryption (on by default in the console form) |
-| `mirror_deletes` | `false` | Delete in z3 what the job brought over and the source no longer has (see [Mirror deletions](#mirror-deletions)) |
+| `mirror_deletes` | `false` | Delete in Zee3 what the job brought over and the source no longer has (see [Mirror deletions](#mirror-deletions)) |
 | `mirror_dry_run` | `false` | With `mirror_deletes`: only count and sample what would be deleted |
 
 ## Manage jobs
@@ -93,17 +93,17 @@ Starting and managing imports needs the `admin:ConfigUpdate` right (root has it)
 | `PATCH /api/imports/{id}` | Change `mirror_deletes`, `mirror_dry_run`, `bucket_config`, `continuous` or `interval_secs`; a running job picks them up at its next bucket or round |
 | `DELETE /api/imports/{id}` | Stop and forget the job and its records; imported data stays |
 
-From a shell, `z3 admin import` does the same: `list`, `start <endpoint> --source-access-key K
+From a shell, `zee3 admin import` does the same: `list`, `start <endpoint> --source-access-key K
 --source-secret-key S [--buckets a,b] [--region R] [--continuous] [--interval N] [--concurrency N]
 [--mirror-deletes] [--dry-run] [--bucket-config]`, `status <id>`, `set <id> [--mirror-deletes true|false]
 [--dry-run true|false] [--bucket-config true|false] [--continuous true|false] [--interval N]`, `pause`,
-`resume` and `remove`. `Z3_IMPORT_SECRET` can hold the source secret key.
+`resume` and `remove`. `ZEE3_IMPORT_SECRET` can hold the source secret key.
 
-- **Resumable.** The position (bucket and listing marker) is saved after every page. After a z3
+- **Resumable.** The position (bucket and listing marker) is saved after every page. After a Zee3
   restart or a network failure the job continues from there.
 - **Idempotent.** Versions that already exist are skipped without downloading them again. A version
-  you have permanently deleted in z3 isn't brought back, and a null version from the source doesn't
-  overwrite a newer write in z3.
+  you have permanently deleted in Zee3 isn't brought back, and a null version from the source doesn't
+  overwrite a newer write in Zee3.
 
 ## Cut over from MinIO
 
@@ -114,7 +114,7 @@ From a shell, `z3 admin import` does the same: `list`, `start <endpoint> --sourc
   <Step title="Wait for the first round">
     The state turns to `waiting` once every bucket has been copied.
   </Step>
-  <Step title="Move clients to z3">
+  <Step title="Move clients to Zee3">
     Change the endpoint and credentials in your applications (see [Clients](/get-started/clients)).
   </Step>
   <Step title="Wait one more round">
@@ -131,22 +131,22 @@ From a shell, `z3 admin import` does the same: `list`, `start <endpoint> --sourc
 </Steps>
 
 <Note>
-  Without `mirror_deletes`, objects deleted on the source after they were imported stay in z3.
+  Without `mirror_deletes`, objects deleted on the source after they were imported stay in Zee3.
 </Note>
 
 ## Mirror deletions
 
-With `mirror_deletes`, a round that finishes listing a bucket deletes in z3 the versions the job brought
+With `mirror_deletes`, a round that finishes listing a bucket deletes in Zee3 the versions the job brought
 over that the source no longer lists:
 
-- The job keeps a record of every source version it imported, or found already in z3 exactly as at the
-  source. Only versions with such a record are ever deleted. Objects written directly to z3, by another
-  job, or by imports from before z3 kept these records are never touched, and neither are buckets
+- The job keeps a record of every source version it imported, or found already in Zee3 exactly as at the
+  source. Only versions with such a record are ever deleted. Objects written directly to Zee3, by another
+  job, or by imports from before Zee3 kept these records are never touched, and neither are buckets
   outside the job or buckets that disappear from the source.
 - Versions with an id are deleted by id. A delete marker on the source arrives as a delete marker, as
   in any import.
-- A null version (unversioned bucket) is deleted only while z3's null version still has the imported
-  ETag and time; a write in z3 since then is kept.
+- A null version (unversioned bucket) is deleted only while Zee3's null version still has the imported
+  ETag and time; a write in Zee3 since then is kept.
 - Deletions follow [deletion protection](/storage/deletion-protection) (versions go to the trash, with
   `import` as the deleter). A delete refused by [Object Lock](/storage/object-lock) is counted in
   `deletions_refused`, listed in `recent_errors` and tried again next round.
@@ -157,20 +157,20 @@ Records are written even while mirroring is off, so you can turn it on at cutove
 
 ## Bucket configuration
 
-With `bucket_config`, every round copies each bucket's configuration that z3 supports: Object Lock,
+With `bucket_config`, every round copies each bucket's configuration that Zee3 supports: Object Lock,
 default encryption, bucket policy, lifecycle rules and tags.
 
-| Situation in z3 | What happens |
+| Situation in Zee3 | What happens |
 | --- | --- |
 | No configuration of that kind yet | The source's is written |
 | Exactly what this job wrote last time | It follows the source: rewritten when the source changes, removed when the source drops it (Object Lock is never turned off) |
-| Set before the job first looked, or changed or removed in z3 since | Kept, with a message |
+| Set before the job first looked, or changed or removed in Zee3 since | Kept, with a message |
 
-Parts z3 cannot represent are skipped and listed with the reason, never dropped silently: lifecycle
-elements z3 doesn't have (such as `DelMarkerExpiration`), more than one transition, a storage class
-with no z3 [tier](/storage/tiers) of that name; policy statements with unknown fields (such as
+Parts Zee3 cannot represent are skipped and listed with the reason, never dropped silently: lifecycle
+elements Zee3 doesn't have (such as `DelMarkerExpiration`), more than one transition, a storage class
+with no Zee3 [tier](/storage/tiers) of that name; policy statements with unknown fields (such as
 `NotPrincipal`). If dropping a statement would remove a `Deny`, the whole policy is left out so access
-never becomes looser than at the source. Encryption with an SSE-KMS key z3 doesn't have, an algorithm
+never becomes looser than at the source. Encryption with an SSE-KMS key Zee3 doesn't have, an algorithm
 other than AES256 or aws:kms, or `BucketKeyEnabled` is skipped as well.
 
 The job shows the outcome per bucket and kind under `config` (`imported`, `unchanged`, `removed`,
@@ -178,27 +178,27 @@ The job shows the outcome per bucket and kind under `config` (`imported`, `uncha
 
 <Note>
   AWS gives every bucket SSE-S3 default encryption, so with `bucket_config` the imported buckets get
-  SSE-S3 default encryption in z3 too.
+  SSE-S3 default encryption in Zee3 too.
 </Note>
 
-## From MinIO to z3, side by side
+## From MinIO to Zee3, side by side
 
-| MinIO | z3 |
+| MinIO | Zee3 |
 | --- | --- |
-| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `Z3_ACCESS_KEY` / `Z3_SECRET_KEY` |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `ZEE3_ACCESS_KEY` / `ZEE3_SECRET_KEY` |
 | S3 API on 9000, console on 9001 | The same ports; the replication API is on 9002 |
-| `mc admin ...` | The console, the [admin API](/api/overview) and [`z3 admin`](/cli/overview) |
+| `mc admin ...` | The console, the [admin API](/api/overview) and [`zee3 admin`](/cli/overview) |
 | Bucket quota error `XMinioAdminBucketQuotaExceeded` | The same error code (see [Tags and quota](/storage/tags-and-quota)) |
 | `/minio/health/live`, `/ready`, `/cluster`, `/cluster/read` | The same paths on the S3 port, so load balancer and Kubernetes probes keep working |
-| `/minio/v2/metrics/*` with `mc admin prometheus generate` | The same paths and token, with z3's own metric names ([Prometheus metrics](/operations/prometheus#minios-metrics-paths)) |
+| `/minio/v2/metrics/*` with `mc admin prometheus generate` | The same paths and token, with Zee3's own metric names ([Prometheus metrics](/operations/prometheus#minios-metrics-paths)) |
 | The `x-minio-force-delete` header, `ListObjectsV2` with `metadata=true` | Supported ([MinIO compatibility](/api/s3-compatibility#minio-compatibility)) |
 | Site replication | [Site replication](/replication/site-replication), with HLC conflict resolution and delta chunks |
 
 S3 clients keep working with a new endpoint and credentials. Use path-style addressing.
 
-## Copy z3 configuration between nodes
+## Copy Zee3 configuration between nodes
 
-Once you run z3, the **configuration export** copies a node's setup to another z3 node or keeps it as
+Once you run Zee3, the **configuration export** copies a node's setup to another Zee3 node or keeps it as
 a backup: buckets with their versioning, replication, bucket policy, lifecycle, event rules, Object
 Lock, tags, quota and default encryption; IAM policies, users, groups and access keys; peers, event
 and audit targets, tiers, KMS keys and cluster settings. It holds no object data.
@@ -206,11 +206,11 @@ and audit targets, tiers, KMS keys and cluster settings. It holds no object data
 ```bash
 # On the old node: with secrets (users' secret keys, peer tokens, KMS keys)
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://old-node:9001/api/config/export?secrets=true" -o z3-config.json
+  "http://old-node:9001/api/config/export?secrets=true" -o zee3-config.json
 
 # On the new node
 curl -X POST -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-  --data-binary @z3-config.json http://new-node:9001/api/config/import
+  --data-binary @zee3-config.json http://new-node:9001/api/config/import
 ```
 
 Without `secrets=true`, users come back without secret keys and aren't created, peers without a token

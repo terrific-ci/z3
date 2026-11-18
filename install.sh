@@ -1,28 +1,28 @@
 #!/bin/sh
-# Install z3 on Linux: downloads the z3 binary of a GitHub release of
+# Install zee3 on Linux: downloads the zee3 binary of a GitHub release of
 # terrific-ci/z3, checks it against SHA256SUMS and puts it in /usr/local/bin.
 # Releases up to 1.0.1 also have macOS binaries (--version 1.0.1); on macOS,
 # run newer releases with Docker (terrificci/z3).
 #
 #   curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
 #
-# With --service (Linux) it also runs z3 as a systemd service: a z3 user, the
-# data directory /var/lib/z3, the settings file /etc/z3/z3.env, enabled and started.
+# With --service (Linux) it also runs zee3 as a systemd service: a zee3 user, the
+# data directory /var/lib/zee3, the settings file /etc/zee3/zee3.env, enabled and started.
 #
 #   curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --service
 #
 # Options (after `sh -s --` when piped):
-#   --service       also set up and start the z3 systemd service (Linux)
+#   --service       also set up and start the zee3 systemd service (Linux)
 #   --version X     install version X (default: the latest release)
 #   --dir DIR       install into DIR (default: /usr/local/bin)
 #   -h, --help
 #
-# Z3_VERSION and Z3_INSTALL_DIR work too. Running it again upgrades.
+# ZEE3_VERSION and ZEE3_INSTALL_DIR work too. Running it again upgrades.
 set -eu
 
 REPO=terrific-ci/z3
-VERSION=${Z3_VERSION:-latest}
-DIR=${Z3_INSTALL_DIR:-/usr/local/bin}
+VERSION=${ZEE3_VERSION:-latest}
+DIR=${ZEE3_INSTALL_DIR:-/usr/local/bin}
 SERVICE=""
 
 while [ $# -gt 0 ]; do
@@ -59,14 +59,18 @@ if [ "$VERSION" = latest ]; then
 fi
 VERSION=${VERSION#v}
 
-asset="z3-$VERSION-$os-$arch.tar.gz"
+# Releases before the rename to zee3 (1.0.x and older) ship a binary named z3.
+bin=zee3
+case "$VERSION" in 0.*|1.0.*) bin=z3 ;; esac
+[ "$bin" = zee3 ] || [ -z "$SERVICE" ] || die "--service needs zee3 1.1 or newer; v$VERSION is still named z3"
+asset="$bin-$VERSION-$os-$arch.tar.gz"
 base="https://github.com/$REPO/releases/download/v$VERSION"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-say "Downloading z3 $VERSION for $os/$arch"
+say "Downloading zee3 $VERSION for $os/$arch"
 if ! curl -fsSL -o "$tmp/$asset" "$base/$asset"; then
-  [ "$os" = darwin ] && die "release v$VERSION has no macOS build (the last one is 1.0.1: --version 1.0.1); run z3 with Docker instead: docker run -p 9000:9000 -p 9001:9001 terrificci/z3"
+  [ "$os" = darwin ] && die "release v$VERSION has no macOS build (the last one is 1.0.1: --version 1.0.1); run zee3 with Docker instead: docker run -p 9000:9000 -p 9001:9001 terrificci/z3"
   die "no $asset in release v$VERSION"
 fi
 curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" || die "no SHA256SUMS in release v$VERSION"
@@ -81,8 +85,8 @@ while [ ! -d "$probe" ]; do probe=$(dirname "$probe"); done
 SUDO=""
 if [ ! -w "$probe" ] && [ "$(id -u)" != 0 ]; then need sudo; SUDO=sudo; fi
 $SUDO mkdir -p "$DIR"
-$SUDO install -m 0755 "$tmp/z3" "$DIR/z3"
-say "Installed $DIR/z3 ($("$DIR/z3" --version 2>/dev/null || echo "z3 $VERSION"))"
+$SUDO install -m 0755 "$tmp/$bin" "$DIR/$bin"
+say "Installed $DIR/$bin ($("$DIR/$bin" --version 2>/dev/null || echo "$bin $VERSION"))"
 
 [ -n "$SERVICE" ] || exit 0
 [ "$os" = linux ] || die "--service sets up systemd, which is Linux only"
@@ -90,35 +94,35 @@ need systemctl
 SUDO=""
 [ "$(id -u)" = 0 ] || { need sudo; SUDO=sudo; }
 
-id z3 >/dev/null 2>&1 || $SUDO useradd --system --home /var/lib/z3 --shell /usr/sbin/nologin z3
-$SUDO mkdir -p /var/lib/z3 /etc/z3
-$SUDO chown z3:z3 /var/lib/z3
-if [ ! -f /etc/z3/z3.env ]; then
+id zee3 >/dev/null 2>&1 || $SUDO useradd --system --home /var/lib/zee3 --shell /usr/sbin/nologin zee3
+$SUDO mkdir -p /var/lib/zee3 /etc/zee3
+$SUDO chown zee3:zee3 /var/lib/zee3
+if [ ! -f /etc/zee3/zee3.env ]; then
   secret=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
-  $SUDO tee /etc/z3/z3.env >/dev/null <<ENV
-# z3 settings; see https://github.com/$REPO for every option.
-Z3_DATA_DIR=/var/lib/z3
-Z3_S3_ADDR=0.0.0.0:9000
-Z3_ADMIN_ADDR=127.0.0.1:9001
-Z3_PEER_ADDR=0.0.0.0:9002
-Z3_ACCESS_KEY=admin
-Z3_SECRET_KEY=$secret
+  $SUDO tee /etc/zee3/zee3.env >/dev/null <<ENV
+# zee3 settings; see https://github.com/$REPO for every option.
+ZEE3_DATA_DIR=/var/lib/zee3
+ZEE3_S3_ADDR=0.0.0.0:9000
+ZEE3_ADMIN_ADDR=127.0.0.1:9001
+ZEE3_PEER_ADDR=0.0.0.0:9002
+ZEE3_ACCESS_KEY=admin
+ZEE3_SECRET_KEY=$secret
 ENV
-  $SUDO chmod 0640 /etc/z3/z3.env
-  $SUDO chown root:z3 /etc/z3/z3.env
-  say "Wrote /etc/z3/z3.env with a random root secret key"
+  $SUDO chmod 0640 /etc/zee3/zee3.env
+  $SUDO chown root:zee3 /etc/zee3/zee3.env
+  say "Wrote /etc/zee3/zee3.env with a random root secret key"
 fi
-$SUDO tee /etc/systemd/system/z3.service >/dev/null <<UNIT
+$SUDO tee /etc/systemd/system/zee3.service >/dev/null <<UNIT
 [Unit]
-Description=z3 S3-compatible object storage
+Description=zee3 S3-compatible object storage
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=z3
-Group=z3
-EnvironmentFile=/etc/z3/z3.env
-ExecStart=$DIR/z3
+User=zee3
+Group=zee3
+EnvironmentFile=/etc/zee3/zee3.env
+ExecStart=$DIR/zee3
 Restart=on-failure
 LimitNOFILE=65536
 
@@ -126,5 +130,5 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 UNIT
 $SUDO systemctl daemon-reload
-$SUDO systemctl enable --now z3
-say "z3 is running: S3 API on :9000, console on http://127.0.0.1:9001 (credentials in /etc/z3/z3.env)"
+$SUDO systemctl enable --now zee3
+say "zee3 is running: S3 API on :9000, console on http://127.0.0.1:9001 (credentials in /etc/zee3/zee3.env)"

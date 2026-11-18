@@ -1,15 +1,15 @@
 ---
 title: "Edge and branch offices"
-description: "Run z3 at branch offices that keep serving while the internet is down and sync themselves when it comes back: hub-spoke site replication, conflicts, on_offline and backlog monitoring."
+description: "Run Zee3 at branch offices that keep serving while the internet is down and sync themselves when it comes back: hub-spoke site replication, conflicts, on_offline and backlog monitoring."
 ---
 
-A z3 node at a branch office keeps serving reads and writes while its link to headquarters is
+A Zee3 node at a branch office keeps serving reads and writes while its link to headquarters is
 down, then syncs itself when the link comes back. There is nothing to do by hand: no resync, no
 restart, and no lost writes.
 
 This builds on regular [active-active replication](/replication/overview). Every node pulls its
 peers' change logs and stores its position (cursor) durably. When a link drops, the node simply
-stops pulling; when it comes back, it continues from the last cursor. On top of that, z3 adds:
+stops pulling; when it comes back, it continues from the last cursor. On top of that, Zee3 adds:
 
 1. **Offline status per peer**: when the peer last answered, and since when it is offline.
 2. **Backlogs**: how many changes are waiting to be sent to each peer, and how many are waiting
@@ -58,7 +58,7 @@ On both sides, while the link is down:
 | `quorum` / `all` mode | See [`on_offline`](#on_offline) | Waits for peers again |
 
 What does **not** work offline: reading geo erasure coded objects that need shards from another
-site, and session tokens (`x-z3-session`) for writes from another site that have not been
+site, and session tokens (`x-zee3-session`) for writes from another site that have not been
 applied yet (503 after the timeout). OIDC/LDAP sign-in and external KMS depend on where those
 servers run: if they are at headquarters, the branch cannot use them while offline.
 
@@ -155,12 +155,12 @@ a peer that answers with any other error is online.
 
 | Metric | Labels | Value |
 |---|---|---|
-| `z3_replication_offline` | `peer` | 1 while the peer is offline |
-| `z3_replication_offline_seconds` | `peer` | How long it has been offline (0 when online) |
-| `z3_replication_outgoing_entries` | `peer`, `bucket` | Entries the peer has not acknowledged (`<site>` for the site log) |
-| `z3_replication_lag_entries` | `peer`, `bucket` | Peer entries not applied here yet |
+| `zee3_replication_offline` | `peer` | 1 while the peer is offline |
+| `zee3_replication_offline_seconds` | `peer` | How long it has been offline (0 when online) |
+| `zee3_replication_outgoing_entries` | `peer`, `bucket` | Entries the peer has not acknowledged (`<site>` for the site log) |
+| `zee3_replication_lag_entries` | `peer`, `bucket` | Peer entries not applied here yet |
 
-Example alert: `z3_replication_offline_seconds > 3600` (a branch offline for more than an hour).
+Example alert: `zee3_replication_offline_seconds > 3600` (a branch offline for more than an hour).
 
 ### Console
 
@@ -198,6 +198,6 @@ from both sides on both, and the conflict recorded on both.
 - Change logs, tombstones and internal delete markers are not pruned yet.
 - Conflicts resolve automatically (highest HLC wins); there is no manual or rule-based
   resolution yet.
-- A hub or a branch can be a [cluster](/deploy/cluster#replication-with-other-z3-nodes). Its
+- A hub or a branch can be a [cluster](/deploy/cluster#replication-with-other-zee3-nodes). Its
   leader decides which peers are offline and the other members follow it every second, so
   `on_offline: local` works through any member.

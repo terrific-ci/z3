@@ -1,6 +1,6 @@
 ---
 title: "Prometheus metrics"
-description: "Scrape /metrics on the admin port: every metric z3 exposes, its type, labels and meaning."
+description: "Scrape /metrics on the admin port: every metric Zee3 exposes, its type, labels and meaning."
 ---
 
 Every node exposes Prometheus metrics at `/metrics` on the **admin port** (9001 by default). The
@@ -8,15 +8,15 @@ endpoint needs no sign-in, so Prometheus can scrape it directly.
 
 ```yaml prometheus.yml
 scrape_configs:
-  - job_name: z3
+  - job_name: zee3
     metrics_path: /metrics
     static_configs:
-      - targets: ["z3-jkt-1:9001", "z3-sby-1:9001", "z3-bdg-1:9001"]
+      - targets: ["zee3-jkt-1:9001", "zee3-sby-1:9001", "zee3-bdg-1:9001"]
 ```
 
 <Warning>
   The admin port listens on `127.0.0.1` by default. For Prometheus on another host, set
-  `Z3_ADMIN_ADDR=0.0.0.0:9001`, or scrape through a reverse proxy. `/metrics` lists bucket names
+  `ZEE3_ADMIN_ADDR=0.0.0.0:9001`, or scrape through a reverse proxy. `/metrics` lists bucket names
   and peer names, so keep it on a trusted network.
 </Warning>
 
@@ -28,38 +28,38 @@ them. The replication link counters are the exception: they carry over restarts 
 
 | Metric | Type | Meaning |
 | --- | --- | --- |
-| `z3_buckets` | gauge | Number of buckets |
-| `z3_objects` | gauge | Keys whose current version is a live object |
-| `z3_logical_bytes` | gauge | Bytes of all stored versions, as clients see them |
-| `z3_physical_bytes` | gauge | Bytes referenced in the chunk store after deduplication |
-| `z3_chunks` | gauge | Referenced chunks |
-| `z3_multipart_uploads` | gauge | Multipart uploads in progress |
+| `zee3_buckets` | gauge | Number of buckets |
+| `zee3_objects` | gauge | Keys whose current version is a live object |
+| `zee3_logical_bytes` | gauge | Bytes of all stored versions, as clients see them |
+| `zee3_physical_bytes` | gauge | Bytes referenced in the chunk store after deduplication |
+| `zee3_chunks` | gauge | Referenced chunks |
+| `zee3_multipart_uploads` | gauge | Multipart uploads in progress |
 
-`z3_logical_bytes / z3_physical_bytes` is the deduplication ratio.
+`zee3_logical_bytes / zee3_physical_bytes` is the deduplication ratio.
 
 ## Disks and healing
 
 | Metric | Type | Labels | Meaning |
 | --- | --- | --- | --- |
-| `z3_disk_online` | gauge | `disk`, `path` | `1` when the disk is usable, `0` when it is offline or foreign |
-| `z3_heal_shards_repaired_total` | counter | | Shards or copies rewritten by [healing](/durability/healing) |
-| `z3_heal_chunks_lost_total` | counter | | Chunks found with too few good shards to rebuild |
-| `z3_heal_chunks_lost` | gauge | | Chunks found lost and not repaired since |
-| `z3_heal_geo_shards_repaired_total` | counter | | This site's [geo shards](/replication/geo-erasure-coding#healing-across-sites) (or full chunks) rebuilt from other sites |
-| `z3_heal_geo_chunks_failed_total` | counter | | Geo chunk repairs that failed because too few sites answered (counted per pass) |
-| `z3_heal_geo_unrepairable` | gauge | | Geo chunks the last repair pass could not rebuild from other sites |
-| `z3_orphan_chunks_deleted_total` | counter | | Unreferenced chunk files deleted by the [orphan sweep](/durability/healing#orphaned-chunks) |
-| `z3_orphan_bytes_freed_total` | counter | | Bytes freed by the orphan sweep |
+| `zee3_disk_online` | gauge | `disk`, `path` | `1` when the disk is usable, `0` when it is offline or foreign |
+| `zee3_heal_shards_repaired_total` | counter | | Shards or copies rewritten by [healing](/durability/healing) |
+| `zee3_heal_chunks_lost_total` | counter | | Chunks found with too few good shards to rebuild |
+| `zee3_heal_chunks_lost` | gauge | | Chunks found lost and not repaired since |
+| `zee3_heal_geo_shards_repaired_total` | counter | | This site's [geo shards](/replication/geo-erasure-coding#healing-across-sites) (or full chunks) rebuilt from other sites |
+| `zee3_heal_geo_chunks_failed_total` | counter | | Geo chunk repairs that failed because too few sites answered (counted per pass) |
+| `zee3_heal_geo_unrepairable` | gauge | | Geo chunks the last repair pass could not rebuild from other sites |
+| `zee3_orphan_chunks_deleted_total` | counter | | Unreferenced chunk files deleted by the [orphan sweep](/durability/healing#orphaned-chunks) |
+| `zee3_orphan_bytes_freed_total` | counter | | Bytes freed by the orphan sweep |
 
 ## S3 traffic
 
 | Metric | Type | Meaning |
 | --- | --- | --- |
-| `z3_s3_requests_total` | counter | S3 requests since start |
-| `z3_s3_client_errors_total` | counter | S3 requests answered with a 4xx status |
-| `z3_s3_server_errors_total` | counter | S3 requests answered with a 5xx status |
-| `z3_s3_received_bytes_total` | counter | Request body bytes received over S3 |
-| `z3_s3_sent_bytes_total` | counter | Response body bytes sent over S3 |
+| `zee3_s3_requests_total` | counter | S3 requests since start |
+| `zee3_s3_client_errors_total` | counter | S3 requests answered with a 4xx status |
+| `zee3_s3_server_errors_total` | counter | S3 requests answered with a 5xx status |
+| `zee3_s3_received_bytes_total` | counter | Request body bytes received over S3 |
+| `zee3_s3_sent_bytes_total` | counter | Response body bytes sent over S3 |
 
 Byte counts come from the `Content-Length` of requests and responses.
 
@@ -69,12 +69,12 @@ Each series has a `bucket` label.
 
 | Metric | Type | Meaning |
 | --- | --- | --- |
-| `z3_bucket_objects` | gauge | Live objects in the bucket |
-| `z3_bucket_size_bytes` | gauge | Bytes of all stored versions in the bucket |
-| `z3_bucket_requests_total` | counter | S3 requests for the bucket since start |
-| `z3_bucket_errors_total` | counter | S3 requests for the bucket answered with an error |
-| `z3_bucket_received_bytes_total` | counter | Bytes received for the bucket |
-| `z3_bucket_sent_bytes_total` | counter | Bytes sent from the bucket |
+| `zee3_bucket_objects` | gauge | Live objects in the bucket |
+| `zee3_bucket_size_bytes` | gauge | Bytes of all stored versions in the bucket |
+| `zee3_bucket_requests_total` | counter | S3 requests for the bucket since start |
+| `zee3_bucket_errors_total` | counter | S3 requests for the bucket answered with an error |
+| `zee3_bucket_received_bytes_total` | counter | Bytes received for the bucket |
+| `zee3_bucket_sent_bytes_total` | counter | Bytes sent from the bucket |
 
 Requests count for a bucket by their path (path-style addressing).
 
@@ -87,34 +87,34 @@ They reset only when the link is removed.
 
 | Metric | Type | Meaning |
 | --- | --- | --- |
-| `z3_replication_up` | gauge | `1` when the link is streaming |
-| `z3_replication_paused` | gauge | `1` outside the peer's replication windows |
-| `z3_replication_lag_entries` | gauge | Peer change-log entries not applied here yet |
-| `z3_replication_lag_seconds` | gauge | Age of the oldest change not applied yet (0 when caught up) |
-| `z3_replication_last_delay_seconds` | gauge | From the origin's commit to the local apply, for the last change |
-| `z3_replication_applied_total` | counter | Changes applied from the peer |
-| `z3_replication_conflicts_total` | counter | Concurrent writes resolved by HLC |
-| `z3_replication_errors_total` | counter | Failed replication attempts |
-| `z3_replication_bytes_wire_total` | counter | Bytes received over the network |
-| `z3_replication_bytes_raw_total` | counter | Chunk bytes stored after decompression |
-| `z3_replication_bytes_deduplicated_total` | counter | Chunk bytes not transferred because they were already here |
-| `z3_replication_throttled_seconds_total` | counter | Time spent waiting for the peer's bandwidth limit |
-| `z3_replication_geo_chunks_total` | counter | [Geo-erasure-coded](/replication/geo-erasure-coding) chunks for which only this site's shards were fetched |
+| `zee3_replication_up` | gauge | `1` when the link is streaming |
+| `zee3_replication_paused` | gauge | `1` outside the peer's replication windows |
+| `zee3_replication_lag_entries` | gauge | Peer change-log entries not applied here yet |
+| `zee3_replication_lag_seconds` | gauge | Age of the oldest change not applied yet (0 when caught up) |
+| `zee3_replication_last_delay_seconds` | gauge | From the origin's commit to the local apply, for the last change |
+| `zee3_replication_applied_total` | counter | Changes applied from the peer |
+| `zee3_replication_conflicts_total` | counter | Concurrent writes resolved by HLC |
+| `zee3_replication_errors_total` | counter | Failed replication attempts |
+| `zee3_replication_bytes_wire_total` | counter | Bytes received over the network |
+| `zee3_replication_bytes_raw_total` | counter | Chunk bytes stored after decompression |
+| `zee3_replication_bytes_deduplicated_total` | counter | Chunk bytes not transferred because they were already here |
+| `zee3_replication_throttled_seconds_total` | counter | Time spent waiting for the peer's bandwidth limit |
+| `zee3_replication_geo_chunks_total` | counter | [Geo-erasure-coded](/replication/geo-erasure-coding) chunks for which only this site's shards were fetched |
 
 ## MinIO's metrics paths
 
 Prometheus jobs set up for MinIO can scrape the **S3 port** instead: `/minio/v2/metrics/cluster`,
-`/node`, `/bucket` and `/resource` answer the same metrics as `/metrics`, with z3's own names
+`/node`, `/bucket` and `/resource` answer the same metrics as `/metrics`, with Zee3's own names
 (MinIO's dashboards and alert rules won't match them). They need the bearer token that
 `mc admin prometheus generate` writes, for an access key whose user has `admin:Prometheus`.
 
 ```yaml prometheus.yml
 scrape_configs:
-  - job_name: z3-minio-path
+  - job_name: zee3-minio-path
     metrics_path: /minio/v2/metrics/cluster
     bearer_token: <token from mc admin prometheus generate>
     static_configs:
-      - targets: ["z3-jkt-1:9000"]
+      - targets: ["zee3-jkt-1:9000"]
 ```
 
 Each node still reports only itself, whichever path you use.
@@ -123,23 +123,23 @@ Each node still reports only itself, whichever path you use.
 
 ```promql
 # S3 requests per second, per node
-sum by (instance) (rate(z3_s3_requests_total[5m]))
+sum by (instance) (rate(zee3_s3_requests_total[5m]))
 
 # Share of S3 requests answered with a 5xx
-rate(z3_s3_server_errors_total[5m]) / rate(z3_s3_requests_total[5m])
+rate(zee3_s3_server_errors_total[5m]) / rate(zee3_s3_requests_total[5m])
 
 # The ten busiest buckets
-topk(10, rate(z3_bucket_requests_total[5m]))
+topk(10, rate(zee3_bucket_requests_total[5m]))
 
 # Disks that are offline
-z3_disk_online == 0
+zee3_disk_online == 0
 
 # Replication links more than 5 minutes behind
-z3_replication_lag_seconds > 300
+zee3_replication_lag_seconds > 300
 
 # Links that are not streaming and not paused on purpose
-z3_replication_up == 0 and z3_replication_paused == 0
+zee3_replication_up == 0 and zee3_replication_paused == 0
 ```
 
 For the raw format of the endpoint, see [Prometheus endpoint](/api/prometheus). For history
-without Prometheus, z3 keeps its own [metrics](/operations/metrics) for up to three years.
+without Prometheus, Zee3 keeps its own [metrics](/operations/metrics) for up to three years.

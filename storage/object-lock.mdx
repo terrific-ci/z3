@@ -186,6 +186,6 @@ Set them when writing, with the `x-amz-object-lock-*` headers on `PutObject`, `C
 
 ## Not supported yet
 
-- `ObjectLockToken` in `PutObjectLockConfiguration` is ignored, and z3 doesn't require
+- `ObjectLockToken` in `PutObjectLockConfiguration` is ignored, and Zee3 doesn't require
   `Content-MD5` on Object Lock requests as AWS does.
 - Imports from MinIO or another S3 store don't bring retention along: imported versions have no lock.

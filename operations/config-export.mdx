@@ -3,7 +3,7 @@ title: "Config export and import"
 description: "Save a node's configuration as one JSON file, and apply it to the same node or another one."
 ---
 
-z3 can save its whole configuration as one JSON document: buckets and their settings, IAM, event
+Zee3 can save its whole configuration as one JSON document: buckets and their settings, IAM, event
 destinations, audit targets, peers, KMS keys, tiers and cluster settings. Import applies such a
 file to a node. Use it to back a configuration up, or to set up a second node like the first.
 
@@ -34,7 +34,7 @@ The top of the file says what it is:
 
 ```json
 {
-  "z3_config": 1,
+  "zee3_config": 1,
   "exported_ms": 1794921056000,
   "node_id": "01a1e9a0-be79-7462-83e2-8685ea015598",
   "includes_secrets": false,
@@ -77,10 +77,10 @@ downloads the JSON file.
 
 ```bash
 curl -fsS -H "Authorization: Bearer $TOKEN" \
-  "http://127.0.0.1:9001/api/config/export?secrets=false" -o z3-config.json
+  "http://127.0.0.1:9001/api/config/export?secrets=false" -o zee3-config.json
 ```
 
-The answer suggests the file name `z3-config-<unix time>.json` and is sent with
+The answer suggests the file name `zee3-config-<unix time>.json` and is sent with
 `Cache-Control: no-store`.
 
   </Tab>
@@ -104,7 +104,7 @@ the node already has for the same kind of KMS; a node with none skips them and s
 
 ```bash
 curl -fsS -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  --data-binary @z3-config.json http://127.0.0.1:9001/api/config/import
+  --data-binary @zee3-config.json http://127.0.0.1:9001/api/config/import
 ```
 
 ```json
@@ -134,6 +134,6 @@ How things are applied:
   imported.
 - The site replication configuration is never imported: set it up on the Replication page, which
   configures every site at once ([Site replication](/replication/site-replication)).
-- A file whose `z3_config` is not `1` is refused.
+- A file whose `zee3_config` is not `1` is refused.
 
 Anything that cannot be applied is listed in `skipped`, and the rest still applies.

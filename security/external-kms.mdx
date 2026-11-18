@@ -3,13 +3,13 @@ title: "External KMS"
 description: "Seal data keys with HashiCorp Vault, MinIO KES, AWS KMS, Azure Key Vault or Google Cloud KMS, check its health, keep older key stores as retired ones, and move objects between them."
 ---
 
-By default, data keys of [encrypted objects](/security/encryption) are sealed by z3's **internal
+By default, data keys of [encrypted objects](/security/encryption) are sealed by Zee3's **internal
 KMS**. You can hand that job to an external key manager instead. Self-hosted:
 
 | | HashiCorp Vault (Transit secrets engine) | MinIO KES |
 | --- | --- | --- |
 | Endpoint | `https://vault.example.com:8200` | `https://kes.example.com:7373` |
-| Authentication | A token, or AppRole (role id and secret id; z3 logs in again before the lease runs out or when a request is refused) | Mutual TLS: a client certificate and private key (PEM) |
+| Authentication | A token, or AppRole (role id and secret id; Zee3 logs in again before the lease runs out or when a request is refused) | Mutual TLS: a client certificate and private key (PEM) |
 | Options | Transit mount (default `transit`), AppRole mount (default `approle`), namespace (Vault Enterprise, sent as `X-Vault-Namespace`) | |
 | API used | `transit/encrypt`, `transit/decrypt`, `transit/keys` (check, create, list), `sys/health` | `/v1/key/generate`, `/v1/key/encrypt`, `/v1/key/decrypt`, `/v1/key/create`, `/v1/key/describe`, `/v1/key/list`, `/v1/status` |
 
@@ -18,8 +18,8 @@ In the cloud:
 | | AWS KMS | Azure Key Vault | Google Cloud KMS |
 | --- | --- | --- | --- |
 | Location | A **region** (required). Optional endpoint override, for a VPC endpoint or a proxy; empty means `https://kms.<region>.amazonaws.com` | The **vault URL**: `https://<vault>.vault.azure.net`, or a Managed HSM | A **key ring**: `projects/<p>/locations/<l>/keyRings/<r>`. Optional endpoint override; empty means `https://cloudkms.googleapis.com` |
-| Authentication | Access key id and secret access key, with an optional session token for temporary credentials. z3 signs requests with Signature V4 itself | A service principal: tenant id, client id and client secret. Optional authority host (default `https://login.microsoftonline.com`) | A service account key (the JSON key file). Optional token URI override; empty uses the one in the key file |
-| New data keys | `GenerateDataKey` (`AES_256`) for new objects, `Encrypt` for rotation | z3 makes the data key and `wrapKey` wraps it: `RSA-OAEP-256` for RSA keys, `A256KW` for `oct` keys on Managed HSM | z3 makes the data key and `encrypt` wraps it |
+| Authentication | Access key id and secret access key, with an optional session token for temporary credentials. Zee3 signs requests with Signature V4 itself | A service principal: tenant id, client id and client secret. Optional authority host (default `https://login.microsoftonline.com`) | A service account key (the JSON key file). Optional token URI override; empty uses the one in the key file |
+| New data keys | `GenerateDataKey` (`AES_256`) for new objects, `Encrypt` for rotation | Zee3 makes the data key and `wrapKey` wraps it: `RSA-OAEP-256` for RSA keys, `A256KW` for `oct` keys on Managed HSM | Zee3 makes the data key and `encrypt` wraps it |
 | Opening | `Decrypt` without a key id: the ciphertext names its key, so pointing an alias at another key keeps old objects readable | `unwrapKey` with the key version that wrapped it | `decrypt` on the crypto key (the version is in the ciphertext) |
 | Checks | `DescribeKey` (the key must be `Enabled`, `ENCRYPT_DECRYPT`, `SYMMETRIC_DEFAULT`), `ListAliases` | Reads the key (latest version, type, `wrapKey` allowed), lists keys | Reads the crypto key (purpose `ENCRYPT_DECRYPT`, primary version enabled), lists crypto keys |
 
@@ -34,12 +34,12 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
 <Tabs>
   <Tab title="Vault">
 
-    Turn on the Transit engine and give z3 a policy for it:
+    Turn on the Transit engine and give Zee3 a policy for it:
 
     ```bash
     vault secrets enable transit
 
-    vault policy write z3 - <<'EOF'
+    vault policy write zee3 - <<'EOF'
     path "transit/encrypt/*" { capabilities = ["update"] }
     path "transit/decrypt/*" { capabilities = ["update"] }
     path "transit/keys/*"    { capabilities = ["create", "read", "update"] }
@@ -51,9 +51,9 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
 
     ```bash
     vault auth enable approle
-    vault write auth/approle/role/z3 token_policies=z3 token_ttl=1h token_max_ttl=24h
-    vault read auth/approle/role/z3/role-id
-    vault write -f auth/approle/role/z3/secret-id
+    vault write auth/approle/role/zee3 token_policies=zee3 token_ttl=1h token_max_ttl=24h
+    vault read auth/approle/role/zee3/role-id
+    vault write -f auth/approle/role/zee3/secret-id
     ```
 
     Adjust the paths if Transit is mounted somewhere other than `transit`.
@@ -61,12 +61,12 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
   </Tab>
   <Tab title="KES">
 
-    Create a client certificate for z3 and allow its identity the key APIs in the KES
+    Create a client certificate for Zee3 and allow its identity the key APIs in the KES
     configuration:
 
     ```yaml
     policy:
-      z3:
+      zee3:
         allow:
           - /v1/key/create/*
           - /v1/key/generate/*
@@ -76,7 +76,7 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
           - /v1/key/list/*
           - /v1/status
         identities:
-          - <identity of z3's client certificate>
+          - <identity of zee3's client certificate>
     ```
 
     `kes identity of client.crt` prints the identity.
@@ -87,11 +87,11 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
     Create the default key (a symmetric encrypt and decrypt key) and its alias:
 
     ```bash
-    aws kms create-key --description "z3 default key" --query KeyMetadata.KeyId --output text
-    aws kms create-alias --alias-name alias/z3-default --target-key-id <key id>
+    aws kms create-key --description "zee3 default key" --query KeyMetadata.KeyId --output text
+    aws kms create-alias --alias-name alias/zee3-default --target-key-id <key id>
     ```
 
-    Give z3 an IAM user with an access key and this policy:
+    Give Zee3 an IAM user with an access key and this policy:
 
     ```json
     {
@@ -110,11 +110,11 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
   </Tab>
   <Tab title="Azure">
 
-    Create the default key and a service principal for z3:
+    Create the default key and a service principal for Zee3:
 
     ```bash
-    az keyvault key create --vault-name rs-vault --name z3-default --kty RSA --size 3072
-    az ad sp create-for-rbac --name z3-kms   # prints appId (client id), password (secret), tenant
+    az keyvault key create --vault-name rs-vault --name zee3-default --kty RSA --size 3072
+    az ad sp create-for-rbac --name zee3-kms   # prints appId (client id), password (secret), tenant
     ```
 
     Give the service principal **get**, **wrapKey** and **unwrapKey** on keys, and **list** to
@@ -131,22 +131,22 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
   </Tab>
   <Tab title="Google Cloud">
 
-    Create a key ring, the default key and a service account for z3:
+    Create a key ring, the default key and a service account for Zee3:
 
     ```bash
-    gcloud kms keyrings create z3 --location asia-southeast2
-    gcloud kms keys create z3-default --keyring z3 --location asia-southeast2 --purpose encryption
+    gcloud kms keyrings create zee3 --location asia-southeast2
+    gcloud kms keys create zee3-default --keyring zee3 --location asia-southeast2 --purpose encryption
 
-    gcloud iam service-accounts create z3-kms
+    gcloud iam service-accounts create zee3-kms
     for role in roles/cloudkms.cryptoKeyEncrypterDecrypter roles/cloudkms.viewer; do
-      gcloud kms keyrings add-iam-policy-binding z3 --location asia-southeast2 \
-        --member serviceAccount:z3-kms@<project>.iam.gserviceaccount.com --role $role
+      gcloud kms keyrings add-iam-policy-binding zee3 --location asia-southeast2 \
+        --member serviceAccount:zee3-kms@<project>.iam.gserviceaccount.com --role $role
     done
-    gcloud iam service-accounts keys create z3-kms.json \
-      --iam-account z3-kms@<project>.iam.gserviceaccount.com
+    gcloud iam service-accounts keys create zee3-kms.json \
+      --iam-account zee3-kms@<project>.iam.gserviceaccount.com
     ```
 
-    **Cloud KMS Viewer** is needed because z3 reads each key before using it.
+    **Cloud KMS Viewer** is needed because Zee3 reads each key before using it.
 
   </Tab>
 </Tabs>
@@ -186,7 +186,7 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
       -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
       -d '{"kind": "vault", "endpoint": "https://vault.example.com:8200",
            "auth": "approle", "role_id": "...", "secret_id": "...",
-           "namespace": "", "mount": "transit", "ca_pem": "", "default_key": "z3-default"}'
+           "namespace": "", "mount": "transit", "ca_pem": "", "default_key": "zee3-default"}'
 
     # KES with mutual TLS
     curl -X PUT http://127.0.0.1:9001/api/kms/external \
@@ -211,8 +211,8 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
     # Google Cloud KMS
     curl -X PUT http://127.0.0.1:9001/api/kms/external \
       -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-      -d "{\"kind\": \"gcp\", \"key_ring\": \"projects/rs-prod/locations/asia-southeast2/keyRings/z3\",
-           \"service_account\": $(jq -Rs . < z3-kms.json)}"
+      -d "{\"kind\": \"gcp\", \"key_ring\": \"projects/rs-prod/locations/asia-southeast2/keyRings/zee3\",
+           \"service_account\": $(jq -Rs . < zee3-kms.json)}"
     ```
 
     `POST /api/kms/external/test` takes the same body and tries it without saving. Token auth
@@ -224,15 +224,15 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
 
 ## Keys
 
-- The **default key** (default `z3-default`) seals SSE-S3 data keys. Vault and KES create it when
+- The **default key** (default `zee3-default`) seals SSE-S3 data keys. Vault and KES create it when
   it's missing.
-- With **AWS, Azure and Google Cloud, z3 never creates keys**. Create the default key and every
+- With **AWS, Azure and Google Cloud, Zee3 never creates keys**. Create the default key and every
   SSE-KMS key in the cloud first. **Test connection** tells you when the default key is missing.
-- Named keys for SSE-KMS must **already exist** in the KMS. z3 checks first, because Transit would
+- Named keys for SSE-KMS must **already exist** in the KMS. Zee3 checks first, because Transit would
   otherwise quietly create a mistyped key on `encrypt`.
 - **Create key** on the Encryption page creates the key in Vault or KES. It's hidden for AWS, Azure
   and Google Cloud, and the API refuses it there.
-- External keys aren't deleted from z3. Delete them in the KMS itself, and only once no object
+- External keys aren't deleted from Zee3. Delete them in the KMS itself, and only once no object
   needs them.
 - Opened data keys are cached in memory for 5 minutes (at most 10,000), so repeated GETs don't
   always call the KMS.
@@ -254,7 +254,7 @@ quarters of their lifetime. A request refused with 401 gets a new token and one 
 The **Key store** panel shows which KMS seals new keys, the endpoint, the authentication and the
 default key, and its health: reachable, authenticated, the number of keys, the version and the
 latency. For a cloud KMS, healthy means the default key can be used; the number of keys shows when
-z3 may list them.
+Zee3 may list them.
 
 Errors say what went wrong: sign-in refused (for example `invalid_client` or
 `UnrecognizedClientException`), access denied (`AccessDeniedException`, `PERMISSION_DENIED`), key
@@ -313,11 +313,11 @@ target key and KMS are skipped.
 ```
 
 ```bash
-z3 admin batch start rotate.json --wait
+zee3 admin batch start rotate.json --wait
 ```
 
 Run one job per bucket. Once every object has moved, old internal keys may be deleted (the internal
-`z3-default` stays) and the retired key store may be forgotten. A `CopyObject` with the same
+`zee3-default` stays) and the retired key store may be forgotten. A `CopyObject` with the same
 encryption but a different KMS also reseals with the active KMS.
 
 ## Disconnect
@@ -350,12 +350,12 @@ stores. Their credentials are only in an export with secrets.
 
 - Setting the external KMS with environment variables at startup (only the console, the admin API
   and a configuration import).
-- Vault authentication other than token and AppRole (Kubernetes, TLS certificates). z3 makes its
+- Vault authentication other than token and AppRole (Kubernetes, TLS certificates). Zee3 makes its
   own data keys and Transit wraps them; Transit `datakey` isn't used.
 - AWS credentials from an instance profile, IRSA, `AssumeRole` or `~/.aws` (only an access key), and
   encryption context.
 - Azure managed identity, workload identity and certificate credentials (only a client secret).
 - Google Cloud Application Default Credentials, workload identity and the metadata server (only a
   service account key file).
-- Creating keys or aliases in AWS, Azure or Google Cloud from z3.
+- Creating keys or aliases in AWS, Azure or Google Cloud from Zee3.
 - Two configs of the same kind at once (for example two AWS accounts): a new one replaces the old one.

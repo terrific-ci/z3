@@ -3,7 +3,7 @@ title: "Watch events live"
 description: "Follow a bucket's events as they happen: ListenBucketNotification on the S3 port, mc event listen, and Watch live in the console."
 ---
 
-Besides sending events to [destinations](/events/destinations), z3 can stream them to whoever is
+Besides sending events to [destinations](/events/destinations), Zee3 can stream them to whoever is
 watching. Watching needs **no bucket rule**: you see every event of the bucket while the connection
 lasts. Events that happen while nobody watches are not kept for later.
 
@@ -17,7 +17,7 @@ There are three ways to watch:
 
 ## On the S3 port
 
-z3 answers MinIO's `ListenBucketNotification` request:
+Zee3 answers MinIO's `ListenBucketNotification` request:
 
 ```
 GET /{bucket}?events=s3:ObjectCreated:*&events=s3:ObjectRemoved:*&prefix=photos/&suffix=.jpg&ping=10
@@ -42,11 +42,11 @@ GET /{bucket}?events=s3:ObjectCreated:*&events=s3:ObjectRemoved:*&prefix=photos/
 ### With mc
 
 ```bash
-mc alias set z3 http://127.0.0.1:9000 z3admin z3admin-secret
-mc event listen z3/photos --event put,delete --prefix 2026/ --suffix .jpg
+mc alias set zee3 http://127.0.0.1:9000 zee3admin zee3admin-secret
+mc event listen zee3/photos --event put,delete --prefix 2026/ --suffix .jpg
 ```
 
-`mc watch z3/photos` works too.
+`mc watch zee3/photos` works too.
 
 ### With minio-go
 

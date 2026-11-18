@@ -38,7 +38,7 @@ and stream the live [trace and logs](/audit/trace-and-logs).
 ```json
 {
   "kind": "redis", "enabled": true, "endpoint": "10.0.0.5:6379", "user": "", "secret": "redis-password",
-  "key": "z3:objects", "format": "namespace", "queue_limit": 10000, "comment": "Object index",
+  "key": "zee3:objects", "format": "namespace", "queue_limit": 10000, "comment": "Object index",
   "tls": false, "tls_ca": "", "tls_skip_verify": false
 }
 ```
@@ -60,9 +60,9 @@ reason, such as `Redis needs a key` or `the endpoint is an amqp:// or amqps:// U
 {
   "targets": [
     {
-      "name": "hook", "kind": "webhook", "enabled": true, "endpoint": "https://hooks.example.com/z3",
+      "name": "hook", "kind": "webhook", "enabled": true, "endpoint": "https://hooks.example.com/zee3",
       "user": "", "has_secret": true, "key": "", "format": "access", "queue_limit": 0, "comment": "",
-      "arn": "arn:z3:sqs::hook:webhook", "used_by": ["logs"],
+      "arn": "arn:zee3:sqs::hook:webhook", "used_by": ["logs"],
       "status": { "queued": 0, "sent": 1204, "failed": 3, "dropped": 0, "online": true,
                   "last_sent_ms": 1794921056000, "last_error": null, "last_error_ms": null }
     }
@@ -144,9 +144,9 @@ Each message is `{"bucket", "key", "event", "record"}`, where `record` is the S3
 {
   "targets": [
     {
-      "name": "siem", "kind": "kafka", "enabled": true, "endpoint": "k1:9092,k2:9092", "user": "z3",
-      "has_secret": true, "key": "z3-audit", "format": "access", "queue_limit": 0, "comment": "",
-      "tls": true, "sasl": "scram-sha-512", "arn": "arn:z3:sqs::siem:kafka", "used_by": [],
+      "name": "siem", "kind": "kafka", "enabled": true, "endpoint": "k1:9092,k2:9092", "user": "zee3",
+      "has_secret": true, "key": "zee3-audit", "format": "access", "queue_limit": 0, "comment": "",
+      "tls": true, "sasl": "scram-sha-512", "arn": "arn:zee3:sqs::siem:kafka", "used_by": [],
       "status": { "queued": 412, "sent": 98123, "failed": 7, "dropped": 0, "online": false,
                   "last_sent_ms": 1794921000000, "last_error": "connection refused", "last_error_ms": 1794921056000 },
       "queue": { "on_disk": 412, "limit": 10000 }
@@ -157,7 +157,7 @@ Each message is `{"bucket", "key", "event", "record"}`, where `record` is the S3
 ```
 
 `queue.on_disk` counts waiting entries saved on disk, which survive a restart. `DELETE` on an unknown
-target answers `404`. `POST /api/audit/test` sends a test entry (`api.name` `z3:TestAudit`) and answers
+target answers `404`. `POST /api/audit/test` sends a test entry (`api.name` `zee3:TestAudit`) and answers
 `{"ok", "ms", "error"}`.
 
 ## Trace
@@ -179,7 +179,7 @@ target answers `404`. `POST /api/audit/test` sends a test entry (`api.name` `z3:
     "method": "GET", "path": "/logs/x", "query": "", "bucket": "logs", "object": "x",
     "status": 403, "duration_us": 1517, "rx": 0, "tx": 0, "access_key": "", "remote": "10.0.0.9",
     "user_agent": "curl/8.7.1",
-    "request_headers": { "accept": "*/*", "host": "z3.example.com:9000", "user-agent": "curl/8.7.1" },
+    "request_headers": { "accept": "*/*", "host": "zee3.example.com:9000", "user-agent": "curl/8.7.1" },
     "response_headers": { "content-type": "application/xml", "x-amz-request-id": "1A1E9A1C75B000044" }
   }
 ]
@@ -213,8 +213,8 @@ inclusive, lines of that same millisecond come again and can be skipped by `node
 
 ```json
 [
-  { "seq": 8, "time_ms": 1794921056093, "level": "warn", "target": "z3_server",
-    "message": "using default credentials; set Z3_ACCESS_KEY and Z3_SECRET_KEY before exposing this server", "fields": {} }
+  { "seq": 8, "time_ms": 1794921056093, "level": "warn", "target": "zee3_server",
+    "message": "using default credentials; set ZEE3_ACCESS_KEY and ZEE3_SECRET_KEY before exposing this server", "fields": {} }
 ]
 ```
 
@@ -261,5 +261,5 @@ With `scope=all`, `GET /api/trace` and `GET /api/logs` answer:
 Every entry carries `node` and `node_name`. Each node's `state` is `ok`, `connecting` or
 `unreachable`. For a history query (`since`, `until` or `history=true`), each node also has
 `history`: `disk`, or `memory` when that node has no history on disk (it is turned off, or the node
-runs an older z3); only its recent lines in memory are then included, filtered to the range. The streams send a `nodes` event with the same list at the start and whenever a
+runs an older Zee3); only its recent lines in memory are then included, filtered to the range. The streams send a `nodes` event with the same list at the start and whenever a
 node's state changes; a node that cannot be reached never fails the request.

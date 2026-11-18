@@ -1,23 +1,23 @@
 ---
 title: "API overview"
 sidebarTitle: "Overview"
-description: "The three HTTP APIs of a z3 node, how to sign in to the admin API, tokens, admin rights and errors."
+description: "The three HTTP APIs of a Zee3 node, how to sign in to the admin API, tokens, admin rights and errors."
 ---
 
-A z3 node serves three HTTP APIs, each on its own port:
+A Zee3 node serves three HTTP APIs, each on its own port:
 
 | API | Default address | Variable | For |
 | --- | --- | --- | --- |
-| S3 | `0.0.0.0:9000` | `Z3_S3_ADDR` | Applications and S3 clients ([S3 compatibility](/api/s3-compatibility)), and [STS](/api/sts) |
-| Admin | `127.0.0.1:9001` | `Z3_ADMIN_ADDR` | The console, the [CLI](/cli/overview) and automation: everything under `/api/`, plus [`/metrics`](/api/prometheus) |
-| Peer | `0.0.0.0:9002` | `Z3_PEER_ADDR` | Other z3 nodes: replication, and trace and logs for the all-nodes view. Off until `Z3_PEER_TOKEN` is set |
+| S3 | `0.0.0.0:9000` | `ZEE3_S3_ADDR` | Applications and S3 clients ([S3 compatibility](/api/s3-compatibility)), and [STS](/api/sts) |
+| Admin | `127.0.0.1:9001` | `ZEE3_ADMIN_ADDR` | The console, the [CLI](/cli/overview) and automation: everything under `/api/`, plus [`/metrics`](/api/prometheus) |
+| Peer | `0.0.0.0:9002` | `ZEE3_PEER_ADDR` | Other Zee3 nodes: replication, and trace and logs for the all-nodes view. Off until `ZEE3_PEER_TOKEN` is set |
 
 This section documents the **admin API**. It speaks JSON and is what the console uses, so anything
 the console does can be scripted.
 
 <Note>
   The admin API listens on `127.0.0.1` by default. To reach it from other machines, set
-  `Z3_ADMIN_ADDR=0.0.0.0:9001` and put an HTTPS reverse proxy in front
+  `ZEE3_ADMIN_ADDR=0.0.0.0:9001` and put an HTTPS reverse proxy in front
   ([TLS and proxies](/deploy/tls-and-proxies)).
 </Note>
 
@@ -29,15 +29,15 @@ Every `/api/` endpoint needs a session token, except the few listed under
 ```bash
 curl -X POST http://127.0.0.1:9001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"access_key": "z3admin", "secret_key": "z3admin-secret"}'
+  -d '{"access_key": "zee3admin", "secret_key": "zee3admin-secret"}'
 ```
 
 ```json
-{ "token": "729bdb67d66e36145d64112072f1df835f9022d6957e983f53c40e2a0f4b13a4", "access_key": "z3admin", "expires_in_secs": 43200 }
+{ "token": "729bdb67d66e36145d64112072f1df835f9022d6957e983f53c40e2a0f4b13a4", "access_key": "zee3admin", "expires_in_secs": 43200 }
 ```
 
 <ParamField body="access_key" type="string" required>
-  Any identity z3 knows: the root access key, an IAM user name, an access key, or an LDAP user name
+  Any identity Zee3 knows: the root access key, an IAM user name, an access key, or an LDAP user name
   when [LDAP](/access/openid-connect-ldap) is set up.
 </ParamField>
 

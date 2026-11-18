@@ -179,7 +179,7 @@ first, in the same shape: up to `limit` of them (1 to 1000, 1000 by default). Fo
 the last version id you got as `after`; a page shorter than `limit` is the last one.
 
 ```bash
-curl "$Z3_ADMIN_URL/api/buckets/photos/objects/versions?key=2026/a.jpg&limit=50&after=01a1ed6e..." \
+curl "$ZEE3_ADMIN_URL/api/buckets/photos/objects/versions?key=2026/a.jpg&limit=50&after=01a1ed6e..." \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -348,7 +348,7 @@ default.
 ```json
 {
   "kms": "internal",
-  "default_key": "z3-default",
+  "default_key": "zee3-default",
   "keys": [ { "name": "records-key", "created_ms": 1794834588308, "description": "Patient records",
               "default": false, "buckets": ["radiology"], "source": "internal" } ],
   "buckets": { "radiology": { "algorithm": "sse-kms", "key_id": "records-key" } },
@@ -372,7 +372,7 @@ KMS, Azure Key Vault or Google Cloud KMS.
 | --- | --- |
 | `kind` | `vault`, `kes`, `aws`, `azure` or `gcp` |
 | `endpoint` | Vault and KES: like `https://vault.example:8200`. Azure: the vault URL. AWS and Google Cloud: an optional override |
-| `default_key` | The key SSE-S3 seals with (default `z3-default`). Vault and KES create it when missing; in the cloud it must exist |
+| `default_key` | The key SSE-S3 seals with (default `zee3-default`). Vault and KES create it when missing; in the cloud it must exist |
 | `ca_pem` | PEM CA bundle for a private CA |
 | `mount` | Vault: the Transit mount (default `transit`) |
 | `namespace` | Vault Enterprise namespace |
@@ -414,7 +414,7 @@ read. See [External KMS](/security/external-kms).
 ```json
 {
   "tiers": [
-    { "name": "COLD", "kind": "s3", "endpoint": "https://s3.eu-west-1.amazonaws.com", "bucket": "z3-cold",
+    { "name": "COLD", "kind": "s3", "endpoint": "https://s3.eu-west-1.amazonaws.com", "bucket": "zee3-cold",
       "prefix": "jkt/", "region": "eu-west-1", "access_key": "AKIAEXAMPLE", "created_ms": 1794834588308,
       "objects": 120443, "bytes": 912003344221, "health": { "checked_ms": 1794921000000, "error": null },
       "used_by": ["radiology"] }

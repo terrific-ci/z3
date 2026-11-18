@@ -1,15 +1,15 @@
 ---
 title: "S3 compatibility"
-description: "Which S3 operations z3 supports, the extensions it adds, and the differences from AWS S3 to know about."
+description: "Which S3 operations Zee3 supports, the extensions it adds, and the differences from AWS S3 to know about."
 ---
 
-z3 speaks the S3 API on port 9000. AWS SDKs, the AWS CLI, `mc`, rclone, s3cmd and most S3 tools work
+Zee3 speaks the S3 API on port 9000. AWS SDKs, the AWS CLI, `mc`, rclone, s3cmd and most S3 tools work
 against it unchanged; point them at the endpoint and use path-style addressing. See
-[Clients](/get-started/clients). How z3 does against the MinIO Mint and ceph/s3-tests suites is on
+[Clients](/get-started/clients). How Zee3 does against the MinIO Mint and ceph/s3-tests suites is on
 [S3 conformance](/api/s3-conformance).
 
 ```bash
-export AWS_ACCESS_KEY_ID=z3admin AWS_SECRET_ACCESS_KEY=z3admin-secret AWS_DEFAULT_REGION=us-east-1
+export AWS_ACCESS_KEY_ID=zee3admin AWS_SECRET_ACCESS_KEY=zee3admin-secret AWS_DEFAULT_REGION=us-east-1
 aws --endpoint-url http://localhost:9000 s3 mb s3://photos
 aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 ```
@@ -71,7 +71,7 @@ not (an unsigned one in a presigned URL too, as MinIO allows).
 ## Storage class
 
 `x-amz-storage-class` on `PutObject`, `CopyObject` and `CreateMultipartUpload` takes `STANDARD` or
-`REDUCED_REDUNDANCY`. z3 stores it and returns it on `HeadObject`, `GetObject`,
+`REDUCED_REDUNDANCY`. Zee3 stores it and returns it on `HeadObject`, `GetObject`,
 `GetObjectAttributes` and in listings. It doesn't change how the data is stored.
 
 - Any other value is refused with `InvalidStorageClass`.
@@ -113,11 +113,11 @@ variant) that isn't a valid date is ignored, as AWS does.
 - `max-keys=0` returns an empty page that isn't truncated.
 - A negative `max-keys`, `max-uploads` or `max-parts` is `InvalidArgument`.
 - `ListObjectsV2` with `fetch-owner=true` returns each object's `Owner`. Every bucket has the same
-  owner, since z3 has one account.
+  owner, since Zee3 has one account.
 
 ## Object headers
 
-z3 stores these headers with an object and returns them on `GetObject` and `HeadObject`:
+Zee3 stores these headers with an object and returns them on `GetObject` and `HeadObject`:
 
 | Header | Example |
 | --- | --- |
@@ -134,18 +134,18 @@ z3 stores these headers with an object and returns them on `GetObject` and `Head
 - On `GetObject`, the query parameters `response-cache-control`, `response-content-disposition`,
   `response-content-encoding`, `response-content-language`, `response-content-type` and
   `response-expires` override the stored values for that response.
-- z3 never compresses or decompresses an object body because of these headers. An object uploaded
+- Zee3 never compresses or decompresses an object body because of these headers. An object uploaded
   with `Content-Encoding: gzip` comes back byte for byte. `aws-chunked` (a detail of signed
   streaming uploads) is not stored.
 - Bucket and site replication, cluster mode, [batch replicate](/storage/batch) and
   [import](/deploy/migrate-from-minio) carry them.
 - They are not user metadata: they are never returned as `x-amz-meta-*`, and they are not in the
-  `userMetadata` of [bucket events](/events/bucket-events). The names `x-amz-meta-z3-sys-*` are
-  reserved: z3 drops client metadata keys that start with `z3-sys-`.
+  `userMetadata` of [bucket events](/events/bucket-events). The names `x-amz-meta-zee3-sys-*` are
+  reserved: Zee3 drops client metadata keys that start with `zee3-sys-`.
 
 <Note>
   During a rolling upgrade, nodes still on an older release return these headers as
-  `x-amz-meta-z3-sys-*`. Upgrade every node of a replication group or cluster.
+  `x-amz-meta-zee3-sys-*`. Upgrade every node of a replication group or cluster.
 </Note>
 
 ## Responses
@@ -160,7 +160,7 @@ z3 stores these headers with an object and returns them on `GetObject` and `Head
 - **Signature V4**, in the `Authorization` header and in presigned URLs. Presigned URLs may ask for
   up to `api.presigned_max_expiry_secs` (7 days by default). With boto3, use
   `Config(signature_version="s3v4")` for presigned URLs.
-- **Signature V2** only when `api.sigv2` is on (`Z3_ENABLE_SIGV2`); it is off by default.
+- **Signature V2** only when `api.sigv2` is on (`ZEE3_ENABLE_SIGV2`); it is off by default.
 - **Anonymous requests** only where a [bucket policy](/access/bucket-policies) allows them.
 - **Temporary credentials** from [STS](/api/sts), with `x-amz-security-token`.
 - **Path-style addresses**: `http://host:9000/bucket/key`. Configure clients for path-style
@@ -192,12 +192,12 @@ z3 stores these headers with an object and returns them on `GetObject` and `Head
 | Tags per bucket | 50 |
 | Requests at once per node | `api.requests_max` (no limit by default); requests over it wait, then get `503 SlowDown` with `Retry-After` |
 
-## z3 extensions
+## Zee3 extensions
 
 | Header or code | Meaning |
 | --- | --- |
-| `x-z3-session` | Returned on every write. Send it back on a read at another site to read your own write there: the node waits until it has applied that write ([Replication](/replication/overview)) |
-| `x-z3-session-consistent: unverified` | On a read whose session token names a node this node does not pull the bucket from directly |
+| `x-zee3-session` | Returned on every write. Send it back on a read at another site to read your own write there: the node waits until it has applied that write ([Replication](/replication/overview)) |
+| `x-zee3-session-consistent: unverified` | On a read whose session token names a node this node does not pull the bucket from directly |
 | `x-amz-replication-status` | On `GetObject` and `HeadObject` of replicated buckets |
 | `x-amz-storage-class` | The [tier](/storage/tiers) name, once lifecycle moved a version to a tier |
 | `XMinioAdminBucketQuotaExceeded` | A write refused because the bucket's [quota](/storage/tags-and-quota) is full, as in MinIO |
@@ -212,7 +212,7 @@ For tools written against MinIO, the S3 port also serves:
 | `GET /minio/health/ready` | `200` once the node has started and enough disks are online to read |
 | `GET /minio/health/cluster` | `200` when writes can succeed: enough disks for a write and, in [cluster mode](/deploy/cluster), a known leader |
 | `GET /minio/health/cluster/read` | `200` when reads can succeed: enough disks for a read and, in cluster mode, a known leader |
-| `GET /minio/v2/metrics/cluster`, `/node`, `/bucket`, `/resource` | The node's [Prometheus metrics](/operations/prometheus), with z3's own metric names |
+| `GET /minio/v2/metrics/cluster`, `/node`, `/bucket`, `/resource` | The node's [Prometheus metrics](/operations/prometheus), with Zee3's own metric names |
 | `x-minio-force-delete: true` on `DeleteObject` | Permanently deletes every version of every key under the request's key |
 | `metadata=true` on `ListObjectsV2` | Each entry also carries `UserMetadata` (with the content type) and `UserTags` |
 
@@ -226,7 +226,7 @@ For tools written against MinIO, the S3 port also serves:
 
 ## Encryption
 
-SSE-S3, SSE-KMS (named keys in z3's own KMS, or an external Vault, KES, AWS KMS, Azure Key Vault or
+SSE-S3, SSE-KMS (named keys in Zee3's own KMS, or an external Vault, KES, AWS KMS, Azure Key Vault or
 Google Cloud KMS) and SSE-C, on `PutObject`, `CopyObject` and multipart uploads, plus bucket default
 encryption. Encrypted data stays encrypted on disk, in replication and in tiers. See
 [Encryption](/security/encryption).
@@ -234,19 +234,19 @@ encryption. Encrypted data stays encrypted on disk, in replication and in tiers.
 ## Differences from AWS S3
 
 <Warning>
-  Check these before you move an application to z3.
+  Check these before you move an application to Zee3.
 </Warning>
 
-- **`partNumber` on older objects:** z3 keeps the part sizes of multipart objects completed by
+- **`partNumber` on older objects:** Zee3 keeps the part sizes of multipart objects completed by
   releases after 1.0.2. A multipart object completed before that answers `partNumber` with
   `NotImplemented` (part 1 of a one-part upload still works); ranged reads work for every object.
   A replica asks its peers for the part sizes, so upgrade every node of a replication group.
 - **CORS** is set for the whole cluster with `api.cors_allow_origins`; per-bucket CORS
   (`PutBucketCors`, `GetBucketCors`) is not supported.
 - **Replication** is configured in the console or the [admin API](/api/admin-replication), not with
-  `PutBucketReplication`. It is active-active and pulls changes between z3 nodes.
+  `PutBucketReplication`. It is active-active and pulls changes between Zee3 nodes.
 - **Bucket notifications:** `TopicConfiguration` and `LambdaFunctionConfiguration` are refused; the
-  queue ARN is `arn:z3:sqs::<name>:<kind>` (or MinIO's `arn:minio:sqs::...`). Bucket-level events
+  queue ARN is `arn:zee3:sqs::<name>:<kind>` (or MinIO's `arn:minio:sqs::...`). Bucket-level events
   are not sent.
 - **Policy conditions:** `s3:ExistingObjectTag`,
   `s3:x-amz-server-side-encryption-customer-algorithm`, `s3:x-amz-acl` and `s3:x-amz-grant-*` are
@@ -262,6 +262,6 @@ encryption. Encrypted data stays encrypted on disk, in replication and in tiers.
   [S3 conformance](/api/s3-conformance#what-is-left-out) for every difference the test suites find.
 - **Copy sources** that are access points are not supported.
 - **STS:** `AssumeRole`, `AssumeRoleWithWebIdentity` and `AssumeRoleWithLDAPIdentity` only.
-  `RoleArn` is ignored (z3 has no roles); MFA and session tags on `AssumeRole` are refused; the root
+  `RoleArn` is ignored (Zee3 has no roles); MFA and session tags on `AssumeRole` are refused; the root
   credentials can't call `AssumeRole`. Temporary credentials work on the S3 API only.
 - Virtual-hosted-style addresses (`bucket.host`) are not served.

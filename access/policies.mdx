@@ -1,6 +1,6 @@
 ---
 title: "Policies"
-description: "Write AWS-style policies for S3 actions and z3 admin rights, use the built-in policies, and understand how z3 decides a request."
+description: "Write AWS-style policies for S3 actions and zee3 admin rights, use the built-in policies, and understand how Zee3 decides a request."
 ---
 
 A **policy** is a JSON document that allows or denies actions on buckets and objects. Policies are
@@ -11,7 +11,7 @@ console, the admin API and the [file protocols](/protocols/overview).
 
 ## Format
 
-z3 uses the AWS IAM policy format:
+Zee3 uses the AWS IAM policy format:
 
 ```json
 {
@@ -41,7 +41,7 @@ z3 uses the AWS IAM policy format:
 | `Resource` / `NotResource` | `arn:aws:s3:::bucket` for a bucket, `arn:aws:s3:::bucket/key` for objects, or `*`. Wildcards `*` and `?` work. A statement with only `admin:` actions needs no resource. |
 | `Condition` | Optional limits on address, HTTPS, time, prefix, headers or tags. See [Conditions](/access/conditions). Variables such as `${aws:username}` are replaced in condition values only, not in `Resource`. |
 
-`Principal` belongs only in [bucket policies](/access/bucket-policies). z3 checks every policy when
+`Principal` belongs only in [bucket policies](/access/bucket-policies). Zee3 checks every policy when
 it's saved and refuses unknown actions, malformed resources and unknown condition keys or
 operators, with a message naming the statement.
 

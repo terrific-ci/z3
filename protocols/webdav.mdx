@@ -14,13 +14,13 @@ look as files and how permissions work.
 
     Open **Protocols** and turn on **WebDAV**. The gear icon sets the **Address** (default
     `0.0.0.0:9005`). When it's running, the **Connect** line shows the URL, for example
-    `http://z3.example.com:9005/`.
+    `http://zee3.example.com:9005/`.
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="zee3 admin">
 
     ```bash
-    z3 admin protocols enable webdav --address 0.0.0.0:9005
+    zee3 admin protocols enable webdav --address 0.0.0.0:9005
     ```
 
   </Tab>
@@ -48,14 +48,14 @@ folders.
 <Tabs>
   <Tab title="macOS Finder">
 
-    In Finder, choose **Go → Connect to Server**, enter `http://z3.example.com:9005/` (or the
+    In Finder, choose **Go → Connect to Server**, enter `http://zee3.example.com:9005/` (or the
     `https://` address of your proxy), and sign in with the access key and secret key.
 
   </Tab>
   <Tab title="Windows">
 
     In File Explorer, choose **This PC → Map network drive**, and enter the URL, for example
-    `https://z3.example.com/` behind a TLS proxy. Sign in with the access key and secret key.
+    `https://zee3.example.com/` behind a TLS proxy. Sign in with the access key and secret key.
 
     Windows only sends Basic credentials over HTTPS by default, so use a TLS proxy in front of
     WebDAV rather than changing that.
@@ -65,27 +65,27 @@ folders.
 
     ```bash
     sudo apt install davfs2
-    sudo mkdir -p /mnt/z3
-    sudo mount -t davfs http://z3.example.com:9005/ /mnt/z3
+    sudo mkdir -p /mnt/zee3
+    sudo mount -t davfs http://zee3.example.com:9005/ /mnt/zee3
     # asks for the user name (access key) and password (secret key)
     ```
 
     To mount at boot, put the credentials in `/etc/davfs2/secrets`:
 
     ```text
-    http://z3.example.com:9005/  AKEXAMPLE  SECRETEXAMPLE
+    http://zee3.example.com:9005/  AKEXAMPLE  SECRETEXAMPLE
     ```
 
   </Tab>
   <Tab title="rclone">
 
     ```bash
-    rclone config create z3dav webdav \
-      url=http://z3.example.com:9005/ vendor=other \
+    rclone config create zee3dav webdav \
+      url=http://zee3.example.com:9005/ vendor=other \
       user=AKEXAMPLE pass=$(rclone obscure SECRETEXAMPLE)
 
-    rclone ls z3dav:photos
-    rclone copy ./scans z3dav:scans/2026
+    rclone ls zee3dav:photos
+    rclone copy ./scans zee3dav:scans/2026
     ```
 
     For S3-aware tools like rclone, the S3 API on port 9000 is usually the better choice. See
@@ -96,14 +96,14 @@ folders.
 
     ```bash
     # list buckets
-    curl -u AKEXAMPLE:SECRETEXAMPLE -X PROPFIND -H 'Depth: 1' http://z3.example.com:9005/
+    curl -u AKEXAMPLE:SECRETEXAMPLE -X PROPFIND -H 'Depth: 1' http://zee3.example.com:9005/
 
     # upload and download
-    curl -u AKEXAMPLE:SECRETEXAMPLE -T report.pdf http://z3.example.com:9005/docs/report.pdf
-    curl -u AKEXAMPLE:SECRETEXAMPLE -O http://z3.example.com:9005/docs/report.pdf
+    curl -u AKEXAMPLE:SECRETEXAMPLE -T report.pdf http://zee3.example.com:9005/docs/report.pdf
+    curl -u AKEXAMPLE:SECRETEXAMPLE -O http://zee3.example.com:9005/docs/report.pdf
 
     # make a folder (at the top level: a bucket)
-    curl -u AKEXAMPLE:SECRETEXAMPLE -X MKCOL http://z3.example.com:9005/docs/2026
+    curl -u AKEXAMPLE:SECRETEXAMPLE -X MKCOL http://zee3.example.com:9005/docs/2026
     ```
 
   </Tab>
@@ -117,7 +117,7 @@ folders.
 - `MOVE` renames files and folders (a folder up to 10,000 files); buckets can't be renamed.
 - `LOCK` and `UNLOCK` are answered without real locking, so Finder and Windows agree to write.
 - Policy [conditions](/access/conditions) see the client's address and its user agent (or
-  `z3-webdav` when it sends none). With a [trusted proxy](/access/conditions#trusted-proxies), the
+  `zee3-webdav` when it sends none). With a [trusted proxy](/access/conditions#trusted-proxies), the
   forwarded address and HTTPS are used.
 
 ## Not supported yet

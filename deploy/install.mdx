@@ -1,10 +1,10 @@
 ---
 title: "Install"
-description: "Get z3 as a Docker image, or as a Linux binary with the install script."
+description: "Get Zee3 as a Docker image, or as a Linux binary with the install script."
 ---
 
-z3 is one program, `z3`, that contains the S3 API, the admin API, the replication API and the web
-console. Without a command it runs a node; `z3 admin ...` manages a running node (see the
+Zee3 is one program, `zee3`, that contains the S3 API, the admin API, the replication API and the web
+console. Without a command it runs a node; `zee3 admin ...` manages a running node (see the
 [CLI](/cli/overview)).
 
 <CardGroup cols={2}>
@@ -33,7 +33,7 @@ Pin a version tag to choose when you upgrade. Continue with [Docker](/deploy/doc
 
 ## Install script
 
-On Linux, install the `z3` binary with one command:
+On Linux, install the `zee3` binary with one command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
@@ -41,12 +41,12 @@ curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
 
 The script picks the archive for the machine's CPU (amd64 or arm64)
 from the latest [GitHub release](https://github.com/terrific-ci/z3/releases), checks it against the
-release's `SHA256SUMS`, and puts `z3` in `/usr/local/bin` (asking for `sudo` when it needs to). Run
+release's `SHA256SUMS`, and puts `zee3` in `/usr/local/bin` (asking for `sudo` when it needs to). Run
 it again to upgrade.
 
 | Option | Meaning |
 | --- | --- |
-| `--service` | Also run z3 as a systemd service and start it (Linux only); see [systemd](/deploy/systemd) |
+| `--service` | Also run Zee3 as a systemd service and start it (Linux only); see [systemd](/deploy/systemd) |
 | `--version X` | Install version `X` (such as `1.0.1`) instead of the latest release |
 | `--dir DIR` | Install into `DIR` instead of `/usr/local/bin` |
 
@@ -56,33 +56,33 @@ Pass options after `sh -s --`:
 curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.0.1
 ```
 
-The environment variables `Z3_VERSION` and `Z3_INSTALL_DIR` do the same as `--version` and
+The environment variables `ZEE3_VERSION` and `ZEE3_INSTALL_DIR` do the same as `--version` and
 `--dir`.
 
 <Accordion title="Without the script">
-  Each release has one archive per CPU, each holding the `z3` binary, plus a `SHA256SUMS`
+  Each release has one archive per CPU, each holding the `zee3` binary, plus a `SHA256SUMS`
   file:
 
   | Platform | Archive |
   | --- | --- |
-  | Linux, x86-64 | `z3-<version>-linux-amd64.tar.gz` |
-  | Linux, ARM64 | `z3-<version>-linux-arm64.tar.gz` |
+  | Linux, x86-64 | `zee3-<version>-linux-amd64.tar.gz` |
+  | Linux, ARM64 | `zee3-<version>-linux-arm64.tar.gz` |
 
   ```bash
   VERSION=1.0.1
-  ASSET=z3-$VERSION-linux-amd64.tar.gz
+  ASSET=zee3-$VERSION-linux-amd64.tar.gz
   curl -fLO https://github.com/terrific-ci/z3/releases/download/v$VERSION/$ASSET
   curl -fLO https://github.com/terrific-ci/z3/releases/download/v$VERSION/SHA256SUMS
   grep " $ASSET\$" SHA256SUMS | sha256sum -c -
   tar -xzf $ASSET
-  sudo install -m 755 z3 /usr/local/bin/z3
+  sudo install -m 755 zee3 /usr/local/bin/zee3
   ```
 
 </Accordion>
 
 <Note>
-  On macOS, run z3 with [Docker](/deploy/docker). Releases up to 1.0.1 also have macOS binaries
-  (`z3-<version>-darwin-arm64.tar.gz` and `-darwin-amd64`), which the install script installs with
+  On macOS, run Zee3 with [Docker](/deploy/docker). Releases up to 1.0.1 also have macOS binaries
+  (`zee3-<version>-darwin-arm64.tar.gz` and `-darwin-amd64`), which the install script installs with
   `--version 1.0.1`.
 </Note>
 
@@ -91,14 +91,14 @@ The console is built into the binary; there is nothing else to install.
 ## Check that it runs
 
 ```bash
-z3 --version
-z3 --help           # every option, with its environment variable
+zee3 --version
+zee3 --help           # every option, with its environment variable
 ```
 
 Start a node in the current directory to try it (data goes to `./data`):
 
 ```bash
-Z3_ACCESS_KEY=admin Z3_SECRET_KEY=change-me-please z3
+ZEE3_ACCESS_KEY=admin ZEE3_SECRET_KEY=change-me-please zee3
 ```
 
 Then open `http://127.0.0.1:9001`. See the [Quickstart](/get-started/quickstart) for the first
@@ -111,13 +111,13 @@ bucket.
     [Docker](/deploy/docker) or [systemd](/deploy/systemd).
   </Step>
   <Step title="Set the root credentials">
-    `Z3_ACCESS_KEY` and `Z3_SECRET_KEY`, before the first start. See
+    `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY`, before the first start. See
     [Configuration](/deploy/configuration#root-credentials).
   </Step>
   <Step title="Give it disks">
     One directory, or several disks with erasure coding. See [Disks](/deploy/disks).
   </Step>
   <Step title="Put TLS in front">
-    z3 serves plain HTTP. See [TLS and reverse proxies](/deploy/tls-and-proxies).
+    Zee3 serves plain HTTP. See [TLS and reverse proxies](/deploy/tls-and-proxies).
   </Step>
 </Steps>

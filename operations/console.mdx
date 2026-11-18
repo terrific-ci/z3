@@ -1,10 +1,10 @@
 ---
 title: "Web console"
-description: "A tour of the z3 console: every page, what it shows, who sees it, and Find (Cmd K)."
+description: "A tour of the Zee3 console: every page, what it shows, who sees it, and Find (Cmd K)."
 ---
 
-The console is z3's web interface. The same `z3` binary serves it on the admin port
-(`Z3_ADMIN_ADDR`, `http://127.0.0.1:9001` by default), next to the [admin API](/api/overview) it
+The console is Zee3's web interface. The same `zee3` binary serves it on the admin port
+(`ZEE3_ADMIN_ADDR`, `http://127.0.0.1:9001` by default), next to the [admin API](/api/overview) it
 uses. There is nothing else to install.
 
 <Frame>
@@ -13,9 +13,9 @@ uses. There is nothing else to install.
 
 ## Signing in
 
-Sign in with any identity z3 knows:
+Sign in with any identity Zee3 knows:
 
-- the root account (`Z3_ACCESS_KEY` and `Z3_SECRET_KEY`),
+- the root account (`ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY`),
 - an IAM user (user name and secret key),
 - an access key and its secret,
 - an LDAP account, or **single sign-on** through OpenID Connect, when an
@@ -30,7 +30,7 @@ restart signs everyone out. Disabling a user or a key ends its sessions at once.
 
 <Note>
   The admin port listens on `127.0.0.1` by default. To open the console to the network, set
-  `Z3_ADMIN_ADDR=0.0.0.0:9001` and put an HTTPS reverse proxy in front of it
+  `ZEE3_ADMIN_ADDR=0.0.0.0:9001` and put an HTTPS reverse proxy in front of it
   ([TLS and proxies](/deploy/tls-and-proxies)).
 </Note>
 

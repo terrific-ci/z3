@@ -3,7 +3,7 @@ title: "Metrics"
 description: "Historical traffic, errors, CPU, memory and storage, node-wide and per bucket, kept for up to three years."
 ---
 
-z3 records traffic, resources and storage over time, node-wide and per bucket. The history
+Zee3 records traffic, resources and storage over time, node-wide and per bucket. The history
 survives restarts, so last night's spike or a month of growth stays visible.
 
 <Frame>
@@ -15,14 +15,14 @@ Prometheus, see [Prometheus metrics](/operations/prometheus).
 
 ## What is recorded
 
-At the end of every minute, z3 writes one point to `metrics.redb` in the data directory
-(`Z3_DATA_DIR`):
+At the end of every minute, Zee3 writes one point to `metrics.redb` in the data directory
+(`ZEE3_DATA_DIR`):
 
 | Node | Per bucket |
 | --- | --- |
 | S3 requests, reads and writes, 4xx and 5xx errors | Requests and errors |
 | Bytes received and sent | Bytes received and sent |
-| Average CPU and peak memory of the z3 process, host memory used | Objects and size (all versions) |
+| Average CPU and peak memory of the Zee3 process, host memory used | Objects and size (all versions) |
 | Buckets, objects, logical and physical bytes | |
 
 - Requests count on the S3 port only. A request counts for a bucket by its path (path-style
@@ -51,7 +51,7 @@ is the peak, and objects and sizes are the latest value.
 7 days, 30 days, 90 days, 1 year):
 
 - a summary: requests, error rate, bytes received and sent, objects, and size stored;
-- charts of requests, errors, traffic, storage, and the CPU and memory of the z3 process;
+- charts of requests, errors, traffic, storage, and the CPU and memory of the Zee3 process;
 - a table of buckets with their traffic over the range and their size now.
 
 Pick a bucket, from the dropdown or by clicking its row, to see its own charts.
@@ -65,11 +65,11 @@ Periods when the node was down show as gaps.
 ## From the CLI
 
 ```bash
-z3 admin metrics --range 7d
-z3 admin metrics --range 30d --bucket radiology
+zee3 admin metrics --range 7d
+zee3 admin metrics --range 30d --bucket radiology
 ```
 
-See [`z3 admin metrics`](/cli/metrics).
+See [`zee3 admin metrics`](/cli/metrics).
 
 ## From the API
 
@@ -85,6 +85,6 @@ See [`z3 admin metrics`](/cli/metrics).
 
 ## Per bucket in Prometheus
 
-`/metrics` carries per-bucket gauges and counters too (`z3_bucket_objects`,
-`z3_bucket_size_bytes`, `z3_bucket_requests_total`, and more). Prometheus counters count since the
+`/metrics` carries per-bucket gauges and counters too (`zee3_bucket_objects`,
+`zee3_bucket_size_bytes`, `zee3_bucket_requests_total`, and more). Prometheus counters count since the
 node started, as usual. See [Prometheus metrics](/operations/prometheus#per-bucket).

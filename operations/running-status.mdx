@@ -1,10 +1,10 @@
 ---
 title: "Running status"
-description: "Live S3 throughput, errors, and the CPU and memory of z3 and its host over the last hour."
+description: "Live S3 throughput, errors, and the CPU and memory of Zee3 and its host over the last hour."
 ---
 
 **Running Status** shows what a node is doing right now: S3 requests per second, upload and
-download throughput, and the CPU and memory of the z3 process and its host. It covers the last
+download throughput, and the CPU and memory of the Zee3 process and its host. It covers the last
 hour, sampled every 5 seconds.
 
 <Frame>
@@ -15,10 +15,10 @@ hour, sampled every 5 seconds.
 
 | Card | Contents |
 | --- | --- |
-| Readouts | Requests per second, upload, download, z3 CPU, z3 memory, host memory |
+| Readouts | Requests per second, upload, download, Zee3 CPU, Zee3 memory, host memory |
 | S3 requests | Requests and errors over the last hour |
 | Throughput | Bytes received and sent over the last hour |
-| z3 process | CPU and memory of the z3 process over the last hour |
+| Zee3 process | CPU and memory of the Zee3 process over the last hour |
 | Host | Host name, operating system, architecture, CPUs and cores, load average, memory in use |
 
 The page refreshes every 5 seconds.
@@ -46,7 +46,7 @@ curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:9001/api/status
   "started_ms": 1794834588308,
   "sample_secs": 5,
   "host": {
-    "hostname": "z3-jkt-1",
+    "hostname": "zee3-jkt-1",
     "os": "Linux 6.8 Ubuntu 24.04",
     "arch": "x86_64",
     "cpus": 16,
@@ -75,4 +75,4 @@ curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:9001/api/status
 - Each `history` sample holds the requests, errors and bytes **during** its 5 seconds, plus the
   process CPU and memory at that moment.
 
-The same totals feed the `z3_s3_*` counters of [Prometheus](/operations/prometheus#s3-traffic).
+The same totals feed the `zee3_s3_*` counters of [Prometheus](/operations/prometheus#s3-traffic).

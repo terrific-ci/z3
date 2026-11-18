@@ -1,17 +1,17 @@
 ---
 title: "Tiered storage"
-description: "Move old versions to AWS S3, MinIO or another z3, Google Cloud Storage or Azure Blob with lifecycle rules, and keep reading them through z3."
+description: "Move old versions to AWS S3, MinIO or another Zee3, Google Cloud Storage or Azure Blob with lifecycle rules, and keep reading them through Zee3."
 ---
 
 A **tier** is another storage service that [lifecycle rules](/storage/lifecycle) move old data to,
-so z3's own disks stay free for data that's in use. Objects that moved are still read through z3
+so Zee3's own disks stay free for data that's in use. Objects that moved are still read through Zee3
 as before; clients don't need to know where the data is. The tier's name shows up as the object's
 storage class.
 
 | Type | For | Credentials |
 | --- | --- | --- |
 | **AWS S3** | Amazon S3. Empty endpoint: `https://s3.<region>.amazonaws.com` | Access key and secret key |
-| **MinIO** | MinIO, another z3, Ceph, or any S3-compatible server, by its URL | Access key and secret key |
+| **MinIO** | MinIO, another Zee3, Ceph, or any S3-compatible server, by its URL | Access key and secret key |
 | **GCS** | Google Cloud Storage through its S3-compatible API. Empty endpoint: `https://storage.googleapis.com` | An HMAC key from **Interoperability** |
 | **Azure** | Azure Blob Storage. Empty endpoint: `https://<account>.blob.core.windows.net` | Storage account name and account key |
 
@@ -40,8 +40,8 @@ The bucket (for Azure, the container) must already exist on the other side.
        | **Access key** / **Account name** | |
        | **Secret key** / **Account key** | Stored sealed |
 
-    4. Save. Before saving, z3 writes and deletes a small object named
-       `<prefix>.z3-tier-check`. If that fails (wrong credentials, missing bucket, unreachable),
+    4. Save. Before saving, Zee3 writes and deletes a small object named
+       `<prefix>.zee3-tier-check`. If that fails (wrong credentials, missing bucket, unreachable),
        the tier isn't saved and the reason is shown.
 
     <Frame>
@@ -55,7 +55,7 @@ The bucket (for Azure, the container) must already exist on the other side.
     curl -X POST http://127.0.0.1:9001/api/tiers \
       -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
       -d '{"name": "COLD", "kind": "minio", "endpoint": "https://minio.example.com:9000",
-           "bucket": "z3-cold", "prefix": "site-a/", "region": "",
+           "bucket": "zee3-cold", "prefix": "site-a/", "region": "",
            "access_key": "AKEXAMPLE", "secret_key": "SECRETEXAMPLE"}'
     ```
 
@@ -68,7 +68,7 @@ Once a tier exists, its location (type, endpoint, bucket, prefix) can't change, 
 already there. Only the credentials can: **Change credentials** (tested the same way before they
 are saved), or `PUT /api/tiers/{name}` with `{"access_key", "secret_key"}`.
 
-z3 checks each tier's health every two minutes with a read-only request. **Check now** (or
+Zee3 checks each tier's health every two minutes with a read-only request. **Check now** (or
 `POST /api/tiers/{name}/check`) checks it right away.
 
 Viewing tiers needs `admin:ServerInfo`; adding, changing or removing them needs
@@ -106,9 +106,9 @@ you can pick in the bucket's [event rules](/events/bucket-events).
 
 ## How a transition works
 
-1. z3 reads the version's chunks exactly as stored (ciphertext for encrypted objects) and sends
+1. Zee3 reads the version's chunks exactly as stored (ciphertext for encrypted objects) and sends
    them to the tier as **one object** named `<prefix><bucket>/<version id>`. Large versions go
-   as multipart (S3 types) or in blocks (Azure), 64 MiB per part (`Z3_TIER_PART_SIZE`, in bytes).
+   as multipart (S3 types) or in blocks (Azure), 64 MiB per part (`ZEE3_TIER_PART_SIZE`, in bytes).
 2. The version now points at that object (tier name, object name, length of each chunk), and the
    local chunks are released to garbage collection. If the version changed or was deleted during
    the upload, the object on the tier is deleted again.
@@ -117,7 +117,7 @@ you can pick in the bucket's [event rules](/events/bucket-events).
 ## Reading data on a tier
 
 - GET (including ranges), CopyObject and console downloads read from the tier. For an encrypted
-  object, z3 fetches only the chunks the range needs and decrypts them. Data on the tier is never
+  object, Zee3 fetches only the chunks the range needs and decrypts them. Data on the tier is never
   plaintext.
 - HEAD, GET, ListObjects and ListObjectVersions show the tier name as `StorageClass`.
 - A copy (CopyObject) of an object on a tier becomes a normal local object.

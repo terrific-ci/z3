@@ -3,12 +3,12 @@ title: "Upgrading"
 description: "Back up, replace the binary or image, and restart. Metadata upgrades run automatically; upgrade every node of a replication group together."
 ---
 
-An upgrade is: back up, replace the binary or image, restart. When z3 opens a data directory written
+An upgrade is: back up, replace the binary or image, restart. When Zee3 opens a data directory written
 by an older version, it upgrades the metadata format in one transaction before it starts serving.
 
 <Warning>
-  Metadata upgrades are **one way**. An older z3 refuses a data directory that a newer one has
-  upgraded, with `data directory uses format N, newer than this z3 supports`. To go back, restore the
+  Metadata upgrades are **one way**. An older Zee3 refuses a data directory that a newer one has
+  upgraded, with `data directory uses format N, newer than this zee3 supports`. To go back, restore the
   backup you took before upgrading.
 </Warning>
 
@@ -17,30 +17,30 @@ by an older version, it upgrades the metadata format in one transaction before i
 1. Read the release notes in the [changelog](/changelog) and on
    [GitHub releases](https://github.com/terrific-ci/z3/releases).
 2. Back up the data directory (below).
-3. Check the node is healthy: the console's **Support** page or `z3 admin support health`. Upgrading
+3. Check the node is healthy: the console's **Support** page or `zee3 admin support health`. Upgrading
    while disks are offline or healing is behind only adds to the work after the restart.
 
 ## Back up
 
-Stop z3 so the files are consistent, then copy `Z3_DATA_DIR`. It holds the metadata (`meta.redb`),
+Stop Zee3 so the files are consistent, then copy `ZEE3_DATA_DIR`. It holds the metadata (`meta.redb`),
 the historical metrics (`metrics.redb`) and, on a node without separate disks, the chunks.
 
 ```bash
-sudo systemctl stop z3
-sudo tar -C /var/lib -czf /backup/z3-data-$(date +%F).tar.gz z3
-sudo systemctl start z3
+sudo systemctl stop zee3
+sudo tar -C /var/lib -czf /backup/zee3-data-$(date +%F).tar.gz zee3
+sudo systemctl start zee3
 ```
 
 With Docker, copy the volume while the container is stopped:
 
 ```bash
-docker compose stop z3
-docker run --rm -v z3-data:/data -v "$PWD":/backup alpine \
-  tar -czf /backup/z3-data-$(date +%F).tar.gz -C /data .
-docker compose start z3
+docker compose stop zee3
+docker run --rm -v zee3-data:/data -v "$PWD":/backup alpine \
+  tar -czf /backup/zee3-data-$(date +%F).tar.gz -C /data .
+docker compose start zee3
 ```
 
-On a node with separate disks (`Z3_DISKS`, `Z3_POOLS`), the data directory holds only the metadata;
+On a node with separate disks (`ZEE3_DISKS`, `ZEE3_POOLS`), the data directory holds only the metadata;
 the chunks stay on the disks. That backup is what a rollback right after the upgrade needs. Restoring
 it later loses every version written since the backup on that node (a replicated node gets them back
 from its peers), so roll back soon or not at all.
@@ -53,7 +53,7 @@ IAM and settings on any node.
 ```bash
 docker compose pull
 docker compose up -d
-docker compose logs -f z3
+docker compose logs -f zee3
 ```
 
 Pin a version tag (`terrificci/z3:1.0.1`) instead of `latest` to choose when you upgrade.
@@ -64,16 +64,16 @@ Run the install script again, then restart the service:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
-sudo systemctl restart z3
+sudo systemctl restart zee3
 ```
 
-Add `-s -- --version X` to install a specific version. The settings file `/etc/z3/z3.env` is kept.
+Add `-s -- --version X` to install a specific version. The settings file `/etc/zee3/zee3.env` is kept.
 
 ## After the restart
 
 ```bash
-z3 --version
-journalctl -u z3 -n 50          # or: docker compose logs --tail 50 z3
+zee3 --version
+journalctl -u zee3 -n 50          # or: docker compose logs --tail 50 zee3
 ```
 
 The log shows `upgrading metadata from format ...` when a format upgrade ran, then `storage ready`
@@ -81,7 +81,7 @@ and the addresses it listens on. Check the console's **Support** page once more.
 
 ## Replication groups
 
-Nodes that replicate with each other should run the **same z3 version**: the replication protocol
+Nodes that replicate with each other should run the **same Zee3 version**: the replication protocol
 can change with the metadata format. Upgrade them together, one after another, in a quiet period.
 Writes keep working on the nodes that are up, and replication catches up from the change log once a
 node is back.
@@ -90,7 +90,7 @@ The health check's **Peers and clocks** item warns when a peer runs a different 
 
 ## Cluster members
 
-Restart [cluster](/deploy/cluster) members one at a time, and wait until `z3 admin cluster status`
+Restart [cluster](/deploy/cluster) members one at a time, and wait until `zee3 admin cluster status`
 shows the restarted member caught up before the next. Reads and writes continue on the others.
 
 Replication on a cluster (peers, bucket and site replication, geo erasure coding) adds commands to
@@ -100,7 +100,7 @@ arrives, and catches up once it is upgraded. Older single-node peers keep replic
 cluster, but give them one URL or a VIP instead of a comma-separated list.
 
 [Erasure coding across members](/deploy/cluster#erasure-coding-across-members) adds Raft commands
-too. Upgrade every member before you run `z3 admin cluster ec`: a member on an older version stops
+too. Upgrade every member before you run `zee3 admin cluster ec`: a member on an older version stops
 following the log when the layout is set, until it is upgraded. The on-disk format doesn't change,
 and chunks stored as copies stay readable by every version.
 
@@ -120,5 +120,5 @@ nodes can replicate with each other while you upgrade one after another.
 
 ## Downgrading
 
-Stop z3, restore the data directory from the backup taken before the upgrade, install the old version
+Stop Zee3, restore the data directory from the backup taken before the upgrade, install the old version
 and start it.

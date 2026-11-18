@@ -1,9 +1,9 @@
 ---
 title: "TLS and reverse proxies"
-description: "z3 serves plain HTTP. Put Caddy or nginx in front for HTTPS on the S3 API and the console, trust the proxy, and allow large uploads."
+description: "Zee3 serves plain HTTP. Put Caddy or nginx in front for HTTPS on the S3 API and the console, trust the proxy, and allow large uploads."
 ---
 
-z3 serves **plain HTTP** on the S3 API and the console. For anything beyond a private network, put
+Zee3 serves **plain HTTP** on the S3 API and the console. For anything beyond a private network, put
 a reverse proxy in front that terminates TLS. The replication API between nodes can serve TLS itself,
 with [mutual TLS](/deploy/peer-tls), or sit behind a proxy too:
 
@@ -13,10 +13,10 @@ with [mutual TLS](/deploy/peer-tls), or sit behind a proxy too:
 | 9001, console and admin API | `console.example.com` | Server-sent events for live trace, logs and events |
 | 9002, replication API | `peer.example.com`, or a private network | Long-polling (requests held up to 20 seconds). Or [mutual TLS](/deploy/peer-tls) without a proxy |
 
-Give the S3 API and the console **their own host names**. z3 uses path-style S3 addressing, so the
+Give the S3 API and the console **their own host names**. Zee3 uses path-style S3 addressing, so the
 S3 API needs the whole host, and the console expects to be served from `/`.
 
-Keep the z3 ports themselves off the public network: bind them to `127.0.0.1` (or publish them only
+Keep the Zee3 ports themselves off the public network: bind them to `127.0.0.1` (or publish them only
 on `127.0.0.1` in Docker) when the proxy runs on the same machine.
 
 ## Caddy
@@ -44,11 +44,11 @@ console.example.com {
 ```
 
 Caddy keeps the original `Host` header, which S3 signatures depend on, and sets
-`X-Forwarded-For` and `X-Forwarded-Proto` for z3. It has no request body limit by default.
+`X-Forwarded-For` and `X-Forwarded-Proto` for Zee3. It has no request body limit by default.
 
 ## nginx
 
-```nginx /etc/nginx/conf.d/z3.conf
+```nginx /etc/nginx/conf.d/zee3.conf
 server {
     listen 443 ssl;
     http2 on;
@@ -56,7 +56,7 @@ server {
     ssl_certificate     /etc/ssl/s3.example.com/fullchain.pem;
     ssl_certificate_key /etc/ssl/s3.example.com/privkey.pem;
 
-    # No size limit (z3 enforces its own) and no buffering of uploads or downloads.
+    # No size limit (zee3 enforces its own) and no buffering of uploads or downloads.
     client_max_body_size 0;
     proxy_request_buffering off;
     proxy_buffering off;
@@ -107,9 +107,9 @@ client signed it.
 
 ## Trust the proxy
 
-Behind a proxy, every request comes from the proxy's address. To let z3 see the real client, add
+Behind a proxy, every request comes from the proxy's address. To let Zee3 see the real client, add
 the proxy to the cluster setting **`api.trusted_proxies`** (addresses or networks such as
-`10.0.0.0/8`). For requests from a trusted proxy, z3 takes the client address from the first entry
+`10.0.0.0/8`). For requests from a trusted proxy, Zee3 takes the client address from the first entry
 of `X-Forwarded-For` and HTTPS from `X-Forwarded-Proto`. From anyone else, those headers are ignored.
 
 This matters for [policy conditions](/access/conditions) such as `aws:SourceIp` and
@@ -121,13 +121,13 @@ This matters for [policy conditions](/access/conditions) such as `aws:SourceIp` 
   </Tab>
   <Tab title="CLI">
     ```bash
-    z3 admin settings set api trusted_proxies=127.0.0.1,::1
+    zee3 admin settings set api trusted_proxies=127.0.0.1,::1
     ```
   </Tab>
 </Tabs>
 
 <Warning>
-  Because z3 uses the **first** address of `X-Forwarded-For`, the proxy must replace that header,
+  Because Zee3 uses the **first** address of `X-Forwarded-For`, the proxy must replace that header,
   not append to a value the client sent. The nginx example does this with
   `X-Forwarded-For $remote_addr`; Caddy ignores incoming `X-Forwarded-*` headers from clients it
   doesn't trust.
@@ -135,11 +135,11 @@ This matters for [policy conditions](/access/conditions) such as `aws:SourceIp` 
 
 ## Large uploads and timeouts
 
-- **Body size.** z3 limits a single PUT or multipart part with the `api.max_object_size_mb` setting
+- **Body size.** Zee3 limits a single PUT or multipart part with the `api.max_object_size_mb` setting
   (5120 MiB by default). A proxy limit below that turns big uploads into `413` errors from the
-  proxy; disable it (`client_max_body_size 0`) and let z3 decide.
+  proxy; disable it (`client_max_body_size 0`) and let Zee3 decide.
 - **Buffering.** Without `proxy_request_buffering off`, nginx writes each upload to a temporary file
-  before z3 sees a byte. Turn buffering off in both directions.
+  before Zee3 sees a byte. Turn buffering off in both directions.
 - **Timeouts.** A slow client uploading a 5 GiB part needs minutes. Raise the proxy's read and send
   timeouts, or use multipart uploads with smaller parts (most clients do this automatically for big
   files).
@@ -150,11 +150,11 @@ This matters for [policy conditions](/access/conditions) such as `aws:SourceIp` 
 ## The replication API
 
 Peers pull with a bearer token. The simplest way to encrypt this traffic is
-[mutual TLS between nodes](/deploy/peer-tls): z3 serves TLS on the peer port itself, and every node
+[mutual TLS between nodes](/deploy/peer-tls): Zee3 serves TLS on the peer port itself, and every node
 proves who it is with a certificate from your own CA.
 
 You can also put the replication API behind a TLS proxy. Peer and site endpoints accept `https://`
-URLs, and without `Z3_PEER_TLS_CA` z3 verifies them against public roots.
+URLs, and without `ZEE3_PEER_TLS_CA` Zee3 verifies them against public roots.
 
 ```nginx
 server {
@@ -182,7 +182,7 @@ Then use `https://peer.example.com:9443` as this node's endpoint on the other no
 
 ## Sign-in with OpenID Connect
 
-The OIDC callback is `/api/auth/oidc/callback` on the console. z3 builds it from the request's
+The OIDC callback is `/api/auth/oidc/callback` on the console. Zee3 builds it from the request's
 `Host` and `X-Forwarded-Proto` headers, so with the proxy above it becomes
 `https://console.example.com/api/auth/oidc/callback`. If your proxy rewrites those headers, set the
 redirect URL explicitly in the OpenID Connect settings. See

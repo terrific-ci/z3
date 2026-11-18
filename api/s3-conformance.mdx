@@ -1,16 +1,16 @@
 ---
 title: "S3 conformance"
-description: "How z3 does against MinIO Mint and ceph/s3-tests, the areas left out on purpose and why, and how to run both suites yourself."
+description: "How Zee3 does against MinIO Mint and ceph/s3-tests, the areas left out on purpose and why, and how to run both suites yourself."
 ---
 
-z3 is tested with two open S3 test suites:
+Zee3 is tested with two open S3 test suites:
 
 | Suite | What it is |
 | --- | --- |
 | [MinIO Mint](https://github.com/minio/mint) | Real SDKs and tools against one endpoint: aws-sdk Go, Java, PHP and Ruby, the AWS CLI, `mc`, minio-go, minio-java, minio-js, minio-py and s3cmd |
 | [ceph/s3-tests](https://github.com/ceph/s3-tests) | Functional tests written with boto3, also run against AWS S3 |
 
-What z3 doesn't support is left out of the run, with a reason per area. Everything else must pass.
+What Zee3 doesn't support is left out of the run, with a reason per area. Everything else must pass.
 For the operations themselves, see [S3 compatibility](/api/s3-compatibility).
 
 ## Results
@@ -62,23 +62,23 @@ free disk passed 432 tests.
 Each exclusion has a reason in the lists next to the script (see [Run it yourself](#run-it-yourself)).
 In short:
 
-### Features z3 doesn't have
+### Features Zee3 doesn't have
 
 | Area | Why |
 | --- | --- |
-| ACLs | z3 has no ACLs; access is decided by [policies](/access/policies) and [bucket policies](/access/bucket-policies). `GetBucketAcl`, `PutObjectAcl` and the rest answer `NotImplemented`, and `x-amz-acl` is ignored. Tests that use `public-read` or `public-read-write` buckets go too |
+| ACLs | Zee3 has no ACLs; access is decided by [policies](/access/policies) and [bucket policies](/access/bucket-policies). `GetBucketAcl`, `PutObjectAcl` and the rest answer `NotImplemented`, and `x-amz-acl` is ignored. Tests that use `public-read` or `public-read-write` buckets go too |
 | Public access block, policy status, BitTorrent | Not supported |
-| Per-bucket CORS | z3 has one CORS setting for the S3 port, `api.cors_allow_origins` ([Settings](/operations/settings)) |
-| Website, S3 Select, bucket logging, requester pays, append, S3 Control, SNS notifications | Not in z3. AWS closed S3 Select to new customers in 2024 |
-| AWS-style IAM and STS (users, roles, session policies, web identity tests) | z3 has its own IAM in the console and [admin API](/api/admin-iam), and its own [STS](/api/sts) |
-| Object ownership | z3 has no bucket owners (see below) |
+| Per-bucket CORS | Zee3 has one CORS setting for the S3 port, `api.cors_allow_origins` ([Settings](/operations/settings)) |
+| Website, S3 Select, bucket logging, requester pays, append, S3 Control, SNS notifications | Not in Zee3. AWS closed S3 Select to new customers in 2024 |
+| AWS-style IAM and STS (users, roles, session policies, web identity tests) | Zee3 has its own IAM in the console and [admin API](/api/admin-iam), and its own [STS](/api/sts) |
+| Object ownership | Zee3 has no bucket owners (see below) |
 | MinIO extensions | MinIO's admin API (`mc admin`, the minio-java admin client), snowball uploads, fan-out uploads, `ExcludedPrefixes` in versioning |
 
 ### Differences in design
 
 | Area | Why |
 | --- | --- |
-| One account | Every z3 user is in the same account, and buckets have no owner. Another user can't own a bucket or be refused one by name: `BucketAlreadyOwnedByYou` for everyone. There are no RGW tenants. The suite's *alt* and *tenant* users are created without policies, so they reach other buckets only through bucket policies, like another AWS account |
+| One account | Every Zee3 user is in the same account, and buckets have no owner. Another user can't own a bucket or be refused one by name: `BucketAlreadyOwnedByYou` for everyone. There are no RGW tenants. The suite's *alt* and *tenant* users are created without policies, so they reach other buckets only through bucket policies, like another AWS account |
 | The root account and bucket policies | As with MinIO's root, a `Deny` in a bucket policy doesn't apply to the root account |
 | Condition keys | `s3:ExistingObjectTag`, `s3:x-amz-server-side-encryption-customer-algorithm`, `s3:x-amz-acl` and `s3:x-amz-grant-*` aren't supported in `Condition` |
 | Multipart checksums | Each part's `x-amz-checksum-*` is checked, but an object completed from parts keeps no checksum |
@@ -86,7 +86,7 @@ In short:
 
 ### Small differences in answers
 
-| Case | z3 | The test expects |
+| Case | Zee3 | The test expects |
 | --- | --- | --- |
 | `partNumber` past the last part | `416 InvalidPartNumber`, as S3 and MinIO | `400 InvalidPart` |
 | Completing an upload that is already complete | `NoSuchUpload` | Success |
@@ -103,7 +103,7 @@ request, so it still arrives signed; those tests are left out too.
 
 ## Run it yourself
 
-`bench/conformance.sh` runs both suites against a z3 image and fails when anything in the subset
+`bench/conformance.sh` runs both suites against a Zee3 image and fails when anything in the subset
 fails. It needs Linux with Docker, `git` and Python 3, and at least 6 GiB free: Mint uploads a few
 GiB.
 
@@ -116,18 +116,18 @@ mkdir conformance && for f in mint-exclude.txt mint_summary.py s3tests-exclude.t
   curl -fsSL -o conformance/$f $base/conformance/$f
 done
 
-Z3_IMAGE=terrificci/z3:latest ./conformance.sh        # Mint and s3-tests
-Z3_IMAGE=terrificci/z3:latest ./conformance.sh mint   # only Mint (or: s3tests)
+ZEE3_IMAGE=terrificci/z3:latest ./conformance.sh        # Mint and s3-tests
+ZEE3_IMAGE=terrificci/z3:latest ./conformance.sh mint   # only Mint (or: s3tests)
 ```
 
-For each suite, the script starts a fresh z3 container with Signature V2 on (both suites test it).
+For each suite, the script starts a fresh Zee3 container with Signature V2 on (both suites test it).
 It runs Mint in full mode with `RUN_ON_FAIL=1`, so minio-go doesn't stop at its first failure. For
 s3-tests, it clones the repository, checks out the pinned commit, creates the users and KMS keys the
 suite needs, and runs the subset with pytest in a container.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `Z3_IMAGE` | `z3bench:conformance` | The z3 image to test |
+| `ZEE3_IMAGE` | `zee3bench:conformance` | The Zee3 image to test |
 | `MINT_IMAGE` | `minio/mint:edge` | The Mint image |
 | `S3TESTS_DIR` | `~/s3-tests` | Where s3-tests is cloned |
 | `S3TESTS_REF` | `5b39871` | The s3-tests commit to run |

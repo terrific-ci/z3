@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Resource footprint of z3, MinIO and RustFS on a shared machine: no CPU or
+# Resource footprint of zee3, MinIO and RustFS on a shared machine: no CPU or
 # memory limits, CPU use while idle, CPU per object while writing, and memory
 # (anonymous, i.e. the process's own, not the page cache) as objects pile up.
 #   ./footprint.sh [stages] [servers...]   results go to footprint-<date>.txt
-#   Z3_IMAGE=... Z3_ENV=Z3_META_CACHE_MB=64 ./footprint.sh 6 z3
+#   ZEE3_IMAGE=... ZEE3_ENV=ZEE3_META_CACHE_MB=64 ./footprint.sh 6 zee3
 set -euo pipefail
 cd "$(dirname "$0")"
 STAGES=${1:-4}; shift || true
-SERVERS=${*:-z3 minio rustfs}
+SERVERS=${*:-zee3 minio rustfs}
 OUT=footprint-$(date +%Y%m%d-%H%M).txt
 NET=s3bench AK=benchadmin SK=bench-secret-12345 DATA=/var/tmp/s3bench-data
-Z3_IMAGE=${Z3_IMAGE:-terrificci/z3:latest}
+ZEE3_IMAGE=${ZEE3_IMAGE:-terrificci/z3:latest}
 docker network create $NET >/dev/null 2>&1 || true
 : > "$OUT"
 
@@ -30,11 +30,11 @@ start() {
   mkdir -p "$DATA" && chmod 777 "$DATA"
   local common=(-d --name s3 --network $NET -v "$DATA:/data")
   case "$1" in
-    z3)
+    zee3)
       local extra=() kv
-      IFS=',' read -ra kvs <<< "${Z3_ENV:-}"
+      IFS=',' read -ra kvs <<< "${ZEE3_ENV:-}"
       for kv in "${kvs[@]}"; do [ -n "$kv" ] && extra+=(-e "$kv"); done
-      docker run "${common[@]}" -e Z3_ACCESS_KEY=$AK -e Z3_SECRET_KEY=$SK -e RUST_LOG=warn "${extra[@]}" "$Z3_IMAGE" >/dev/null ;;
+      docker run "${common[@]}" -e ZEE3_ACCESS_KEY=$AK -e ZEE3_SECRET_KEY=$SK -e RUST_LOG=warn "${extra[@]}" "$ZEE3_IMAGE" >/dev/null ;;
     minio) docker run "${common[@]}" -e MINIO_ROOT_USER=$AK -e MINIO_ROOT_PASSWORD=$SK pgsty/minio:latest server /data >/dev/null ;;
     rustfs) docker run "${common[@]}" -e RUSTFS_ACCESS_KEY=$AK -e RUSTFS_SECRET_KEY=$SK -e RUSTFS_VOLUMES=/data -e RUSTFS_ADDRESS=0.0.0.0:9000 rustfs/rustfs:latest >/dev/null ;;
   esac

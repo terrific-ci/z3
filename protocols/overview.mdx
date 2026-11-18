@@ -3,8 +3,8 @@ title: "File protocols"
 description: "Serve the same buckets over WebDAV, FTP/FTPS, SFTP and NFSv3, with access keys and the same IAM policies as S3."
 ---
 
-S3 is z3's native protocol and is always on. For tools that can't speak S3, such as scanners,
-legacy software, network drives and servers that expect a mount, z3 can serve the **same
+S3 is Zee3's native protocol and is always on. For tools that can't speak S3, such as scanners,
+legacy software, network drives and servers that expect a mount, Zee3 can serve the **same
 buckets** over four file protocols. Each one is **off by default** and checks every operation
 with the same [IAM policies](/access/policies) as S3.
 
@@ -34,22 +34,22 @@ with the same [IAM policies](/access/policies) as S3.
     fingerprint.
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="zee3 admin">
 
-    Run on the server (it signs in with `Z3_ACCESS_KEY`/`Z3_SECRET_KEY`, or `--access-key` and
+    Run on the server (it signs in with `ZEE3_ACCESS_KEY`/`ZEE3_SECRET_KEY`, or `--access-key` and
     `--secret-key`):
 
     ```bash
-    z3 admin protocols                                   # state of every protocol
-    z3 admin protocols enable sftp --address 0.0.0.0:8022
-    z3 admin protocols enable ftp --set passive_ports=30000-30100
-    z3 admin protocols enable nfs --set access_key=nfs-client --set allowed_clients=10.0.0.0/24
-    z3 admin protocols disable webdav
-    z3 admin settings get ftp
-    z3 admin settings set ftp tls_cert=/etc/z3/ftp.pem tls_key=/etc/z3/ftp.key tls_required=true
+    zee3 admin protocols                                   # state of every protocol
+    zee3 admin protocols enable sftp --address 0.0.0.0:8022
+    zee3 admin protocols enable ftp --set passive_ports=30000-30100
+    zee3 admin protocols enable nfs --set access_key=nfs-client --set allowed_clients=10.0.0.0/24
+    zee3 admin protocols disable webdav
+    zee3 admin settings get ftp
+    zee3 admin settings set ftp tls_cert=/etc/zee3/ftp.pem tls_key=/etc/zee3/ftp.key tls_required=true
     ```
 
-    `--url` (or `Z3_ADMIN_URL`, default `http://127.0.0.1:9001`) points at the node's admin API.
+    `--url` (or `ZEE3_ADMIN_URL`, default `http://127.0.0.1:9001`) points at the node's admin API.
     See [CLI: protocols](/cli/protocols).
 
   </Tab>
@@ -103,8 +103,8 @@ Federated sign-in (OIDC, LDAP) and SSH public keys aren't supported over file pr
 - **Writes**: a file becomes an object when the upload finishes, through the same path as an S3
   write: the bucket's default encryption, Object Lock default retention, quota,
   [compression](/storage/compression), replication and [bucket events](/events/bucket-events)
-  (`s3:ObjectCreated:Put`, `s3:ObjectRemoved:Delete`, with a user agent such as `z3-sftp` or
-  `z3-ftp`).
+  (`s3:ObjectCreated:Put`, `s3:ObjectRemoved:Delete`, with a user agent such as `zee3-sftp` or
+  `zee3-ftp`).
 - **Reads** support offsets (ranges), including SSE-S3 and SSE-KMS objects and objects on a
   [tier](/storage/tiers). SSE-C objects can't be read over file protocols: their key only exists
   at the S3 client.
@@ -114,13 +114,13 @@ Federated sign-in (OIDC, LDAP) and SSH public keys aren't supported over file pr
   file is closed.
 
 Policy [conditions](/access/conditions) apply too: `aws:SourceIp` (not for NFS),
-`aws:SecureTransport` (`true` for FTPS and SFTP) and `aws:UserAgent` (`z3-ftp`, `z3-sftp`,
-`z3-nfs`; WebDAV passes on the client's user agent, or `z3-webdav` when there is none). For
+`aws:SecureTransport` (`true` for FTPS and SFTP) and `aws:UserAgent` (`zee3-ftp`, `zee3-sftp`,
+`zee3-nfs`; WebDAV passes on the client's user agent, or `zee3-webdav` when there is none). For
 example, a policy can allow a key only over SFTP:
 
 ```json
 {"Effect": "Allow", "Action": "s3:*", "Resource": ["arn:aws:s3:::scans", "arn:aws:s3:::scans/*"],
- "Condition": {"StringEquals": {"aws:UserAgent": "z3-sftp"}}}
+ "Condition": {"StringEquals": {"aws:UserAgent": "zee3-sftp"}}}
 ```
 
 ## Not supported yet

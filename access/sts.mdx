@@ -40,7 +40,7 @@ curl -X PUT http://127.0.0.1:9001/api/idp/sts \
 - `DurationSeconds` is 900 (15 minutes) to 43200 (12 hours). Without it, credentials last one hour.
 - A value above **Longest session** is lowered to it; a value outside 900 to 43200 is refused with
   `ValidationError`.
-- `RoleArn` is accepted and ignored, as in MinIO: z3 has no roles. AWS SDKs require a value; any
+- `RoleArn` is accepted and ignored, as in MinIO: Zee3 has no roles. AWS SDKs require a value; any
   value works. `RoleSessionName` only shows in `AssumedRoleUser`.
 
 `AssumeRoleWithWebIdentity` and `AssumeRoleWithLDAPIdentity` don't need to be signed, as on AWS. If
@@ -61,7 +61,7 @@ SDKs and `mc` do this for you.
     import boto3
 
     # Signed with the user's (or access key's) own credentials.
-    sts = boto3.client("sts", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+    sts = boto3.client("sts", endpoint_url="http://zee3.example.com:9000", region_name="us-east-1",
                        aws_access_key_id="report-job", aws_secret_access_key=secret)
 
     # Optional: narrow the session to reading one bucket.
@@ -74,13 +74,13 @@ SDKs and `mc` do this for you.
         }],
     }
     c = sts.assume_role(
-        RoleArn="arn:aws:iam::000000000000:role/z3",
+        RoleArn="arn:aws:iam::000000000000:role/zee3",
         RoleSessionName="nightly",
         DurationSeconds=900,
         Policy=json.dumps(session_policy),
     )["Credentials"]
 
-    s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+    s3 = boto3.client("s3", endpoint_url="http://zee3.example.com:9000", region_name="us-east-1",
                       aws_access_key_id=c["AccessKeyId"],
                       aws_secret_access_key=c["SecretAccessKey"],
                       aws_session_token=c["SessionToken"])
@@ -93,8 +93,8 @@ SDKs and `mc` do this for you.
     With the user's or access key's credentials in the environment or a profile:
 
     ```bash
-    aws sts assume-role --endpoint-url http://z3.example.com:9000 \
-      --role-arn arn:aws:iam::000000000000:role/z3 --role-session-name nightly \
+    aws sts assume-role --endpoint-url http://zee3.example.com:9000 \
+      --role-arn arn:aws:iam::000000000000:role/zee3 --role-session-name nightly \
       --duration-seconds 900 --policy-arns arn=arn:aws:iam::aws:policy/readonly
     ```
 
@@ -127,8 +127,8 @@ flow, or from a Kubernetes or CI identity), then trades it.
   <Tab title="AWS CLI">
 
     ```bash
-    aws sts assume-role-with-web-identity --endpoint-url http://z3.example.com:9000 \
-      --role-arn arn:aws:iam::000000000000:role/z3 --role-session-name app \
+    aws sts assume-role-with-web-identity --endpoint-url http://zee3.example.com:9000 \
+      --role-arn arn:aws:iam::000000000000:role/zee3 --role-session-name app \
       --web-identity-token "$ID_TOKEN" --duration-seconds 3600
     ```
 
@@ -137,8 +137,8 @@ flow, or from a Kubernetes or CI identity), then trades it.
     ```bash
     export AWS_ACCESS_KEY_ID=ZSTS...
     export AWS_SECRET_ACCESS_KEY=...
-    export AWS_SESSION_TOKEN=z3sts1....
-    aws --endpoint-url http://z3.example.com:9000 s3 ls
+    export AWS_SESSION_TOKEN=zee3sts1....
+    aws --endpoint-url http://zee3.example.com:9000 s3 ls
     ```
 
   </Tab>
@@ -149,16 +149,16 @@ flow, or from a Kubernetes or CI identity), then trades it.
     from botocore import UNSIGNED
     from botocore.config import Config
 
-    sts = boto3.client("sts", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+    sts = boto3.client("sts", endpoint_url="http://zee3.example.com:9000", region_name="us-east-1",
                        config=Config(signature_version=UNSIGNED))
     c = sts.assume_role_with_web_identity(
-        RoleArn="arn:aws:iam::000000000000:role/z3",
+        RoleArn="arn:aws:iam::000000000000:role/zee3",
         RoleSessionName="app",
         WebIdentityToken=id_token,
         DurationSeconds=3600,
     )["Credentials"]
 
-    s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+    s3 = boto3.client("s3", endpoint_url="http://zee3.example.com:9000", region_name="us-east-1",
                       aws_access_key_id=c["AccessKeyId"],
                       aws_secret_access_key=c["SecretAccessKey"],
                       aws_session_token=c["SessionToken"])
@@ -168,7 +168,7 @@ flow, or from a Kubernetes or CI identity), then trades it.
   </Tab>
 </Tabs>
 
-z3 checks the ID token carefully:
+Zee3 checks the ID token carefully:
 
 - The **signature**, with the keys from the provider's `jwks_uri`: RS256/384/512, PS256/384/512,
   ES256/384. `none` and HS* are refused.
@@ -186,7 +186,7 @@ yourself.
   <Tab title="curl">
 
     ```bash
-    curl -X POST http://z3.example.com:9000/ \
+    curl -X POST http://zee3.example.com:9000/ \
       -d Action=AssumeRoleWithLDAPIdentity -d Version=2011-06-15 \
       -d LDAPUsername=backup-svc -d LDAPPassword="$LDAP_PASSWORD" -d DurationSeconds=3600
     ```
@@ -199,7 +199,7 @@ yourself.
     import boto3
     import requests
 
-    r = requests.post("http://z3.example.com:9000/", data={
+    r = requests.post("http://zee3.example.com:9000/", data={
         "Action": "AssumeRoleWithLDAPIdentity", "Version": "2011-06-15",
         "LDAPUsername": "backup-svc", "LDAPPassword": ldap_password, "DurationSeconds": "3600",
     })
@@ -208,7 +208,7 @@ yourself.
     creds = ET.fromstring(r.text).find(".//s:Credentials", ns)
     get = lambda name: creds.find(f"s:{name}", ns).text
 
-    s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+    s3 = boto3.client("s3", endpoint_url="http://zee3.example.com:9000", region_name="us-east-1",
                       aws_access_key_id=get("AccessKeyId"),
                       aws_secret_access_key=get("SecretAccessKey"),
                       aws_session_token=get("SessionToken"))
@@ -231,7 +231,7 @@ All three actions accept **session policies** that narrow what the session may d
 | Parameter | What it is |
 | --- | --- |
 | `Policy` | An inline JSON [identity policy](/access/policies) (no `Principal`), at most 2048 bytes |
-| `PolicyArns.member.N.arn` | Up to 10 z3 policies by name, as `arn:aws:iam::<any account>:policy/<name>` |
+| `PolicyArns.member.N.arn` | Up to 10 Zee3 policies by name, as `arn:aws:iam::<any account>:policy/<name>` |
 
 - The session may do only what **both** the identity and the session policies allow: the
   intersection. A Deny anywhere wins.
@@ -239,7 +239,7 @@ All three actions accept **session policies** that narrow what the session may d
   is narrowed too.
 - Several session policies (inline and by ARN) count together: one Allow among them is enough, as
   long as none denies.
-- `PolicyArns` uses the last part of the ARN as the z3 policy name, with any account:
+- `PolicyArns` uses the last part of the ARN as the Zee3 policy name, with any account:
   `arn:aws:iam::aws:policy/readonly` is the built-in `readonly`. It is read again on every request,
   so a policy deleted later contributes nothing.
 - The session policies are part of the signed session token, so a client can't change them.
@@ -263,8 +263,8 @@ this when you pass the session token.
 | The credentials have expired | `ExpiredToken` |
 | The identity no longer has a known policy, the user or key is disabled or deleted, or STS is off | `AccessDenied` |
 
-On every request, z3 checks the token and its expiry and works out the policies again from the
-settings **as they are now**. If an LDAP mapping is removed, a policy is deleted from z3, the
+On every request, Zee3 checks the token and its expiry and works out the policies again from the
+settings **as they are now**. If an LDAP mapping is removed, a policy is deleted from Zee3, the
 provider is turned off, the IAM user or access key is disabled or deleted, or STS is turned off,
 sessions that haven't expired yet stop working at once.
 
@@ -277,8 +277,8 @@ them.
 Nothing is stored per session:
 
 - The access key is `ZSTS` plus 16 random characters. Its secret key is an HMAC of the access key
-  under an **STS signing key**, so z3 can check signatures knowing only the access key.
-- The session token is `z3sts1.<payload>.<mac>` or `z3sts2.<payload>.<mac>`: the access key,
+  under an **STS signing key**, so Zee3 can check signatures knowing only the access key.
+- The session token is `zee3sts1.<payload>.<mac>` or `zee3sts2.<payload>.<mac>`: the access key,
   expiry, provider, user, where the policies come from (the OIDC policy claim, the LDAP DN and
   groups, or the IAM user and access key) and the session policies, signed with the same key. The
   token is bound to its access key; changing anything in it breaks the signature.
@@ -291,9 +291,9 @@ can't be revoked before it expires. Revoke through the mapping, the policy, the 
 key, or by turning STS off.
 
 <Warning>
-  `AssumeRole` sessions and sessions with a session policy use the `z3sts2.` token format. Older z3
+  `AssumeRole` sessions and sessions with a session policy use the `zee3sts2.` token format. Older Zee3
   servers refuse these tokens (`InvalidToken`), so upgrade every site of a replication group before
-  relying on them. Federated sessions without a session policy keep the `z3sts1.` format and keep
+  relying on them. Federated sessions without a session policy keep the `zee3sts1.` format and keep
   working across the upgrade.
 </Warning>
 

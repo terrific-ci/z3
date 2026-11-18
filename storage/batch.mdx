@@ -8,7 +8,7 @@ you start it.
 
 | Job | What it does |
 | --- | --- |
-| **replicate** | Copies matching objects (current versions) to another bucket in this cluster or to any S3-compatible store (AWS S3, MinIO, another z3). Metadata, content type, [object headers](/api/s3-compatibility#object-headers) and tags come along. Objects already in the target with the same content are skipped, so you can run the job again at any time. |
+| **replicate** | Copies matching objects (current versions) to another bucket in this cluster or to any S3-compatible store (AWS S3, MinIO, another Zee3). Metadata, content type, [object headers](/api/s3-compatibility#object-headers) and tags come along. Objects already in the target with the same content are skipped, so you can run the job again at any time. |
 | **expire** | Deletes matching objects: current versions (a delete marker in a versioned bucket), older versions, or all versions including delete markers. Versions held by [Object Lock](/storage/object-lock) are skipped. |
 | **rotate** | Moves SSE-S3 and SSE-KMS objects to another KMS key. Each version's data key is sealed again **in place**, without rewriting data, older versions included. SSE-C objects are skipped: their key only exists at the client. |
 | **rollback** | Brings a versioned bucket, a prefix or one key back to how it looked at a point in time, by adding versions and delete markers. See [Point-in-time rollback](/storage/point-in-time). |
@@ -47,7 +47,7 @@ Every field you fill in must match:
          **Region**, **Access key**, **Secret key**), plus the target **Bucket** and **Prefix**.
          **Copy again even when the target already has the object** turns on `overwrite`.
        - **Expire**: which versions to delete: **Current**, **Older versions** or **All versions**.
-       - **Rotate keys**: the key to **Move to**, such as `z3-default (SSE-S3)` or a named key.
+       - **Rotate keys**: the key to **Move to**, such as `zee3-default (SSE-S3)` or a named key.
     5. For expire and rotate, leave **Dry run: only count and list what would change** on the first
        time, and click **Start dry run**. Check the list, then start the real job.
 
@@ -56,13 +56,13 @@ Every field you fill in must match:
     </Frame>
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="Zee3 admin">
 
     Write the job as JSON and start it:
 
     ```bash
-    z3 admin batch start job.json --wait   # start, then show progress until it finishes
-    z3 admin batch start - < job.json      # read the definition from stdin
+    zee3 admin batch start job.json --wait   # start, then show progress until it finishes
+    zee3 admin batch start - < job.json      # read the definition from stdin
     ```
 
     See [CLI: batch](/cli/batch).
@@ -79,7 +79,7 @@ Every field you fill in must match:
   </Tab>
 </Tabs>
 
-Before a job starts, z3 checks it: the source bucket exists, a local target bucket exists and
+Before a job starts, Zee3 checks it: the source bucket exists, a local target bucket exists and
 doesn't overlap the source, a remote target answers, and the KMS key exists.
 
 ### Job definitions
@@ -110,7 +110,7 @@ Rotate to another key:
 { "type": "rotate", "source": { "bucket": "records" }, "key_id": "records-key-2027" }
 ```
 
-An empty `key_id` means the default SSE-S3 key (`z3-default`). Rotation also moves objects
+An empty `key_id` means the default SSE-S3 key (`zee3-default`). Rotation also moves objects
 from the internal KMS to an [external KMS](/security/external-kms) once one is connected, and from a
 [retired key store](/security/external-kms#retired-key-stores) (for example Vault after switching to
 AWS KMS) to the active KMS. Once nothing is sealed there any more, the retired key store can be
@@ -131,13 +131,13 @@ forgotten.
     </Frame>
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="Zee3 admin">
 
     ```bash
-    z3 admin batch list
-    z3 admin batch status expire-1a2b3c4d5e6f7a8b   # progress, errors, dry-run list
-    z3 admin batch cancel replicate-0f1e2d3c4b5a6978
-    z3 admin batch remove rotate-8a7b6c5d4e3f2a1b
+    zee3 admin batch list
+    zee3 admin batch status expire-1a2b3c4d5e6f7a8b   # progress, errors, dry-run list
+    zee3 admin batch cancel replicate-0f1e2d3c4b5a6978
+    zee3 admin batch remove rotate-8a7b6c5d4e3f2a1b
     ```
 
   </Tab>
@@ -153,7 +153,7 @@ A job is `running`, `done`, `failed` or `cancelled`. Job ids start with the job 
 - **Replicate** into this cluster uses the normal write path: the target bucket's default
   encryption, compression, replication and bucket events all apply. To a remote store, large
   objects go as multipart (64 MiB parts), and the source ETag is stored in the metadata
-  `z3-source-etag` to recognise objects already copied. `Cache-Control`, `Content-Disposition`,
+  `zee3-source-etag` to recognise objects already copied. `Cache-Control`, `Content-Disposition`,
   `Content-Encoding`, `Content-Language` and `Expires` are sent as real headers, not as
   `x-amz-meta-*`. The target secret key is stored sealed and never shown again.
 - **Expire** triggers `s3:ObjectRemoved:Delete` or `s3:ObjectRemoved:DeleteMarkerCreated`
@@ -178,6 +178,6 @@ Viewing jobs needs `admin:ServerInfo`. Starting, cancelling and removing them ne
 ## Not supported yet
 
 - Replicating every version (only current versions are copied), and copying from a remote S3 store
-  into z3. Use [migration from MinIO or S3](/deploy/migrate-from-minio) for that.
-- Scheduled, repeating jobs. Run `z3 admin batch start` from cron instead.
+  into Zee3. Use [migration from MinIO or S3](/deploy/migrate-from-minio) for that.
+- Scheduled, repeating jobs. Run `zee3 admin batch start` from cron instead.
 - Encrypting unencrypted objects with rotate. Use CopyObject with encryption headers.

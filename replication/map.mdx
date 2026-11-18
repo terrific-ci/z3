@@ -14,7 +14,7 @@ The node you are signed in to asks every node it knows (site members and peers) 
 replication, so the map also shows links between two other nodes, for example two spokes that both
 pull from the hub. A node that does not answer still appears, marked unreachable with the error.
 
-A [cluster](/deploy/cluster#replication-with-other-z3-nodes) is one card, and its links appear once
+A [cluster](/deploy/cluster#replication-with-other-zee3-nodes) is one card, and its links appear once
 whichever member you are signed in to. A peer listed with several URLs is asked at the first one
 that answers.
 
@@ -93,10 +93,10 @@ running the links.
 ```json
 "cluster": {
   "members": [
-    { "id": "2200471768134479368", "name": "z3-1", "addr": "http://10.0.0.11:9002", "leader": true },
-    { "id": "5168186497781187492", "name": "z3-2", "addr": "http://10.0.0.12:9002", "leader": false }
+    { "id": "2200471768134479368", "name": "zee3-1", "addr": "http://10.0.0.11:9002", "leader": true },
+    { "id": "5168186497781187492", "name": "zee3-2", "addr": "http://10.0.0.12:9002", "leader": false }
   ],
-  "replication_worker": "z3-1"
+  "replication_worker": "zee3-1"
 }
 ```
 

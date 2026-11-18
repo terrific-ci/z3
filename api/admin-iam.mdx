@@ -129,7 +129,7 @@ Built-in policies cannot be changed or deleted.
 
 ```json
 [
-  { "access_key": "Z3K1F3Q9Z2M4X7BPLW8C", "parent": "analyst", "name": "backup-job", "description": "Nightly backup",
+  { "access_key": "ZEE3K1F3Q9Z2M4X7BPLW8C", "parent": "analyst", "name": "backup-job", "description": "Nightly backup",
     "expires_ms": 1826457600000, "enabled": true, "policy": null, "created_ms": 1794834588308 }
 ]
 ```
@@ -139,7 +139,7 @@ Built-in policies cannot be changed or deleted.
 `POST /api/iam/access-keys` answers `201` with the new key. The secret key is shown **only here**.
 
 ```json
-{ "access_key": "Z3K1F3Q9Z2M4X7BPLW8C", "secret_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" }
+{ "access_key": "ZEE3K1F3Q9Z2M4X7BPLW8C", "secret_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" }
 ```
 
 <ParamField body="parent" type="string">
@@ -199,7 +199,7 @@ See [Bucket policies](/access/bucket-policies).
 | `secret` | | The client secret. Stored sealed; leave it out to keep the saved one |
 | `scopes` | `openid profile email` | |
 | `user_claim` | `preferred_username` | The claim naming the user (`email`, `sub`, ...) |
-| `policy_claim` | `policy` | The claim listing z3 policy names (an array or comma-separated) |
+| `policy_claim` | `policy` | The claim listing Zee3 policy names (an array or comma-separated) |
 | `default_policies` | `[]` | Policies every OIDC user gets |
 | `redirect_url` | | The callback registered at the provider; empty: this console's `/api/auth/oidc/callback` |
 
@@ -219,7 +219,7 @@ See [Bucket policies](/access/bucket-policies).
 | `user_search_filter` | `(uid=%s)` | `%s` is the user name, e.g. `(sAMAccountName=%s)` for Active Directory |
 | `group_search_base` | | Where groups are searched |
 | `group_search_filter` | `(&(objectClass=groupOfNames)(member=%d))` | `%d` is the user's DN |
-| `policy_map` | `{}` | User or group DN (case-insensitive) to z3 policies: `{"cn=radiology,ou=groups,dc=example,dc=com": ["radiology-rw"]}` |
+| `policy_map` | `{}` | User or group DN (case-insensitive) to Zee3 policies: `{"cn=radiology,ou=groups,dc=example,dc=com": ["radiology-rw"]}` |
 
 `POST /api/idp/ldap/test` with `{"username", "password"}` tries a sign-in without opening a session:
 

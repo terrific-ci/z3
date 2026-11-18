@@ -7,7 +7,7 @@ Bucket replication links individual buckets to peers. Each node pulls the bucket
 peers you list, so set it up **on every node** of the bucket, each pointing at the others. To
 replicate every bucket at once, use [site replication](/replication/site-replication) instead.
 
-Either side can be a [cluster](/deploy/cluster#replication-with-other-z3-nodes): configure it
+Either side can be a [cluster](/deploy/cluster#replication-with-other-zee3-nodes): configure it
 through any member, and give the other side the cluster's members as one endpoint (below).
 
 All the steps below can be done in the console (peers on the **Replication** page, the bucket's
@@ -26,9 +26,9 @@ bucket `data`.
 
     ```bash
     # node A
-    Z3_PEER_TOKEN=token-of-a Z3_PEER_ADDR=0.0.0.0:9002 z3
+    ZEE3_PEER_TOKEN=token-of-a ZEE3_PEER_ADDR=0.0.0.0:9002 zee3
     # node B
-    Z3_PEER_TOKEN=token-of-b Z3_PEER_ADDR=0.0.0.0:9002 z3
+    ZEE3_PEER_TOKEN=token-of-b ZEE3_PEER_ADDR=0.0.0.0:9002 zee3
     ```
 
     Port 9002 must be reachable from the other node. To encrypt it, see
@@ -182,7 +182,7 @@ A rule with `sites` limits where matching objects may live:
   that contain both sites, so objects can't leak through a resync.
 - `COMPLETED` and `quorum` / `all` only count the allowed sites.
 
-Site names come from site replication, or from `Z3_SITE_NAME`. Without site replication, `sites`
+Site names come from site replication, or from `ZEE3_SITE_NAME`. Without site replication, `sites`
 refers to peer names. Objects under residency only travel over direct links between allowed sites, so
 in a hub-and-spoke topology the hub must be in the `sites` list too.
 
@@ -202,12 +202,12 @@ curl -X PUT http://127.0.0.1:9001/api/peers/dc3 \
 | `max_bytes_per_sec` | Chunk transfers from this peer are limited to this rate, shared by all buckets. When bandwidth runs out, buckets with priority `high` go before `normal`, and `normal` before `low` |
 | `windows` | Replication from this peer runs only inside these UTC windows (`"HH:MM-HH:MM"`, may cross midnight). Outside them the link is `paused`, and `quorum` / `all` writes time out |
 
-The metrics `z3_replication_throttled_seconds_total` and `z3_replication_paused` show the effect.
+The metrics `zee3_replication_throttled_seconds_total` and `zee3_replication_paused` show the effect.
 With site replication, the same fields go on each site member.
 
 ## Read your writes with session tokens
 
-Every write answers with an `x-z3-session` header holding the node, bucket and log position. Send it
+Every write answers with an `x-zee3-session` header holding the node, bucket and log position. Send it
 back on a GET, HEAD or List at another node, and that node waits until it has applied the write (at
 most the bucket's `timeout_ms`) before it answers, or answers **503** if it can't.
 
@@ -217,7 +217,7 @@ without the token and 0 out of 20 with it.
 
 A node can only verify tokens from nodes it pulls from directly for that bucket. For other tokens
 (between spokes of a hub-and-spoke topology, for example) it answers at once with
-`x-z3-session-consistent: unverified`.
+`x-zee3-session-consistent: unverified`.
 
 ## Admin API
 

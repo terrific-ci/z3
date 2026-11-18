@@ -1,9 +1,9 @@
 ---
 title: "Cluster"
-description: "Run several nodes as one z3: metadata replicated through Raft, each chunk as copies or erasure-coded shards on several members, any member answering S3 requests, and replication with other z3 nodes as one node."
+description: "Run several nodes as one Zee3: metadata replicated through Raft, each chunk as copies or erasure-coded shards on several members, any member answering S3 requests, and replication with other Zee3 nodes as one node."
 ---
 
-In cluster mode several nodes act as one z3. Metadata is replicated to every member through Raft,
+In cluster mode several nodes act as one Zee3. Metadata is replicated to every member through Raft,
 each chunk is kept on a few members, and any member answers S3 requests, so clients can reach all
 of them through a load balancer. Members join and leave without downtime, chunk copies move on
 their own, and members can be upgraded one at a time.
@@ -15,7 +15,7 @@ their own, and members can be upgraded one at a time.
 A cluster is for nodes in one location on a fast network. To connect locations, use
 [bucket replication](/replication/bucket-replication) or
 [site replication](/replication/site-replication). A cluster takes part in them like one node: see
-[Replication with other z3 nodes](#replication-with-other-z3-nodes).
+[Replication with other Zee3 nodes](#replication-with-other-zee3-nodes).
 
 ## Start the nodes
 
@@ -23,31 +23,31 @@ Cluster mode rides on the peer API (the same port and token as replication). Sta
 the same token:
 
 ```bash
-Z3_PEER_TOKEN=cluster-secret \
-Z3_CLUSTER_ADDR=http://10.0.0.11:9002 \
-Z3_NODE_NAME=z3-1 \
-z3
+ZEE3_PEER_TOKEN=cluster-secret \
+ZEE3_CLUSTER_ADDR=http://10.0.0.11:9002 \
+ZEE3_NODE_NAME=zee3-1 \
+zee3
 ```
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `Z3_PEER_TOKEN` | (required) | Peer API token, the same on every member |
-| `Z3_CLUSTER_ADDR` | `http://127.0.0.1:<peer port>` (`https://` with [mutual TLS](#mutual-tls)) | This node's peer API as the other members reach it |
-| `Z3_NODE_NAME` | host name | The node's name in the console and the CLI |
-| `Z3_CLUSTER_COPIES` | `3` | Copies of each chunk, capped at the number of members. With [erasure coding](#erasure-coding-across-members), copies of chunks below the smallest size to shard |
-| `Z3_CLUSTER_READS` | `consistent` | `consistent`: followers catch up with the leader before reads; `local`: read at once |
-| `Z3_CLUSTER_SWEEP_INTERVAL` | `600` | Seconds between placement sweeps |
-| `Z3_CLUSTER_EC_CONVERT_MB` | `4096` | MiB of existing chunks the leader [converts](#converting-existing-chunks) to the current layout per sweep. `0` never converts existing chunks |
+| `ZEE3_PEER_TOKEN` | (required) | Peer API token, the same on every member |
+| `ZEE3_CLUSTER_ADDR` | `http://127.0.0.1:<peer port>` (`https://` with [mutual TLS](#mutual-tls)) | This node's peer API as the other members reach it |
+| `ZEE3_NODE_NAME` | host name | The node's name in the console and the CLI |
+| `ZEE3_CLUSTER_COPIES` | `3` | Copies of each chunk, capped at the number of members. With [erasure coding](#erasure-coding-across-members), copies of chunks below the smallest size to shard |
+| `ZEE3_CLUSTER_READS` | `consistent` | `consistent`: followers catch up with the leader before reads; `local`: read at once |
+| `ZEE3_CLUSTER_SWEEP_INTERVAL` | `600` | Seconds between placement sweeps |
+| `ZEE3_CLUSTER_EC_CONVERT_MB` | `4096` | MiB of existing chunks the leader [converts](#converting-existing-chunks) to the current layout per sweep. `0` never converts existing chunks |
 
 ## Form the cluster
 
 Start a cluster on one node, then add the others by their peer address:
 
 ```bash
-z3 admin cluster init                       # on the first node
-z3 admin cluster add http://10.0.0.12:9002
-z3 admin cluster add http://10.0.0.13:9002
-z3 admin cluster status
+zee3 admin cluster init                       # on the first node
+zee3 admin cluster add http://10.0.0.12:9002
+zee3 admin cluster add http://10.0.0.13:9002
+zee3 admin cluster status
 ```
 
 The **Cluster** page in the console does the same.
@@ -57,7 +57,7 @@ The **Cluster** page in the console does the same.
 </Frame>
 
 - A node that joins must be **empty** (no buckets). It receives the cluster's metadata from a
-  snapshot, including the cluster's node id, so the whole cluster shows up as one z3 node.
+  snapshot, including the cluster's node id, so the whole cluster shows up as one Zee3 node.
 - A node that already has replication peers or site replication can start a cluster. Its peers,
   replication settings, cursors and node id become the cluster's, so its peers see no difference.
 - Run **three or five** members. Three members keep taking writes with one member down, five with
@@ -70,10 +70,10 @@ The **Cluster** page in the console does the same.
   produces the same version ids, timestamps and change log.
 - Followers forward writes to the leader, and answer once they have applied the write themselves:
   a write through a node can be read on that node right away.
-- With `Z3_CLUSTER_READS=consistent`, a follower asks the leader for its commit point before a GET,
+- With `ZEE3_CLUSTER_READS=consistent`, a follower asks the leader for its commit point before a GET,
   HEAD or List and waits until it has applied that point. Concurrent reads share one round trip. A
   write acknowledged on any member is visible on every member.
-- The Raft log is in `raft.redb` under `Z3_DATA_DIR`, with a snapshot every 5,000 entries. A member
+- The Raft log is in `raft.redb` under `ZEE3_DATA_DIR`, with a snapshot every 5,000 entries. A member
   that falls far behind receives the snapshot.
 - Background work that changes metadata runs on the leader only: garbage collection, lifecycle
   (including tier transitions), the tier delete queue, replication links, and geo erasure coding
@@ -82,7 +82,7 @@ The **Cluster** page in the console does the same.
 ## Data
 
 - Each chunk's owners are picked by **rendezvous hashing** over the voting members. A chunk is
-  written to `Z3_CLUSTER_COPIES` owners in parallel, and the write succeeds once most of them have it.
+  written to `ZEE3_CLUSTER_COPIES` owners in parallel, and the write succeeds once most of them have it.
 - When an owner is down, its copy goes to the next member in line, and the placement sweep hands it
   to the owner once it is back.
 - A read fetches a chunk this node lacks from its owners, then from any member, and verifies it
@@ -94,7 +94,7 @@ The **Cluster** page in the console does the same.
 
 ### Placement sweep
 
-Every member runs a sweep after each membership change and every `Z3_CLUSTER_SWEEP_INTERVAL`
+Every member runs a sweep after each membership change and every `ZEE3_CLUSTER_SWEEP_INTERVAL`
 seconds:
 
 1. It fetches chunks it owns but lacks.
@@ -104,18 +104,18 @@ seconds:
 With erasure coding, the sweep does the same for shards and also rebuilds and converts them; see
 [Repair and rebalance](#repair-and-rebalance).
 
-The console shows the last sweep's counts. `z3 admin cluster sweep`, or **Repair copies** in the
+The console shows the last sweep's counts. `zee3 admin cluster sweep`, or **Repair copies** in the
 console, runs a sweep on every member now.
 
 The [orphan sweep](/durability/healing#orphaned-chunks), which deletes chunk files a crash left
 unreferenced, is separate: every member runs it on its own disks only. Copies a member holds for an
 owner that is down are still referenced, so they are kept. Because other members may place chunks
 before the commit that references them arrives, its minimum age in a cluster is the larger of
-`Z3_GC_GRACE` and `Z3_UPLOAD_TTL`.
+`ZEE3_GC_GRACE` and `ZEE3_UPLOAD_TTL`.
 
 ## Erasure coding across members
 
-Instead of `Z3_CLUSTER_COPIES` full copies, a cluster can store large chunks as Reed-Solomon shards:
+Instead of `ZEE3_CLUSTER_COPIES` full copies, a cluster can store large chunks as Reed-Solomon shards:
 `data` shards plus `parity` shards, each on a different member. Any `data` shards rebuild the chunk,
 so the cluster stays readable with `parity` members lost, at `(data + parity) / data` times the data.
 
@@ -126,7 +126,7 @@ so the cluster stays readable with `parity` members lost, at `(data + parity) / 
 | 4+2 | 6 | 2 | 1.5x |
 | 8+3 | 11 | 3 | 1.38x |
 
-This is separate from [erasure coding over disks](/durability/erasure-coding) (`Z3_DISKS`) inside a
+This is separate from [erasure coding over disks](/durability/erasure-coding) (`ZEE3_DISKS`) inside a
 node, and from [geo erasure coding](/replication/geo-erasure-coding) across sites. All three can be
 used together.
 
@@ -140,10 +140,10 @@ used together.
 <Tabs>
   <Tab title="Command line">
     ```bash
-    z3 admin cluster ec 4+2                     # chunks of 256 KiB and more as 4+2 shards on six members
-    z3 admin cluster ec 4+2 --min-size 1048576  # chunks under 1 MiB stay full copies
-    z3 admin cluster ec off                     # back to full copies
-    z3 admin cluster status                     # layout, shards per member, redundancy
+    zee3 admin cluster ec 4+2                     # chunks of 256 KiB and more as 4+2 shards on six members
+    zee3 admin cluster ec 4+2 --min-size 1048576  # chunks under 1 MiB stay full copies
+    zee3 admin cluster ec off                     # back to full copies
+    zee3 admin cluster status                     # layout, shards per member, redundancy
     ```
   </Tab>
   <Tab title="Console">
@@ -166,7 +166,7 @@ used together.
 - The cluster needs at least `data + parity` voting members. A larger layout is refused
   (`4+2 needs at least 6 members, the cluster has 5`), and so is removing a member that would leave
   fewer. Choose a smaller layout or turn erasure coding off first.
-- Chunks smaller than `min_size` (256 KiB by default) stay as `Z3_CLUSTER_COPIES` full copies. Large
+- Chunks smaller than `min_size` (256 KiB by default) stay as `ZEE3_CLUSTER_COPIES` full copies. Large
   objects are cut into chunks of 256 KiB to 4 MiB, so all their chunks are sharded, while small
   objects and the tail of large objects stay as copies: spreading a few KiB over six files and six
   requests costs more than a few copies.
@@ -227,11 +227,11 @@ or move when you remove it.
 On the leader, each sweep converts chunks whose layout differs from the setting: copies to shards,
 one layout to another, and shards back to copies (with `off`, or for chunks below a new `min_size`).
 
-- Each sweep converts up to `Z3_CLUSTER_EC_CONVERT_MB` (4096 MiB by default). With `0`, only new
+- Each sweep converts up to `ZEE3_CLUSTER_EC_CONVERT_MB` (4096 MiB by default). With `0`, only new
   chunks use the new layout.
 - The new shards are stored on all their owners before the switch is recorded. Every member then
   drops its full copy, and garbage collection deletes the old shards.
-- Changing the layout runs a sweep on every member at once. `z3 admin cluster sweep` runs the next
+- Changing the layout runs a sweep on every member at once. `zee3 admin cluster sweep` runs the next
   one now.
 
 ### With other features
@@ -248,8 +248,8 @@ one layout to another, and shards back to copies (with `off`, or for chunks belo
 
 ### Watching it
 
-- `z3 admin cluster status` shows the layout, the shards and copies each member holds, and the
-  redundancy summary. See [z3 admin cluster](/cli/cluster#status).
+- `zee3 admin cluster status` shows the layout, the shards and copies each member holds, and the
+  redundancy summary. See [Zee3 admin cluster](/cli/cluster#status).
 - The **Cluster** page in the console shows shards and bytes per member, and the **Erasure coding**
   panel: erasure-coded chunks, chunks as copies, chunks missing a shard, at risk, and unreadable.
 - `GET /api/cluster` returns `layout`, `members[].chunks` and `redundancy`. See the
@@ -262,12 +262,12 @@ The redundancy figures come from the leader's last sweep, not from a continuous 
 ## Remove a member
 
 ```bash
-z3 admin cluster remove <member id>
+zee3 admin cluster remove <member id>
 ```
 
 The member stops owning chunks at once and stays as a learner (**Leaving**), still serving chunk
 reads. The leader runs a sweep on every voter, and once every copy and shard is on its new owners,
-the member leaves the cluster. Wipe its `Z3_DATA_DIR` before using it again.
+the member leaves the cluster. Wipe its `ZEE3_DATA_DIR` before using it again.
 
 With [erasure coding](#erasure-coding-across-members), removing a member that would leave fewer
 voting members than `data + parity` is refused. Choose a smaller layout or turn erasure coding off
@@ -278,9 +278,9 @@ learns from the leader that it was removed: it stops replicating and answers the
 **503** until its data directory is wiped. Peers that list several cluster URLs move on to the next
 one. Remove the member's URL from their endpoints.
 
-## Replication with other z3 nodes
+## Replication with other Zee3 nodes
 
-A cluster can replicate buckets with other z3 nodes or clusters, join a
+A cluster can replicate buckets with other Zee3 nodes or clusters, join a
 [site replication](/replication/site-replication) group, and be one site in
 [geo erasure coding](/replication/geo-erasure-coding). It takes part as **one node**: one node id,
 one change log, and peers don't need to know there are several members behind it.
@@ -309,7 +309,7 @@ On the peer, write the cluster's endpoint in one of these ways:
 | Endpoint on the peer | When |
 | --- | --- |
 | `http://10.0.0.11:9002,http://10.0.0.12:9002,http://10.0.0.13:9002` | Every member, separated by commas. Recommended without a load balancer. The peer must run a version that understands comma lists |
-| `https://z3-peer.example.com:9002` | A VIP or load balancer in front of every member's peer port. Also for older peers |
+| `https://zee3-peer.example.com:9002` | A VIP or load balancer in front of every member's peer port. Also for older peers |
 | `http://10.0.0.11:9002` | One member. Works, but peers can't pull from the cluster while that member is down |
 
 With several URLs, the peer uses the URL that last answered, and moves to the next one on a
@@ -320,7 +320,7 @@ Older single-node peers can still replicate with a cluster, but they don't under
 give them one URL or a VIP. With [mutual TLS](#mutual-tls), each member's certificate must include
 the host name or IP address peers use; behind a VIP, the VIP's name.
 
-The cluster's peer token is the `Z3_PEER_TOKEN` shared by every member.
+The cluster's peer token is the `ZEE3_PEER_TOKEN` shared by every member.
 
 ```bash
 # on the cluster (any member): add node x as a peer and replicate the bucket data to it
@@ -343,7 +343,7 @@ curl -X PUT http://127.0.0.1:9001/api/buckets/data/replication \
 ### Geo erasure coding
 
 A cluster is one site in the geo layout. Its shards are ordinary chunks, placed on
-`Z3_CLUSTER_COPIES` members and moved by the placement sweep like any other chunk. With
+`ZEE3_CLUSTER_COPIES` members and moved by the placement sweep like any other chunk. With
 [erasure coding across members](#erasure-coding-across-members), geo shards large enough are
 sharded across members in turn.
 
@@ -358,11 +358,11 @@ sharded across members in turn.
 ### Consistency, sessions and offline peers
 
 - `quorum` and `all` modes work through any member.
-- `x-z3-session` [read-your-writes](/replication/bucket-replication#read-your-writes-with-session-tokens)
+- `x-zee3-session` [read-your-writes](/replication/bucket-replication#read-your-writes-with-session-tokens)
   tokens work through any member, in both directions.
 - The leader decides which peers are offline, and the other members follow it every second, so
   [`on_offline: local`](/replication/edge#on_offline) also applies to writes through a follower.
-- Give every member the same `Z3_SITE_NAME`, or none and use site replication instead.
+- Give every member the same `ZEE3_SITE_NAME`, or none and use site replication instead.
 
 ### Monitoring
 
@@ -381,47 +381,47 @@ For the load balancer in front of the members, `GET /minio/health/cluster` on th
 ## Mutual TLS
 
 Raft, forwarded writes and chunk copies all run on the peer API, so a cluster uses the same
-[mutual TLS](/deploy/peer-tls) as replication: set `Z3_PEER_TLS_CERT`, `Z3_PEER_TLS_KEY` and
-`Z3_PEER_TLS_CA` on every member.
+[mutual TLS](/deploy/peer-tls) as replication: set `ZEE3_PEER_TLS_CERT`, `ZEE3_PEER_TLS_KEY` and
+`ZEE3_PEER_TLS_CA` on every member.
 
 ```bash
-Z3_PEER_TOKEN=cluster-secret \
-Z3_PEER_TLS_CERT=/etc/z3/peer/z3-1.pem \
-Z3_PEER_TLS_KEY=/etc/z3/peer/z3-1.key \
-Z3_PEER_TLS_CA=/etc/z3/peer/ca.pem \
-Z3_CLUSTER_ADDR=https://10.0.0.11:9002 \
-Z3_NODE_NAME=z3-1 \
-z3
+ZEE3_PEER_TOKEN=cluster-secret \
+ZEE3_PEER_TLS_CERT=/etc/zee3/peer/zee3-1.pem \
+ZEE3_PEER_TLS_KEY=/etc/zee3/peer/zee3-1.key \
+ZEE3_PEER_TLS_CA=/etc/zee3/peer/ca.pem \
+ZEE3_CLUSTER_ADDR=https://10.0.0.11:9002 \
+ZEE3_NODE_NAME=zee3-1 \
+zee3
 ```
 
-- Each member's certificate must include the host name or IP address in its `Z3_CLUSTER_ADDR`.
-- In `mtls` and `tls` mode, `Z3_CLUSTER_ADDR` defaults to `https://127.0.0.1:<peer port>`, and an
+- Each member's certificate must include the host name or IP address in its `ZEE3_CLUSTER_ADDR`.
+- In `mtls` and `tls` mode, `ZEE3_CLUSTER_ADDR` defaults to `https://127.0.0.1:<peer port>`, and an
   `http://` address is refused at startup.
-- Add new members with `https://` addresses: `z3 admin cluster add https://10.0.0.14:9002`.
+- Add new members with `https://` addresses: `zee3 admin cluster add https://10.0.0.14:9002`.
 - Member addresses are stored in the Raft membership as they were added, so the console may still
   show `http://` for older members. The scheme used to reach them follows each node's own
-  `Z3_CLUSTER_ADDR`: a member with an `https://` address calls every member over TLS.
+  `ZEE3_CLUSTER_ADDR`: a member with an `https://` address calls every member over TLS.
 
 To turn it on in a running cluster, restart members one at a time as in a
 [rolling upgrade](#rolling-upgrade), and wait until each one is caught up:
 
 <Steps>
   <Step title="Certificates and mixed mode">
-    Set the certificate variables and `Z3_PEER_TLS_MODE=mixed` on every member. Addresses stay
+    Set the certificate variables and `ZEE3_PEER_TLS_MODE=mixed` on every member. Addresses stay
     `http://`.
   </Step>
   <Step title="https:// addresses">
-    Set `Z3_CLUSTER_ADDR=https://...` on every member. Members you have changed call the others over
+    Set `ZEE3_CLUSTER_ADDR=https://...` on every member. Members you have changed call the others over
     TLS, the rest still in plain HTTP; `mixed` mode accepts both.
   </Step>
   <Step title="TLS only">
-    Remove `Z3_PEER_TLS_MODE` (the default is `mtls`).
+    Remove `ZEE3_PEER_TLS_MODE` (the default is `mtls`).
   </Step>
 </Steps>
 
 ## Rolling upgrade
 
-Restart members one at a time, and wait until `z3 admin cluster status` shows the member caught up
+Restart members one at a time, and wait until `zee3 admin cluster status` shows the member caught up
 before moving on. Reads and writes continue on the other members meanwhile. Each member's version is
 in the status. Don't use features of the new version until every member runs it.
 
@@ -450,7 +450,7 @@ readable by every version.
 - Copies and shards fetched, rebuilt or converted by the sweep are stored uncompressed.
 - With erasure coding, shards of a member that is down but not removed aren't rebuilt on other
   members. Chunks stay readable from the remaining shards, and the health check warns.
-- Only the leader converts existing chunks, up to `Z3_CLUSTER_EC_CONVERT_MB` per sweep. Changing the
+- Only the leader converts existing chunks, up to `ZEE3_CLUSTER_EC_CONVERT_MB` per sweep. Changing the
   layout or `min_size` cuts the affected chunks again.
 - The redundancy figures in the console and the health check are computed at the leader's sweep, not
   continuously.

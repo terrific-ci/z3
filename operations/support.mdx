@@ -5,7 +5,7 @@ description: "Health checks, drive and network speed tests, CPU profiles, and in
 
 The **Support** page gathers the tools to find out why a node is slow or unwell, without logging
 in to the server. Everything runs on the node you are signed in to, from the console, the
-[admin API](/api/admin-operations#support) or [`z3 admin support`](/cli/support).
+[admin API](/api/admin-operations#support) or [`zee3 admin support`](/cli/support).
 
 | Tool | What it does | Right |
 | --- | --- | --- |
@@ -31,7 +31,7 @@ Each check is `ok`, `warn` or `fail`; the report takes the worst level.
 | Disks | Each disk's state, the erasure layout, free space | **Fail**: more disks offline than the parity allows. **Warn**: a disk offline, or under 10% free |
 | Disk writes | Writes, syncs, reads back and deletes a 4 KiB file on every disk | **Fail**: a disk cannot write. **Warn**: slower than 500 ms |
 | Healing | Chunks checked, shards repaired, chunks lost, [geo shards rebuilt from other sites](/replication/geo-erasure-coding#healing-across-sites) | **Fail**: a chunk was lost and is not repaired yet (`lost_now`). **Warn**: some geo chunks can't be rebuilt from the other sites yet (too few sites answered) |
-| Peers and clocks | A hello to each replication peer: round trip, version, clock difference (from its `Date` header), and whether it is reached over TLS (`tls`) | **Fail**: a peer is unreachable; TLS errors are explained (expired certificate, unknown CA, host name mismatch, client certificate required). **Warn**: a clock more than 5 s off, or another z3 version |
+| Peers and clocks | A hello to each replication peer: round trip, version, clock difference (from its `Date` header), and whether it is reached over TLS (`tls`) | **Fail**: a peer is unreachable; TLS errors are explained (expired certificate, unknown CA, host name mismatch, client certificate required). **Warn**: a clock more than 5 s off, or another Zee3 version |
 | Peer TLS | [Mutual TLS between nodes](/deploy/peer-tls#check-it): mode, this node's certificate (subject, names, validity), CA, reloads, refused handshakes and plain requests | **Fail**: this node's certificate has expired or is not valid yet. **Warn**: it expires in less than 14 days, a reload failed, the mode is `mixed`, or a peer endpoint is still `http://` |
 | Replication | The state of each replication link | **Warn**: a link failing, or more than 5 minutes behind |
 | Memory and CPU | Host and process memory, load average | **Warn**: memory over 90%, or load over 1.5 × the number of CPUs |
@@ -45,11 +45,11 @@ In the console, open a check to see its details. **Report** downloads the whole 
 attach when asking for help.
 
 ```bash
-z3 admin support health
+zee3 admin support health
 ```
 
 ```
-z3 0.1.0 on node 01a1e9a0-be79-7462-83e2-8685ea015598: warn
+zee3 0.1.0 on node 01a1e9a0-be79-7462-83e2-8685ea015598: warn
   ok    Disks                    6 disks online
   ok    Disk writes              Slowest synced 4 KiB write took 5.6 ms
   ok    Healing                  No full scan since start, nothing lost
@@ -59,7 +59,7 @@ z3 0.1.0 on node 01a1e9a0-be79-7462-83e2-8685ea015598: warn
   ok    Memory and CPU           Memory 62% used, load 2.9 on 16 CPUs
   ok    Errors in the last hour  No errors, 1 warning
   ok    Log history              12.4 MiB of 64 MiB in 3 files
-  WARN  Root credentials         Root still uses the default access and secret key; set Z3_ACCESS_KEY and Z3_SECRET_KEY
+  WARN  Root credentials         Root still uses the default access and secret key; set ZEE3_ACCESS_KEY and ZEE3_SECRET_KEY
   ok    Key store                AWS KMS reachable (38 ms)
 ```
 
@@ -101,12 +101,12 @@ Inspect downloads a zip that shows how one object version is stored on this node
 
 | File | Contents |
 | --- | --- |
-| `object.json` | The raw version record: size, ETag, chunk list, encryption and tier. Stored [object headers](/api/s3-compatibility#object-headers) (`Cache-Control` and friends) show as `z3-sys-*` keys in its `user_metadata` |
+| `object.json` | The raw version record: size, ETag, chunk list, encryption and tier. Stored [object headers](/api/s3-compatibility#object-headers) (`Cache-Control` and friends) show as `zee3-sys-*` keys in its `user_metadata` |
 | `layout.json` | User metadata and object headers as S3 clients see them (`user_metadata`, `headers`); for each chunk, the files that hold it on this node's disks (position, disk, path, size), and whether the chunk reads back intact |
 | `chunks/` | The files as they are on disk: `<chunk number>-<hash>/<position>-disk<index>` |
 | `README.txt` | What the files are |
 
-Chunk files can be LZ4-compressed (starting with `z3c1`), encrypted (SSE data stays encrypted in the
+Chunk files can be LZ4-compressed (starting with `zee3c1`), encrypted (SSE data stays encrypted in the
 zip), or erasure-coded shards with a header. On a node with one data directory, a file is the
 whole chunk.
 
@@ -115,5 +115,5 @@ layout. With data, the files may total at most 1 GiB; a larger object answers `4
 inspected without data.
 
 ```bash
-z3 admin support inspect photos 2026/a.jpg --no-data -o a.zip
+zee3 admin support inspect photos 2026/a.jpg --no-data -o a.zip
 ```

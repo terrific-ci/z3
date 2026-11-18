@@ -5,15 +5,15 @@ description: "Nodes, buckets, objects, versions, chunks, disks, pools, peers, si
 
 ## Node
 
-A **node** is one running `z3` process with its own data directory (`Z3_DATA_DIR`). It has a
+A **node** is one running `zee3` process with its own data directory (`ZEE3_DATA_DIR`). It has a
 random node id, created the first time it starts, and serves three things:
 
 - the **S3 API** on port 9000, for applications and S3 clients,
 - the **console and admin API** on port 9001, for people and scripts,
 - the **replication API** on port 9002, which other nodes pull changes from (only when
-  `Z3_PEER_TOKEN` is set).
+  `ZEE3_PEER_TOKEN` is set).
 
-The data directory holds the metadata database (`meta.redb`) and, unless you give z3 separate
+The data directory holds the metadata database (`meta.redb`) and, unless you give Zee3 separate
 disks, the chunks themselves (under `chunks/`).
 
 ## Buckets and objects
@@ -34,7 +34,7 @@ The current version of a key is the one with the highest timestamp (see
 
 ## Chunks and deduplication
 
-z3 doesn't store objects as whole files. It cuts each object into **chunks** with content-defined
+Zee3 doesn't store objects as whole files. It cuts each object into **chunks** with content-defined
 chunking (about 1 MiB on average) and stores each chunk under its BLAKE3 hash. Because the cut
 points follow the content, an edited file shares most of its chunks with the previous version.
 
@@ -44,14 +44,14 @@ points follow the content, an edited file shares most of its chunks with the pre
 - Every chunk is checked against its hash when it is read, so silent corruption (bit rot) is
   detected instead of returned.
 - Chunks no longer referenced by any version are deleted by **garbage collection** after a grace
-  period (`Z3_GC_GRACE`, one hour by default).
+  period (`ZEE3_GC_GRACE`, one hour by default).
 
 Encrypted objects are the exception: each one has its own data key, so their chunks are never
 shared with other objects.
 
 ## Disks and erasure sets
 
-By default chunks live in the data directory. With `Z3_DISKS`, a node spreads them over a **disk
+By default chunks live in the data directory. With `ZEE3_DISKS`, a node spreads them over a **disk
 set** (an erasure set): each chunk is split into data shards and Reed-Solomon parity shards, one per
 disk. With six disks and parity 2, any two disks can fail and every object is still readable, for
 1.5 times the raw size. See [Disks](/deploy/disks) and [Erasure coding](/durability/erasure-coding).

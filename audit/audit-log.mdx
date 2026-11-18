@@ -3,7 +3,7 @@ title: "Audit log"
 description: "Send an audit entry for every S3 request and every admin change to a webhook, Redis, NATS, Elasticsearch or Kafka."
 ---
 
-z3 can send an **audit entry** for every S3 request and every change made through the console or
+Zee3 can send an **audit entry** for every S3 request and every change made through the console or
 the admin API to one or more **audit targets**: a SIEM, a log store, a stream. Entries use MinIO's
 audit log format, so tools that already read MinIO audit logs work unchanged.
 
@@ -14,7 +14,7 @@ audit log format, so tools that already read MinIO audit logs work unchanged.
 ## What is recorded
 
 - **Every S3 request**, including refused ones (bad signature, access denied). A request refused
-  before z3 knows its operation is recorded as `Unauthenticated`, with the access key it claimed
+  before Zee3 knows its operation is recorded as `Unauthenticated`, with the access key it claimed
   and the bucket and object from its path.
 - **Every change through the console and the admin API**: every call that is not a `GET`,
   including failed sign-ins. Reads of the admin API are not sent to audit targets; they still show
@@ -50,8 +50,8 @@ shows the error if it fails.
 ```bash
 curl -X PUT http://127.0.0.1:9001/api/audit/targets/siem \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"kind": "kafka", "endpoint": "k1:9092,k2:9092", "key": "z3-audit",
-       "user": "z3", "secret": "kafka-password", "sasl": "scram-sha-512", "tls": true}'
+  -d '{"kind": "kafka", "endpoint": "k1:9092,k2:9092", "key": "zee3-audit",
+       "user": "zee3", "secret": "kafka-password", "sasl": "scram-sha-512", "tls": true}'
 ```
 
 See [Events and audit API](/api/admin-events-audit#audit-targets).
@@ -88,7 +88,7 @@ event destinations, secrets are stored sealed and never shown again.
   "requestQuery": {},
   "requestHeader": { "authorization": "AWS4-HMAC-SHA256 Credential=AKIA.../20261117/us-east-1/s3/aws4_request, SignedHeaders=..., Signature=REDACTED" },
   "responseHeader": { "etag": "\"5d41402abc4b2a76b9719d911017c592\"", "x-amz-request-id": "1A1E70C991C0000CB" },
-  "accessKey": "z3admin",
+  "accessKey": "zee3admin",
   "tags": { "kind": "s3" }
 }
 ```
