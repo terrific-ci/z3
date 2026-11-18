@@ -104,6 +104,43 @@ too. Upgrade every member before you run `zee3 admin cluster ec`: a member on an
 following the log when the layout is set, until it is upgraded. The on-disk format doesn't change,
 and chunks stored as copies stay readable by every version.
 
+## From 1.0.x to 1.1.0
+
+1.1.0 renames z3 to Zee3. The metadata format does not change, so the data directory is used as it
+is, but names around it do:
+
+| Before (1.0.x) | From 1.1.0 |
+| --- | --- |
+| Binary and command line `z3`, `z3 admin` | `zee3`, `zee3 admin` |
+| Environment variables `Z3_*` | `ZEE3_*` (for example `ZEE3_DATA_DIR`, `ZEE3_ACCESS_KEY`) |
+| Default credentials `z3admin` / `z3admin-secret` | `zee3admin` / `zee3admin-secret` |
+| Metrics `z3_*` | `zee3_*` |
+| Headers `x-z3-*` (such as `x-z3-session`) | `x-zee3-*` |
+| Event destination ARNs `arn:z3:sqs::...` | `arn:zee3:sqs::...` (MinIO's `arn:minio:sqs::...` still works) |
+| Configuration exports with `"z3_config"` | `"zee3_config"` |
+
+<Steps>
+  <Step title="Rename the settings">
+    In the environment file, systemd unit or Compose file, rename every `Z3_` variable to `ZEE3_`.
+    Keep `ZEE3_DATA_DIR` pointing at the existing data directory (or move the directory and point it
+    there). Change the credentials if you relied on the defaults.
+  </Step>
+  <Step title="Upgrade every node together">
+    Stop every node of a replication group and every member of a cluster, install 1.1.0, then start
+    them. Nodes on 1.0.x and 1.1.0 use different header names between them, so they do not replicate
+    with each other. With the install script, 1.1.0 installs a binary named `zee3`; the Docker image
+    keeps its name, `terrificci/z3`.
+  </Step>
+  <Step title="Update what talks to Zee3">
+    Dashboards and alerts that use `z3_*` metrics, clients that send `x-z3-session`, bucket
+    notification configurations that name `arn:z3:` ARNs, and scripts that call `z3 admin`.
+  </Step>
+  <Step title="Take a new configuration export">
+    Exports taken from 1.0.x do not import into 1.1.0. Temporary STS credentials issued before the
+    upgrade stop working; ask for new ones.
+  </Step>
+</Steps>
+
 ## From 1.0.0 to 1.0.1
 
 Replace the binary or the image and restart. The metadata format is unchanged, and 1.0.0 and 1.0.1
