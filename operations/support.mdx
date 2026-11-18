@@ -35,6 +35,7 @@ Each check is `ok`, `warn` or `fail`; the report takes the worst level.
 | Replication | The state of each replication link | **Warn**: a link failing, or more than 5 minutes behind |
 | Memory and CPU | Host and process memory, load average | **Warn**: memory over 90%, or load over 1.5 × the number of CPUs |
 | Errors in the last hour | Errors and warnings in the log, the last five errors | **Warn**: any error |
+| Log history | The [log history on disk](/audit/trace-and-logs#log-history-on-disk): size, files, lines dropped | **Warn**: the history can't be written (disk full or unwritable), lines were dropped since the start, or it could not be opened |
 | Root credentials | Whether root still uses the default keys | **Warn** |
 
 In the console, open a check to see its details. **Report** downloads the whole report as JSON, to
@@ -53,6 +54,7 @@ z3 0.1.0 on node 01a1e9a0-be79-7462-83e2-8685ea015598: warn
   ok    Replication              24 links streaming
   ok    Memory and CPU           Memory 62% used, load 2.9 on 16 CPUs
   ok    Errors in the last hour  No errors, 1 warning
+  ok    Log history              12.4 MiB of 64 MiB in 3 files
   WARN  Root credentials         Root still uses the default access and secret key; set Z3_ACCESS_KEY and Z3_SECRET_KEY
 ```
 

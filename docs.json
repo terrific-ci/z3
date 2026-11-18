@@ -174,7 +174,8 @@
               "cli/support",
               "cli/pools",
               "cli/cluster",
-              "cli/metrics"
+              "cli/metrics",
+              "cli/logs"
             ]
           }
         ]

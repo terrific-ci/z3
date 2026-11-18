@@ -116,7 +116,9 @@ All values are in seconds.
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `logger.level` | `RUST_LOG` (`info`) | What the server writes to standard output: a level, or a filter like `warn,z3_server=debug` |
-| `logger.console_level` | `Z3_LOG_BUFFER` (`info`) | What the console's [Logs](/audit/trace-and-logs#logs) page keeps |
+| `logger.console_level` | `Z3_LOG_BUFFER` (`info`) | What the console's [Logs](/audit/trace-and-logs#logs) page keeps, in memory and in the history on disk |
+| `logger.history_max_mb` | `64` | The most the [log history on disk](/audit/trace-and-logs#log-history-on-disk) (`<data dir>/logs/`) may take on each node, in MiB, 0 to 1048576. The oldest files are deleted first. `0` turns the history off and deletes its files |
+| `logger.history_days` | `7` | Log history files last written longer ago than this are deleted, 0 to 3650 days. `0`: only the size limit applies |
 
 ## File protocols
 

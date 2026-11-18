@@ -75,7 +75,12 @@ Each address is `IP:port`. z3 serves plain HTTP on all three; see
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `RUST_LOG` | `info` | What the server writes to standard output: a level (`warn`) or a filter (`warn,z3_server=debug`) |
-| `Z3_LOG_BUFFER` | `info` | What the console's **Logs** page keeps, separately from `RUST_LOG` |
+| `Z3_LOG_BUFFER` | `info` | What the console's **Logs** page keeps, in memory and on disk, separately from `RUST_LOG` |
+
+Log lines the Logs page keeps are also written to `<data dir>/logs/`, up to 64 MiB or 7 days per
+node by default. The limits are the cluster settings `logger.history_max_mb` and
+`logger.history_days` (no environment variable). See
+[Log history on disk](/audit/trace-and-logs#log-history-on-disk).
 
 ### Testing only
 

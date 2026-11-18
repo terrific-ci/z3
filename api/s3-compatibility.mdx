@@ -57,7 +57,7 @@ aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 | Operation | Notes |
 | --- | --- |
 | `ListenBucketNotification`, `ListenNotification` | MinIO's event streaming, for `mc event listen` and `mc watch` ([Watch events live](/events/listen)) |
-| `AssumeRoleWithWebIdentity`, `AssumeRoleWithLDAPIdentity` | Temporary credentials for OpenID Connect and LDAP users ([STS](/api/sts)) |
+| `AssumeRole`, `AssumeRoleWithWebIdentity`, `AssumeRoleWithLDAPIdentity` | Temporary credentials for IAM users and access keys, and for OpenID Connect and LDAP users, with optional session policies (`Policy`, `PolicyArns`) ([STS](/api/sts)) |
 
 Operations not listed here answer `NotImplemented`.
 
@@ -154,6 +154,7 @@ on disk, in replication and in tiers. See [Encryption](/security/encryption).
 - **Conditional writes:** `If-None-Match` on a write only supports `*`, and `If-Match` on a write
   needs an ETag.
 - **Copy sources** that are access points are not supported.
-- **STS:** only `AssumeRoleWithWebIdentity` and `AssumeRoleWithLDAPIdentity`; session policies
-  (`Policy`, `PolicyArns`) are refused.
+- **STS:** `AssumeRole`, `AssumeRoleWithWebIdentity` and `AssumeRoleWithLDAPIdentity` only.
+  `RoleArn` is ignored (z3 has no roles); MFA and session tags on `AssumeRole` are refused; the root
+  credentials can't call `AssumeRole`. Temporary credentials work on the S3 API only.
 - Virtual-hosted-style addresses (`bucket.host`) are not served.

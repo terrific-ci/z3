@@ -1,0 +1,98 @@
+---
+title: "z3 admin logs and trace"
+description: "Read server log lines and served requests from the terminal: recent ones, a time range from the log history on disk, or live, for one node or every node of the site group."
+---
+
+`z3 admin logs` and `z3 admin trace` show from a shell what the console's
+[Trace and Logs](/audit/trace-and-logs) pages show: server log lines and the requests a node
+serves. Both read the node you connect to, or with `--all-nodes` every node of the site group,
+merged by time.
+
+```bash
+z3 admin logs [--all-nodes] [--level L] [--search S] [--since T] [--until T] [--history] [--limit N] [-f|--follow] [--json]
+z3 admin trace [--all-nodes] [--kind s3|admin] [--errors] [--search S] [--limit N] [-f|--follow] [--json]
+```
+
+Both need `admin:ServerInfo` (the built-in `diagnostics` policy has it).
+
+## logs
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--all-nodes` | – | Every node of the site group (and replication peers), merged by time |
+| `--level <L>` | every level | The least severe level shown: `error`, `warn`, `info`, `debug` |
+| `--search <S>` | – | Only lines whose message, module or fields contain this text |
+| `--since <T>` | – | The oldest line. Reads the [history on disk](/audit/trace-and-logs#log-history-on-disk) |
+| `--until <T>` | – | The newest line. Reads the history on disk |
+| `--history` | – | Read the history on disk without a time range |
+| `--limit <N>` | `100` | Lines shown: the newest of the range |
+| `-f`, `--follow` | – | Keep printing new lines as they are written. With `--since`, start from the lines since then |
+| `--json` | – | One JSON object per line, as the [API](/api/admin-events-audit#logs) answers it |
+
+Times (`--since`, `--until`) are an RFC 3339 time (`2026-11-18T09:30:00Z`), Unix milliseconds,
+`now`, or how long ago: a number and `s`, `m`, `h`, `d` or `w`, like `30s`, `90m`, `24h`, `7d`,
+`2w`.
+
+Without `--since`, `--until` or `--history`, the lines come from memory (the last 2,000 since the
+node started). With any of them, they come from the log history on disk, also from before the last
+restart. `--until` does not go with `--follow`.
+
+```bash
+z3 admin logs --level warn --search unreachable      # lines in this node's memory
+z3 admin logs --all-nodes --since 24h --until 2h     # history on disk, every node
+z3 admin logs --history --limit 1000 --json          # history without a range, JSON lines
+z3 admin logs --all-nodes --follow                   # new lines from every node
+```
+
+```
+2026-11-18T09:30:00.000Z  WARN   jkt        events  down  error=refused
+2026-11-18T09:30:02.418Z  INFO   sby        replication  link streaming  peer=jkt
+```
+
+Lines are printed oldest first, so the newest is at the bottom. Each line has the time (UTC), the
+level, the node (with `--all-nodes`), the module, the message and its fields.
+
+## trace
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--all-nodes` | – | Every node of the site group (and replication peers), merged by time |
+| `--kind <K>` | both | Only `s3` or `admin` requests |
+| `--errors` | – | Only responses with status 400 and up |
+| `--search <S>` | – | Only requests whose operation, path, bucket, key, access key or client address contain this text |
+| `--limit <N>` | `50` | Requests shown: the newest |
+| `-f`, `--follow` | – | Keep printing requests as they are served |
+| `--json` | – | One JSON object per line, as the [API](/api/admin-events-audit#trace) answers it |
+
+```bash
+z3 admin trace --all-nodes --kind s3 --errors        # recent failed requests, every node
+z3 admin trace --follow --search medical-records     # new requests, live
+```
+
+```
+2026-11-18T09:31:12.044Z  403  GET    GetObject                    /logs/x                                     1.5 ms                   10.0.0.9
+2026-11-18T09:31:12.390Z  200  PUT    PutObject                    /radiology/2026/11/18/scan-0412.dcm        38.2 ms  report-job       10.0.0.14
+```
+
+Each line has the time, the status, the method, the operation, the path, how long the node took
+until the response headers, the access key and the client address. Requests are printed oldest
+first.
+
+Trace keeps no history on disk: each node has only its last 500 requests in memory.
+
+## Several nodes
+
+With `--all-nodes`, the node you connect to asks every other node and merges the answers, as the
+console's **All nodes** view does. Nodes that can't answer don't fail the command; they are named
+on standard error:
+
+```
+node sby: not reachable: error sending request ...
+node mdn: no history on disk; only its lines since it started
+```
+
+The second line is for a node on an older z3, or with the history turned off: only its recent
+lines in memory are shown. While following, a node that comes back prints `node sby: connected`.
+
+Other `z3 admin` commands answer for the node you connect to only. To ask another node, use its
+`--url`. See [Connecting and signing in](/cli/overview#connecting-and-signing-in).

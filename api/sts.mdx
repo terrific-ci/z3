@@ -1,11 +1,11 @@
 ---
 title: "STS API"
-description: "AssumeRoleWithWebIdentity and AssumeRoleWithLDAPIdentity on the S3 port: temporary S3 credentials for OpenID Connect and LDAP users."
+description: "AssumeRole, AssumeRoleWithWebIdentity and AssumeRoleWithLDAPIdentity on the S3 port: temporary S3 credentials for IAM users, access keys, OpenID Connect and LDAP users, with optional session policies."
 ---
 
-Users who sign in through [OpenID Connect or LDAP](/access/openid-connect-ldap) have no IAM access
-key. STS gives them temporary S3 credentials, the AWS way: an application trades an OIDC ID token,
-or an LDAP user name and password, for an access key, a secret key and a session token that expire.
+STS gives out temporary S3 credentials, the AWS way: an application trades proof of identity for an
+access key, a secret key and a session token that expire. The proof is an OIDC ID token, an LDAP
+user name and password, or a request signed with an IAM user's or access key's own credentials.
 
 STS is served on the **S3 port** (9000), not the admin port. For the concepts and setup, see
 [STS](/access/sts).
@@ -14,16 +14,25 @@ STS is served on the **S3 port** (9000), not the admin port. For the concepts an
 
 | Action | Proof of identity | Policies from |
 | --- | --- | --- |
+| `AssumeRole` | The request is signed (SigV4, service `sts`) with an IAM user's or access key's credentials | The user's policies and its groups', narrowed by the access key's own policy when a key signs |
 | `AssumeRoleWithWebIdentity` | `WebIdentityToken`: an ID token (JWT) from the configured OpenID Connect provider | The token's policy claim, plus the policies every OIDC user gets (as for console sign-in) |
 | `AssumeRoleWithLDAPIdentity` | `LDAPUsername` and `LDAPPassword` (an LDAP bind) | The user's DN and group mappings (as for console sign-in) |
 
+All three accept optional [session policies](#session-policies) that narrow the session.
+
 A request is a form `POST /` (`Content-Type: application/x-www-form-urlencoded`), or a request to
-`/` with `Action` in the query. It does not need to be signed; a signature, if any, is ignored.
+`/` with `Action` in the query.
+
+- `AssumeRole` **must** be signed with SigV4 for the `sts` service, as boto3, the AWS SDKs and `mc`
+  do. Its body is at most 8192 bytes.
+- `AssumeRoleWithWebIdentity` and `AssumeRoleWithLDAPIdentity` don't need to be signed; a
+  signature, if any, is ignored.
 
 ## Parameters
 
 <ParamField body="Action" type="string" required>
-  `AssumeRoleWithWebIdentity` or `AssumeRoleWithLDAPIdentity`. Anything else answers `InvalidAction`.
+  `AssumeRole`, `AssumeRoleWithWebIdentity` or `AssumeRoleWithLDAPIdentity`. Anything else answers
+  `InvalidAction`.
 </ParamField>
 
 <ParamField body="Version" type="string">
@@ -45,6 +54,17 @@ A request is a form `POST /` (`Content-Type: application/x-www-form-urlencoded`)
 
 <ParamField body="DurationSeconds" type="integer" default="3600">
   How long the credentials last: 900 to 43200 seconds, capped by the **longest session** setting.
+  For `AssumeRole` with an access key that expires, the session ends no later than the key.
+</ParamField>
+
+<ParamField body="Policy" type="string">
+  An inline session policy: a JSON identity policy of at most 2048 bytes. See
+  [Session policies](#session-policies).
+</ParamField>
+
+<ParamField body="PolicyArns.member.N.arn" type="string">
+  Up to 10 z3 policies as session policies, named as `arn:aws:iam::<any>:policy/<name>`. See
+  [Session policies](#session-policies).
 </ParamField>
 
 <ParamField body="RoleSessionName" type="string">
@@ -52,23 +72,54 @@ A request is a form `POST /` (`Content-Type: application/x-www-form-urlencoded`)
 </ParamField>
 
 <ParamField body="RoleArn" type="string">
-  Accepted for compatibility with AWS SDKs. Does not change any rights.
+  Accepted and ignored, as in MinIO: z3 has no roles. AWS SDKs require a value; any value works.
 </ParamField>
 
-Session policies (`Policy`, `PolicyArns`) are refused with `InvalidParameterValue`, rather than
-ignored: the provider's policies apply.
+`AssumeRole` also ignores `ExternalId` and `SourceIdentity`. MFA (`SerialNumber`, `TokenCode`) and
+session tags (`Tags`, `TransitiveTagKeys`) are refused with `InvalidParameterValue`, rather than
+ignored.
 
-## ID token checks
+## AssumeRole
 
-For `AssumeRoleWithWebIdentity`, z3 checks:
+`AssumeRole` lets an application with permanent credentials hand out short-lived ones, for example
+to a job, optionally narrowed with a session policy.
 
-- the **signature**, with a key from the provider's `jwks_uri` (RS256, RS384, RS512, PS256, PS384,
-  PS512, ES256, ES384; `none` and HS algorithms are refused). Keys are cached for 10 minutes and
-  fetched again when a signature does not match, so key rotation at the provider just works;
-- the issuer, the audience (`aud` or `azp` must be the client ID), `exp` and `nbf`, with 60 seconds of
-  clock leeway;
-- that the user (the user claim, else `sub`) has at least one z3 policy. Otherwise the answer is
-  `AccessDenied`.
+- The session acts **as that user**: the user's policies and its groups' apply, and so do bucket
+  policies that name the user.
+- When an **access key** signs the request, the session acts as the key's user, and the key's own
+  policy still applies. The session never outlives the key's expiry.
+- The **root credentials and root's access keys** can't call `AssumeRole` (`AccessDenied`). Use an
+  IAM user.
+- **Temporary credentials** can't call `AssumeRole` again (`AccessDenied`): sign with the user's or
+  access key's own credentials.
+- A bad signature or an unknown access key answers an STS error (`SignatureDoesNotMatch`,
+  `InvalidAccessKeyId`), so SDKs show it as usual.
+
+Every S3 request with the session checks the user and the key again. The session stops working as
+soon as the user is disabled or deleted, or the access key is disabled, expires or is deleted. A
+user created again under the same name does not inherit old sessions. Enabling a disabled user
+again brings back its sessions that have not expired.
+
+## Session policies
+
+`Policy` and `PolicyArns` work on all three actions and narrow the session:
+
+- **Effective permissions** are the intersection of the identity's policies and the session
+  policies. A request needs an Allow from a session policy **and** from the identity (its
+  policies, or a bucket policy). A Deny anywhere wins.
+- Session policies **never add** permissions. Grants from a bucket policy are narrowed too.
+- Several session policies (inline and by ARN) count together: one Allow among them is enough, as
+  long as none denies.
+- `Policy` is an identity policy (no `Principal`) of at most 2048 bytes. Larger answers
+  `PackedPolicyTooLarge`; invalid JSON or an invalid policy answers `MalformedPolicyDocument`.
+- `PolicyArns` names up to 10 z3 policies by the last part of the ARN, with any account:
+  `arn:aws:iam::aws:policy/readonly` is the built-in `readonly`. A policy that does not exist answers
+  `InvalidParameterValue`.
+- Policies named in `PolicyArns` are read again on every request. A policy deleted later
+  contributes nothing.
+- The session policies travel in the signed session token, so a client can't change them. They
+  apply to every S3 request, including the source of `CopyObject`, each key of `DeleteObjects`, and
+  the list of buckets.
 
 ## Response
 
@@ -94,8 +145,9 @@ For `AssumeRoleWithWebIdentity`, z3 checks:
 </AssumeRoleWithWebIdentityResponse>
 ```
 
-`AssumeRoleWithLDAPIdentity` answers the same way, without the last three elements of the result.
-Temporary access keys start with `ZSTS`.
+`AssumeRole` and `AssumeRoleWithLDAPIdentity` answer the same way (`AssumeRoleResponse`,
+`AssumeRoleWithLDAPIdentityResponse`), without the last three elements of the result. Without
+`RoleSessionName`, `AssumedRoleUser` shows the access key. Temporary access keys start with `ZSTS`.
 
 ## Errors
 
@@ -110,11 +162,15 @@ Temporary access keys start with `ZSTS`.
 | Status | Code | When |
 | --- | --- | --- |
 | 400 | `MissingParameter` | `WebIdentityToken`, `LDAPUsername` or `LDAPPassword` is missing |
-| 400 | `ValidationError` | `DurationSeconds` is not a number, or outside 900 to 43200 |
+| 400 | `ValidationError` | `DurationSeconds` is not a number, or outside 900 to 43200; more than 10 `PolicyArns`; an `AssumeRole` body over 8192 bytes |
 | 400 | `InvalidIdentityToken` | The ID token fails a check, or OpenID Connect is not set up |
-| 400 | `InvalidParameterValue` | A wrong `Version`, session policies, or LDAP is not set up |
+| 400 | `InvalidParameterValue` | A wrong `Version`, an unknown or malformed policy ARN, MFA or session tags on `AssumeRole`, or LDAP is not set up |
+| 400 | `PackedPolicyTooLarge` | `Policy` is over 2048 bytes |
+| 400 | `MalformedPolicyDocument` | `Policy` is not valid JSON or not a valid identity policy |
 | 400 | `InvalidAction` | Another action |
-| 403 | `AccessDenied` | Wrong LDAP password, no z3 policy for the user, or STS is turned off |
+| 403 | `SignatureDoesNotMatch` | `AssumeRole`: the signature does not match |
+| 403 | `InvalidAccessKeyId` | `AssumeRole`: the access key is unknown |
+| 403 | `AccessDenied` | Wrong LDAP password, no z3 policy for the user, STS is turned off; for `AssumeRole`: unsigned or not signed for `sts`, root credentials, or temporary credentials |
 
 ## Using the credentials
 
@@ -122,8 +178,36 @@ Sign S3 requests with the access key and secret key as usual (SigV4), and send t
 `x-amz-security-token` (or `X-Amz-Security-Token` in a presigned URL). Without the token the
 answer is `InvalidToken`; after expiry, `ExpiredToken`.
 
+Temporary credentials are for the S3 API only. The console, the admin API, the
+[file protocols](/protocols/overview) and `ListenBucketNotification` don't accept them.
+
 <Tabs>
-  <Tab title="boto3">
+  <Tab title="AssumeRole (boto3)">
+
+```python
+import json
+import boto3
+
+# Signed with the user's (or access key's) own credentials.
+sts = boto3.client("sts", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+                   aws_access_key_id="report-job", aws_secret_access_key=secret)
+session_policy = {
+    "Version": "2012-10-17",
+    "Statement": [{"Effect": "Allow", "Action": ["s3:GetObject", "s3:ListBucket"],
+                   "Resource": ["arn:aws:s3:::reports", "arn:aws:s3:::reports/*"]}],
+}
+c = sts.assume_role(
+    RoleArn="arn:aws:iam::000000000000:role/z3", RoleSessionName="nightly",
+    DurationSeconds=900, Policy=json.dumps(session_policy))["Credentials"]
+
+s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+                  aws_access_key_id=c["AccessKeyId"],
+                  aws_secret_access_key=c["SecretAccessKey"],
+                  aws_session_token=c["SessionToken"])
+```
+
+  </Tab>
+  <Tab title="Web identity (boto3)">
 
 ```python
 import boto3
@@ -134,7 +218,8 @@ sts = boto3.client("sts", endpoint_url="http://z3.example.com:9000", region_name
                    config=Config(signature_version=UNSIGNED))
 c = sts.assume_role_with_web_identity(
     RoleArn="arn:aws:iam::000000000000:role/z3", RoleSessionName="app",
-    WebIdentityToken=id_token, DurationSeconds=3600)["Credentials"]
+    WebIdentityToken=id_token, DurationSeconds=3600,
+    PolicyArns=[{"arn": "arn:aws:iam::aws:policy/readonly"}])["Credentials"]
 
 s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000",
                   aws_access_key_id=c["AccessKeyId"],
@@ -143,7 +228,7 @@ s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000",
 ```
 
   </Tab>
-  <Tab title="curl">
+  <Tab title="LDAP (curl)">
 
 ```bash
 curl -X POST http://z3.example.com:9000/ \
@@ -160,16 +245,29 @@ Nothing is stored per session:
 
 - The secret key is derived from the access key with the STS signing key, so z3 can check SigV4
   signatures from the access key alone.
-- The session token carries the access key, expiry, provider, user and where the policies come
-  from (the OIDC policy claim, or the LDAP DN and groups), signed with the same key.
+- The session token carries the access key, expiry, provider, user, where the policies come from
+  (the OIDC policy claim, the LDAP DN and groups, or the IAM user and access key) and the session
+  policies, signed with the same key.
 - Every S3 request checks the token and its expiry, and works out the policies again from the
-  **current** provider settings. A session stops working as soon as its mapping no longer grants a
-  policy, the policy is deleted, the provider is turned off, or STS is turned off.
+  **current** settings. A session stops working as soon as its mapping no longer grants a policy,
+  the policy is deleted, the provider is turned off, the IAM user or access key is disabled or
+  deleted, or STS is turned off.
 - The signing key is kept sealed in the cluster, so sessions survive restarts, and with site
   replication a session issued on one site works on every site.
 
 One session cannot be revoked on its own before it expires; revoke through the mapping, the
-policy, or by turning STS off.
+policy, the user or access key, or by turning STS off.
+
+### Token formats
+
+| Prefix | Used for |
+| --- | --- |
+| `z3sts1.` | Federated sessions without session policies (as before) |
+| `z3sts2.` | `AssumeRole` sessions, and any session with a session policy |
+
+Older z3 servers refuse `z3sts2.` tokens with `InvalidToken`, rather than ignoring the session
+policy. Upgrade every site of a replication group before relying on them. Existing `z3sts1.`
+sessions keep working after the upgrade.
 
 ## Settings
 
@@ -179,7 +277,8 @@ policy, or by turning STS off.
 | `PUT /api/idp/sts` | Change them |
 
 <ParamField body="enabled" type="boolean" default="true">
-  Whether STS answers. When off, every STS request and every existing session is refused.
+  Whether STS answers, for all three actions. When off, every STS request and every existing
+  session is refused.
 </ParamField>
 
 <ParamField body="max_duration_secs" type="integer" default="43200">

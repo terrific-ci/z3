@@ -24,8 +24,9 @@ and stream the live [trace and logs](/audit/trace-and-logs).
 | `POST` | `/api/audit/test` | `admin:ConfigUpdate` | Send a test entry to a target as entered |
 | `GET` | `/api/trace` | `admin:ServerInfo` | Recent requests |
 | `GET` | `/api/trace/stream` | `admin:ServerInfo` | New requests, live |
-| `GET` | `/api/logs` | `admin:ServerInfo` | Recent log lines |
+| `GET` | `/api/logs` | `admin:ServerInfo` | Recent log lines, or a time range from the history on disk |
 | `GET` | `/api/logs/stream` | `admin:ServerInfo` | New log lines, live |
+| `GET` | `/api/logs/history` | `admin:ServerInfo` | The state of the log history on disk |
 
 ## Event destinations
 
@@ -198,8 +199,17 @@ server-sent event.
 | --- | --- | --- |
 | `level` | every level | The least severe level shown: `warn` shows warnings and errors |
 | `q` | | Text in the message or fields |
-| `limit` | `500` | At most 2,000 |
+| `since` | | The oldest line, inclusive: Unix milliseconds or an RFC 3339 time (`2026-11-18T09:30:00Z`). Reads the history on disk |
+| `until` | | The newest line, inclusive, in the same forms. Reads the history on disk |
+| `history` | `false` | `true`: read the history on disk without a time range |
+| `limit` | `500` | At most 2,000 from memory, at most 5,000 from the history |
 | `scope` | this node | `all`: every node of the group |
+
+Without `since`, `until` or `history=true`, the lines come from memory (the last 2,000). With any
+of them, they come from the [history on disk](/audit/trace-and-logs#log-history-on-disk): the
+newest `limit` lines in the range, oldest first. A time that can't be read answers `400`. For the
+page before, send `until` set to the `time_ms` of the oldest line you have; since `until` is
+inclusive, lines of that same millisecond come again and can be skipped by `node` and `seq`.
 
 ```json
 [
@@ -208,7 +218,31 @@ server-sent event.
 ]
 ```
 
-`level` is `error`, `warn`, `info`, `debug` or `trace`. `GET /api/logs/stream` streams new lines.
+`level` is `error`, `warn`, `info`, `debug` or `trace`. `seq` keeps counting across restarts.
+
+`GET /api/logs/stream` takes `level`, `q`, `scope` and `since`, and streams new lines. With `since`,
+it first sends the newest `limit` lines since then.
+
+### Log history
+
+`GET /api/logs/history` answers the state of this node's log history:
+
+```json
+{
+  "enabled": true, "dir": "/data/logs", "files": 6, "bytes": 41203311,
+  "oldest_ms": 1794394531002, "written": 182044, "dropped": 0, "last_error": null,
+  "max_bytes": 67108864, "max_age_days": 7
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `enabled` | `false` when `logger.history_max_mb` is `0` |
+| `dir`, `files`, `bytes` | Where the history is, and how many files and bytes it holds |
+| `oldest_ms` | The time of the oldest line kept |
+| `written`, `dropped` | Lines written, and lines that could not be written, since the node started |
+| `last_error` | Set while the disk can't be written |
+| `max_bytes`, `max_age_days` | The limits from `logger.history_max_mb` and `logger.history_days` |
 
 ## All nodes
 
@@ -225,5 +259,7 @@ With `scope=all`, `GET /api/trace` and `GET /api/logs` answer:
 ```
 
 Every entry carries `node` and `node_name`. Each node's `state` is `ok`, `connecting` or
-`unreachable`. The streams send a `nodes` event with the same list at the start and whenever a
+`unreachable`. For a history query (`since`, `until` or `history=true`), each node also has
+`history`: `disk`, or `memory` when that node has no history on disk (it is turned off, or the node
+runs an older z3); only its recent lines in memory are then included, filtered to the range. The streams send a `nodes` event with the same list at the start and whenever a
 node's state changes; a node that cannot be reached never fails the request.

@@ -57,6 +57,11 @@ operators, with a message naming the statement.
 An access key with its own policy needs an Allow from **both** its user's policies and its own
 policy. Anonymous requests can only be allowed by a [bucket policy](/access/bucket-policies).
 
+[Temporary credentials](/access/sts) with **session policies** (`Policy` or `PolicyArns` on an STS
+request) narrow the same way: a request needs an Allow from a session policy **and** from the
+identity behind the session (its policies, or a bucket policy), and a Deny in any of them wins.
+Session policies never add permissions, and narrow bucket-policy grants too.
+
 ## S3 actions
 
 Each S3 operation is checked as an IAM action, mostly with the same name (`PutObject` →

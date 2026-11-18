@@ -24,6 +24,7 @@ z3 admin support health
 z3 admin settings set compression enabled=true
 z3 admin protocols enable sftp
 z3 admin metrics --range 7d
+z3 admin logs --all-nodes --since 24h --level warn
 ```
 
 ## Commands
@@ -36,6 +37,8 @@ z3 admin metrics --range 7d
 | [`z3 admin support`](/cli/support) | Health report, speed tests, CPU profiles, object inspection |
 | [`z3 admin pools`](/cli/pools) | Pools: usage, rebalance, decommission |
 | [`z3 admin metrics`](/cli/metrics) | Traffic and storage over a past range, node-wide or per bucket |
+| [`z3 admin logs`](/cli/logs) | Server log lines: recent, a time range from the history on disk, or live; one node or all |
+| [`z3 admin trace`](/cli/logs#trace) | Requests served (S3 and admin API): recent or live; one node or all |
 | [`z3 admin lean`](/replication/lean-replica#command-line) | Lean Replica: state, keep window, evict now, turn off |
 | [`z3 admin import`](/deploy/migrate-from-minio#manage-jobs) | Imports from MinIO or S3: start, follow, mirror deletions, pause |
 | [`z3 admin gc`](#garbage-collection-and-the-orphan-sweep) | Run garbage collection now |
@@ -102,6 +105,8 @@ Commands:
   support    Health report, speed tests, CPU profiles, object inspection
   metrics    Traffic and storage over a past range, node-wide or per bucket
   pools      Pools: usage, rebalance, decommission
+  logs       Server log lines: recent ones, a time range from the history on disk, or new ones as they are written
+  trace      Requests served (S3 and admin API): recent ones, or new ones as they happen
   help       Print this message or the help of the given subcommand(s)
 
 Options:
@@ -130,7 +135,8 @@ z3 admin settings set api requests_max=abc
 | `this needs the admin:ConfigUpdate permission` | The identity lacks the right; see [Rights](/api/overview#rights) |
 
 For machine-readable output, call the [admin API](/api/overview) directly; it answers JSON.
-`z3 admin support health --json` prints the whole health report as JSON.
+`z3 admin support health --json` prints the whole health report as JSON, and `z3 admin logs --json`
+and `z3 admin trace --json` print one JSON object per line.
 
 ## Garbage collection and the orphan sweep
 

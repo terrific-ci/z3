@@ -4,8 +4,8 @@ description: "Common problems when deploying z3, what the errors mean and how to
 ---
 
 Start with the **health check**: the console's **Support** page, or `z3 admin support health`. It
-checks disks, healing, peers and clocks, replication, memory, recent errors and the root credentials,
-and tells you which one is wrong. See [Support](/operations/support).
+checks disks, healing, peers and clocks, replication, memory, recent errors, the log history and the
+root credentials, and tells you which one is wrong. See [Support](/operations/support).
 
 ## Startup errors
 
@@ -86,8 +86,11 @@ filter such as `RUST_LOG=info,z3_server=debug`. The `logger.level` setting chang
 without a restart.
 
 The console's **Logs** page shows recent and live log lines, filtered by level and text, without
-access to the server. What it keeps is set by `Z3_LOG_BUFFER` or the `logger.console_level` setting.
-See [Trace and logs](/audit/trace-and-logs), which also covers the live request trace.
+access to the server. Its **History** mode reads the log history each node keeps in
+`<data dir>/logs/` (64 MiB or 7 days by default), also from before a restart. What it keeps is set
+by `Z3_LOG_BUFFER` or the `logger.console_level` setting. From a shell, `z3 admin logs` reads the
+same, for one node or all of them. See [Trace and logs](/audit/trace-and-logs), which also covers
+the live request trace.
 
 ## Useful commands
 
@@ -95,6 +98,7 @@ See [Trace and logs](/audit/trace-and-logs), which also covers the live request 
 z3 --version                          # the installed version
 z3 --help                             # every startup option and its variable
 z3 admin support health               # the health check
+z3 admin logs --since 1h --level warn # warnings and errors of the last hour, from disk
 z3 admin settings get                 # cluster settings, values and defaults
 z3 admin pools                        # pools and the running rebalance or decommission
 curl -s http://127.0.0.1:9001/metrics # Prometheus metrics, no sign-in

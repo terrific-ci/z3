@@ -12,6 +12,7 @@ identities sign S3 requests and sign in to the console. What each one may do com
 | **Root** | `Z3_ACCESS_KEY` / `Z3_SECRET_KEY` | Everything. Can't be limited or deleted. |
 | **User** | Its name as the access key, plus its secret key | Its own policies plus those of its enabled groups |
 | **Access key** | An access key (20 characters) and secret key (40 characters) | The same as its parent user, or less when it has its own policy |
+| **Temporary credentials** | A `ZSTS…` access key, secret key and session token from [STS](/access/sts) | The identity behind them (a user, an access key, or an OIDC or LDAP user), narrowed by session policies if any. S3 API only |
 
 People can also sign in through [OpenID Connect or LDAP](/access/openid-connect-ldap) without a
 z3 user; their policies come from the identity provider.
@@ -105,6 +106,9 @@ others.
 - It can have an **expiry**. After that moment it stops working.
 - The secret key is shown **once**, when the key is created.
 - Turning off or deleting the parent user stops its access keys too.
+- A user or access key can trade its credentials for short-lived ones with STS
+  [`AssumeRole`](/access/sts#with-an-iam-user-or-access-key), optionally narrowed by a session
+  policy. The root account and its access keys can't.
 
 <Tabs>
   <Tab title="Console">
@@ -153,7 +157,8 @@ Who may manage access keys:
 - An access key can't create more access keys (unless it has `admin:UserAdmin`): sign in as the
   user instead.
 - People signed in through OIDC or LDAP can't create access keys. Give them an IAM user, or let
-  applications use [temporary credentials](/access/sts).
+  applications use [temporary credentials](/access/sts) (`AssumeRoleWithWebIdentity`,
+  `AssumeRoleWithLDAPIdentity`).
 
 ## Who sees what in the console
 

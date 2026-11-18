@@ -52,7 +52,7 @@ only the buckets their policies let them use. See [Admin rights](/api/overview#r
 | Operations | Running Status | Live throughput, CPU and memory ([Running status](/operations/running-status)) | `admin:ServerInfo` |
 | | Metrics | Traffic and storage over time, per bucket too ([Metrics](/operations/metrics)) | `admin:ServerInfo` |
 | | Trace | Live S3 and admin requests ([Trace and logs](/audit/trace-and-logs)) | `admin:ServerInfo` |
-| | Logs | Live server logs | `admin:ServerInfo` |
+| | Logs | Server logs, live or from the history on disk ([Trace and logs](/audit/trace-and-logs#logs)) | `admin:ServerInfo` |
 | | Audit | [Audit targets](/audit/audit-log) with delivery status | `admin:ServerInfo` |
 | | Encryption | KMS keys, the default SSE-S3 key, an external KMS, buckets encrypted by default | `admin:ServerInfo` |
 | | Replication | Live state of each link; peers; site replication | `admin:ServerInfo` |
