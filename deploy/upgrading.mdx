@@ -56,7 +56,7 @@ docker compose up -d
 docker compose logs -f z3
 ```
 
-Pin a version tag (`terrificci/z3:0.1.0`) instead of `latest` to choose when you upgrade.
+Pin a version tag (`terrificci/z3:1.0.0`) instead of `latest` to choose when you upgrade.
 
 ## Install script or systemd
 
@@ -87,6 +87,20 @@ Writes keep working on the nodes that are up, and replication catches up from th
 node is back.
 
 The health check's **Peers and clocks** item warns when a peer runs a different version.
+
+## Cluster members
+
+Restart [cluster](/deploy/cluster) members one at a time, and wait until `z3 admin cluster status`
+shows the restarted member caught up before the next. Reads and writes continue on the others.
+
+## From 0.1.0 to 1.0.0
+
+- The metadata format moves from version 6 to 7 when the node starts (the deletion-protection trash
+  and the restore entry in the change log). Nothing is rewritten, but 0.1.0 cannot open the data
+  directory afterwards.
+- Upgrade every node of a replication group: 1.0.0 adds peer messages (restores, the replication
+  map) that 0.1.0 does not know.
+- New settings are off until you turn them on: cluster mode, deletion delays, `on_offline`.
 
 ## Downgrading
 

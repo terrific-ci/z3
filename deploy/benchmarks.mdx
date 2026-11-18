@@ -1,6 +1,6 @@
 ---
 title: "Benchmarks"
-description: "How fast z3 0.1.0 stores and serves objects compared with MinIO and RustFS on the same machine, how much memory each uses, and how to measure it yourself."
+description: "How fast z3 1.0.0 stores and serves objects compared with MinIO and RustFS on the same machine, how much memory each uses, and how to measure it yourself."
 ---
 
 z3 was measured against MinIO and RustFS with [warp](https://github.com/minio/warp), MinIO's S3
@@ -13,36 +13,41 @@ benchmark tool, on one machine, one server at a time, with the same limits and w
 - **Limits:** every server ran in Docker on CPUs 0–1 with 2 GiB of memory and its data on the same
   disk (one drive each: z3 with a plain data directory, MinIO and RustFS in single-drive mode).
   warp ran on CPUs 2–3.
-- **Versions:** z3 0.1.0 (`terrificci/z3:0.1.0`), MinIO RELEASE.2026-08-04 (the community build
+- **Versions:** z3 1.0.0 (`terrificci/z3:1.0.0`), MinIO RELEASE.2026-08-04 (the community build
   `pgsty/minio`; MinIO no longer publishes images), RustFS 1.0.6 (`rustfs/rustfs`), warp 1.3.1.
 - **Settings:** each server's defaults. The objects are random data, so z3's deduplication and
   compression play no part.
 - **Workloads:** 40 seconds each (stat 30 s), 1 MiB objects with 16 clients and 16 KiB objects
-  with 32 clients. Every workload ran twice, on 2026-11-17; the tables show the average of both
-  rounds. Rounds differed by less than 7%, except MinIO's stat (3,585 and 5,020 objects/s).
+  with 32 clients. Every workload ran twice, on 2026-11-18; the tables show the average of both
+  rounds. z3's rounds differed by less than 2% and RustFS's by less than 7%; MinIO varied more
+  (GET 1 MiB 1,137 and 1,393 MiB/s, GET 16 KiB 3,038 and 3,675 objects/s).
 
 ## Results
 
 | Workload | z3 | MinIO | RustFS |
 |---|---|---|---|
-| PUT 1 MiB | **150.9 MiB/s** | 105.8 MiB/s | 102.5 MiB/s |
-| GET 1 MiB | **1,484 MiB/s** | 1,380 MiB/s | 604 MiB/s |
-| PUT 16 KiB | 805 objects/s | 669 objects/s | **947 objects/s** |
-| GET 16 KiB | **5,752 objects/s** | 3,587 objects/s | 5,435 objects/s |
-| Mixed 1 MiB: GET | **308 MiB/s** | 251 MiB/s | 172 MiB/s |
-| Mixed 1 MiB: PUT | **102.7 MiB/s** | 83.3 MiB/s | 57.6 MiB/s |
-| HEAD (stat) 16 KiB | **10,078 objects/s** | 4,303 objects/s | 7,960 objects/s |
-| Peak memory | **175 MiB** | 773 MiB | 288 MiB |
+| PUT 1 MiB | **150.7 MiB/s** | 124.4 MiB/s | 102.2 MiB/s |
+| GET 1 MiB | **1,486 MiB/s** | 1,265 MiB/s | 609 MiB/s |
+| PUT 16 KiB | 796 objects/s | 732 objects/s | **886 objects/s** |
+| GET 16 KiB | **5,759 objects/s** | 3,357 objects/s | 5,439 objects/s |
+| Mixed 1 MiB: GET | **309 MiB/s** | 223 MiB/s | 177 MiB/s |
+| Mixed 1 MiB: PUT | **102.9 MiB/s** | 74.3 MiB/s | 58.8 MiB/s |
+| HEAD (stat) 16 KiB | **10,068 objects/s** | 3,663 objects/s | 7,839 objects/s |
+| Peak memory | **174 MiB** | 997 MiB | 284 MiB |
 
 Mixed is warp's default mix of GET, PUT, STAT and DELETE on the same objects, so its rows show the
 GET and PUT throughput within it. Peak memory is the highest container memory seen after any
 workload.
 
-- **Large objects:** z3 writes 1 MiB objects 43–47% faster than MinIO and RustFS, and reads
-  them at about the same rate as MinIO, more than twice RustFS.
-- **Small objects:** RustFS takes small writes fastest, 18% ahead of z3; z3 reads small objects
+- **Large objects:** z3 writes 1 MiB objects 21% faster than MinIO and 47% faster than RustFS,
+  and reads them 17% faster than MinIO and more than twice as fast as RustFS.
+- **Small objects:** RustFS takes small writes fastest, 11% ahead of z3; z3 reads small objects
   and answers HEAD requests fastest.
-- **Memory:** z3 stays under 180 MiB through every workload, less than a quarter of MinIO.
+- **Memory:** z3 stays under 180 MiB through every workload, less than a fifth of MinIO.
+
+z3 1.0.0 matches 0.1.0 on every workload (within 2%). Uploads now write several chunks at once and
+downloads read ahead, which made no difference on this machine, where the drive sets the upload
+limit; both help on faster drives and more cores.
 
 <Note>
   This is a single-drive setup on one machine. Erasure-coded disk sets, several nodes and replication

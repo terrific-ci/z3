@@ -4,10 +4,64 @@ description: "Every z3 release, newest first, and what changed in it."
 rss: true
 ---
 
-The latest release is **0.1.0**, released November 17, 2026. To install it, see
+The latest release is **1.0.0**, released November 18, 2026. To install it, see
 [Install](/deploy/install) or [Docker](/deploy/docker).
 
-<Update label="0.1.0" description="November 17, 2026" tags={["Latest"]}>
+<Update label="1.0.0" description="November 18, 2026" tags={["Latest"]}>
+
+z3 1.0: several nodes as one cluster, branch offices that keep working offline, protection
+against ransomware, rollback to any point in time, a live map of replication, and faster large
+objects.
+
+**Cluster**
+
+- **Cluster mode**: several nodes act as one z3. Metadata goes through a Raft log and is applied on
+  every member, each chunk is kept on `Z3_CLUSTER_COPIES` members (rendezvous hashing, majority
+  writes), and any member answers S3 requests, with reads that see every acknowledged write.
+  Members join and leave without downtime (a leaving member hands its copies over first), and can be
+  upgraded one at a time. See [Cluster](/deploy/cluster) and [`z3 admin cluster`](/cli/cluster).
+
+**Replication**
+
+- **Replication map**: the Replication page draws every node of the group and every link between
+  them, live, with lag, traffic, conflicts and errors, and the details of each link per bucket in
+  both directions. See [Replication map](/replication/map).
+- **Edge and branch offices**: each peer shows whether it is online, since when it is offline, and
+  how many changes wait to be sent and received. With `on_offline: "local"`, `quorum` and `all`
+  writes answer at once while the peers they need are offline. See
+  [Edge and branch offices](/replication/edge).
+
+**Data protection**
+
+- **Deletion protection**: with a deletion delay on a bucket, permanently deleted versions go to a
+  trash and can be restored until the delay has passed. Weakening the protection only takes effect
+  once the current delay has passed, for every account including root. See
+  [Deletion protection](/storage/deletion-protection).
+- **Rollback to a point in time**: a bucket, a prefix or one key goes back to how it was at a given
+  time, planned from the change log, previewed, and run as a batch job that only adds versions
+  (including versions from the trash). See [Point-in-time rollback](/storage/point-in-time).
+
+**Performance**
+
+- Uploads hash and write several chunks at once while the body keeps arriving, and downloads read
+  and verify several chunks ahead of the client. See [Benchmarks](/deploy/benchmarks).
+- Optional io_uring chunk reads on Linux (`Z3_IO_URING=1`).
+
+**Console**
+
+- A new look (charcoal with a yellow accent), a sign-in mascot, a sidebar with pinned buckets and
+  menu search, a new Overview, a Flow tab on buckets, a Cluster page, and tabs on the Replication
+  page.
+
+**Upgrading from 0.1.0**
+
+- The metadata format moves to version 7 when a node starts; there is no way back to 0.1.0 with the
+  same data directory. Upgrade every node of a replication group, since the peer protocol gained
+  new messages. See [Upgrading](/deploy/upgrading).
+
+</Update>
+
+<Update label="0.1.0" description="November 17, 2026">
 
 The first release of z3: S3-compatible object storage in one binary, written in Rust.
 
