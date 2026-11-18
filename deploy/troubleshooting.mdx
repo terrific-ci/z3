@@ -4,8 +4,8 @@ description: "Common problems when deploying z3, what the errors mean and how to
 ---
 
 Start with the **health check**: the console's **Support** page, or `z3 admin support health`. It
-checks disks, healing, peers and clocks, replication, memory, recent errors, the log history and the
-root credentials, and tells you which one is wrong. See [Support](/operations/support).
+checks disks, healing, peers and clocks, peer TLS, replication, memory, recent errors, the log
+history and the root credentials, and tells you which one is wrong. See [Support](/operations/support).
 
 ## Startup errors
 
@@ -22,6 +22,9 @@ z3 exits with one of these when it can't start. Read them in `journalctl -u z3` 
 | `disk set was formatted with N disks, M configured; the number of disks cannot change` | A disk set can't grow or shrink. Restore the original list; add capacity with a [pool](/durability/pools) |
 | `disk set was formatted with parity X, Y configured; parity cannot change` | Set `Z3_PARITY` back to `X`, or remove it. With pools of different parity, leave it unset |
 | `... is listed twice` | The same path appears twice in `Z3_DISKS` or `Z3_POOLS` |
+| `Z3_PEER_TLS_CA is required with Z3_PEER_TLS_CERT`, `... is set but ... is not`, or `Z3_PEER_TLS_MODE needs ...` | Peer TLS needs the certificate, the key and the CA together. See [Mutual TLS between nodes](/deploy/peer-tls#settings) |
+| `Z3_CLUSTER_ADDR must start with https://` | The peer API is TLS only (`mtls` or `tls` mode). Use an `https://` cluster address. See [Cluster](/deploy/cluster#mutual-tls) |
+| `unusable private key` | The peer TLS key can't be used, often a P-256 key written by LibreSSL on macOS. Create the key again, or use RSA |
 | `data directory uses format N, newer than this z3 supports` | A newer z3 already upgraded this data directory. Install that version again, or restore the backup from before the upgrade. See [Upgrading](/deploy/upgrading) |
 
 ## Running, but something is wrong
@@ -46,6 +49,7 @@ z3 exits with one of these when it can't start. Read them in `journalctl -u z3` 
 | A disk shows `offline` with `directory does not exist` | A replaced disk isn't mounted, or its directory wasn't created. Mount it and create the directory, owned by z3's user |
 | `write quorum not met for chunk ...` | Too many disks of the set are offline to write. Bring disks back; reads keep working down to the parity limit. See [Disks](/deploy/disks) |
 | Peers can't pull: `401 invalid peer token`, or connection refused on 9002 | The replication API runs only with `Z3_PEER_TOKEN`; the log says `replication API disabled` otherwise. The token in the peer's configuration must be **this** node's token |
+| A link fails with a certificate error, or `426` from the peer | See the TLS messages in [Mutual TLS between nodes](/deploy/peer-tls#check-it). `426` means the peer requires TLS: use an `https://` endpoint |
 | Replication lag keeps growing | See the link's last error on the **Replication** page. Check bandwidth limits and time windows on the peer; see [Replication overview](/replication/overview#monitoring) |
 | `docker ps` shows `unhealthy` | `z3 healthcheck` can't reach the admin API. Check the container's logs for one of the startup errors above |
 
@@ -57,7 +61,7 @@ Three levels, from quickest to most thorough:
 | --- | --- |
 | `GET /api/health` on the admin port | `{"status": "ok"}` when the node answers. Needs no sign-in; for load balancers and monitoring |
 | `z3 healthcheck` | Exits with 0 when `GET /api/health` answers on `Z3_ADMIN_ADDR` of this machine. The Docker image's `HEALTHCHECK` uses it |
-| **Support** page, `z3 admin support health` | Disks, disk writes, healing, peers and clocks, replication, memory and CPU, errors in the last hour, root credentials. Each is `ok`, `warn` or `fail`; the CLI exits with 1 if any check fails |
+| **Support** page, `z3 admin support health` | Disks, disk writes, healing, peers and clocks, peer TLS, replication, memory and CPU, errors in the last hour, root credentials. Each is `ok`, `warn` or `fail`; the CLI exits with 1 if any check fails |
 
 ```bash
 curl -s http://127.0.0.1:9001/api/health

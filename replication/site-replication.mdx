@@ -73,6 +73,17 @@ sends it to every other site, using each site's token:
 
 Setting it up needs the `admin:ConfigUpdate` right.
 
+## Mutual TLS between sites
+
+Sites can talk over [mutual TLS](/deploy/peer-tls) instead of plain HTTP: start every site with
+`Z3_PEER_TLS_CERT`, `Z3_PEER_TLS_KEY` and `Z3_PEER_TLS_CA` (certificates from one CA), and use
+`https://` endpoints in `sites`. The site configuration is sent to the other sites over the same
+connection, so it is protected too.
+
+To switch a running group, set the certificates with `Z3_PEER_TLS_MODE=mixed` on every site, run
+`PUT /api/site` once more with `https://` endpoints (or edit the group in the console), then remove
+the mode variable. See [Turn it on in a running group](/deploy/peer-tls#turn-it-on-in-a-running-group).
+
 ## Topologies
 
 | `topology` | Each site pulls from |

@@ -155,6 +155,19 @@ a shared network). Each node gets its own token; peers present it when they pull
 Then connect the nodes; see [Bucket replication](/replication/bucket-replication) or
 [Site replication](/replication/site-replication).
 
+For [mutual TLS between nodes](/deploy/peer-tls), mount the certificates read-only and point z3 at
+them. The container runs as uid 65532, which must be able to read the key:
+
+```yaml
+    volumes:
+      - ./peer-tls:/etc/z3/peer:ro
+    environment:
+      Z3_PEER_TOKEN: ${Z3_PEER_TOKEN:?set Z3_PEER_TOKEN in .env}
+      Z3_PEER_TLS_CERT: /etc/z3/peer/node.pem
+      Z3_PEER_TLS_KEY: /etc/z3/peer/node.key
+      Z3_PEER_TLS_CA: /etc/z3/peer/ca.pem
+```
+
 ## Health
 
 The image has a `HEALTHCHECK` that runs `z3 healthcheck` every 30 seconds. It asks the node's own

@@ -30,7 +30,7 @@ z3
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `Z3_PEER_TOKEN` | (required) | Peer API token, the same on every member |
-| `Z3_CLUSTER_ADDR` | `http://127.0.0.1:<peer port>` | This node's peer API as the other members reach it |
+| `Z3_CLUSTER_ADDR` | `http://127.0.0.1:<peer port>` (`https://` with [mutual TLS](#mutual-tls)) | This node's peer API as the other members reach it |
 | `Z3_NODE_NAME` | host name | The node's name in the console and the CLI |
 | `Z3_CLUSTER_COPIES` | `3` | Copies of each chunk, capped at the number of members |
 | `Z3_CLUSTER_READS` | `consistent` | `consistent`: followers catch up with the leader before reads; `local`: read at once |
@@ -112,6 +112,47 @@ z3 admin cluster remove <member id>
 The member stops owning chunks at once and stays as a learner (**Leaving**), still serving chunk
 reads. The leader runs a sweep on every voter, and once every copy is on its new owners, the member
 leaves the cluster. Wipe its `Z3_DATA_DIR` before using it again.
+
+## Mutual TLS
+
+Raft, forwarded writes and chunk copies all run on the peer API, so a cluster uses the same
+[mutual TLS](/deploy/peer-tls) as replication: set `Z3_PEER_TLS_CERT`, `Z3_PEER_TLS_KEY` and
+`Z3_PEER_TLS_CA` on every member.
+
+```bash
+Z3_PEER_TOKEN=cluster-secret \
+Z3_PEER_TLS_CERT=/etc/z3/peer/z3-1.pem \
+Z3_PEER_TLS_KEY=/etc/z3/peer/z3-1.key \
+Z3_PEER_TLS_CA=/etc/z3/peer/ca.pem \
+Z3_CLUSTER_ADDR=https://10.0.0.11:9002 \
+Z3_NODE_NAME=z3-1 \
+z3
+```
+
+- Each member's certificate must include the host name or IP address in its `Z3_CLUSTER_ADDR`.
+- In `mtls` and `tls` mode, `Z3_CLUSTER_ADDR` defaults to `https://127.0.0.1:<peer port>`, and an
+  `http://` address is refused at startup.
+- Add new members with `https://` addresses: `z3 admin cluster add https://10.0.0.14:9002`.
+- Member addresses are stored in the Raft membership as they were added, so the console may still
+  show `http://` for older members. The scheme used to reach them follows each node's own
+  `Z3_CLUSTER_ADDR`: a member with an `https://` address calls every member over TLS.
+
+To turn it on in a running cluster, restart members one at a time as in a
+[rolling upgrade](#rolling-upgrade), and wait until each one is caught up:
+
+<Steps>
+  <Step title="Certificates and mixed mode">
+    Set the certificate variables and `Z3_PEER_TLS_MODE=mixed` on every member. Addresses stay
+    `http://`.
+  </Step>
+  <Step title="https:// addresses">
+    Set `Z3_CLUSTER_ADDR=https://...` on every member. Members you have changed call the others over
+    TLS, the rest still in plain HTTP; `mixed` mode accepts both.
+  </Step>
+  <Step title="TLS only">
+    Remove `Z3_PEER_TLS_MODE` (the default is `mtls`).
+  </Step>
+</Steps>
 
 ## Rolling upgrade
 

@@ -3,14 +3,15 @@ title: "TLS and reverse proxies"
 description: "z3 serves plain HTTP. Put Caddy or nginx in front for HTTPS on the S3 API and the console, trust the proxy, and allow large uploads."
 ---
 
-z3 serves **plain HTTP** on all three ports. For anything beyond a private network, put a reverse
-proxy in front that terminates TLS:
+z3 serves **plain HTTP** on the S3 API and the console. For anything beyond a private network, put
+a reverse proxy in front that terminates TLS. The replication API between nodes can serve TLS itself,
+with [mutual TLS](/deploy/peer-tls), or sit behind a proxy too:
 
 | Port | Typical public name | Notes |
 | --- | --- | --- |
 | 9000, S3 API | `s3.example.com` | Large request bodies, long transfers |
 | 9001, console and admin API | `console.example.com` | Server-sent events for live trace, logs and events |
-| 9002, replication API | `peer.example.com`, or a private network | Long-polling (requests held up to 20 seconds) |
+| 9002, replication API | `peer.example.com`, or a private network | Long-polling (requests held up to 20 seconds). Or [mutual TLS](/deploy/peer-tls) without a proxy |
 
 Give the S3 API and the console **their own host names**. z3 uses path-style S3 addressing, so the
 S3 API needs the whole host, and the console expects to be served from `/`.
@@ -148,9 +149,12 @@ This matters for [policy conditions](/access/conditions) such as `aws:SourceIp` 
 
 ## The replication API
 
-Peers pull over HTTP with a bearer token. Peer and site endpoints accept `https://` URLs, so you can
-put the replication API behind TLS too. z3 doesn't do mutual TLS between nodes: use a private network
-or VPN, or a TLS proxy, between sites.
+Peers pull with a bearer token. The simplest way to encrypt this traffic is
+[mutual TLS between nodes](/deploy/peer-tls): z3 serves TLS on the peer port itself, and every node
+proves who it is with a certificate from your own CA.
+
+You can also put the replication API behind a TLS proxy. Peer and site endpoints accept `https://`
+URLs, and without `Z3_PEER_TLS_CA` z3 verifies them against public roots.
 
 ```nginx
 server {

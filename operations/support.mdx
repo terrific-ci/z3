@@ -31,7 +31,8 @@ Each check is `ok`, `warn` or `fail`; the report takes the worst level.
 | Disks | Each disk's state, the erasure layout, free space | **Fail**: more disks offline than the parity allows. **Warn**: a disk offline, or under 10% free |
 | Disk writes | Writes, syncs, reads back and deletes a 4 KiB file on every disk | **Fail**: a disk cannot write. **Warn**: slower than 500 ms |
 | Healing | Chunks checked, shards repaired, chunks lost | **Fail**: a chunk could not be repaired |
-| Peers and clocks | A hello to each replication peer: round trip, version, clock difference (from its `Date` header) | **Fail**: a peer is unreachable. **Warn**: a clock more than 5 s off, or another z3 version |
+| Peers and clocks | A hello to each replication peer: round trip, version, clock difference (from its `Date` header), and whether it is reached over TLS (`tls`) | **Fail**: a peer is unreachable; TLS errors are explained (expired certificate, unknown CA, host name mismatch, client certificate required). **Warn**: a clock more than 5 s off, or another z3 version |
+| Peer TLS | [Mutual TLS between nodes](/deploy/peer-tls#check-it): mode, this node's certificate (subject, names, validity), CA, reloads, refused handshakes and plain requests | **Fail**: this node's certificate has expired or is not valid yet. **Warn**: it expires in less than 14 days, a reload failed, the mode is `mixed`, or a peer endpoint is still `http://` |
 | Replication | The state of each replication link | **Warn**: a link failing, or more than 5 minutes behind |
 | Memory and CPU | Host and process memory, load average | **Warn**: memory over 90%, or load over 1.5 × the number of CPUs |
 | Errors in the last hour | Errors and warnings in the log, the last five errors | **Warn**: any error |
@@ -51,6 +52,7 @@ z3 0.1.0 on node 01a1e9a0-be79-7462-83e2-8685ea015598: warn
   ok    Disk writes              Slowest synced 4 KiB write took 5.6 ms
   ok    Healing                  No full scan since start, nothing lost
   ok    Peers and clocks         2 peers reachable, clocks agree
+  ok    Peer TLS                 Mutual TLS: TLS only, client certificates required
   ok    Replication              24 links streaming
   ok    Memory and CPU           Memory 62% used, load 2.9 on 16 CPUs
   ok    Errors in the last hour  No errors, 1 warning

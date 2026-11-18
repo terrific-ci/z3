@@ -30,8 +30,8 @@ z3 --help     # every flag with its variable and default
 | `Z3_ADMIN_ADDR` | `--admin-addr` | `127.0.0.1:9001` (`0.0.0.0:9001` in Docker) | Address of the console and admin API |
 | `Z3_PEER_ADDR` | `--peer-addr` | `0.0.0.0:9002` | Address of the replication API that peers pull from |
 
-Each address is `IP:port`. z3 serves plain HTTP on all three; see
-[TLS and reverse proxies](/deploy/tls-and-proxies).
+Each address is `IP:port`. z3 serves plain HTTP on the S3 API and the console; see
+[TLS and reverse proxies](/deploy/tls-and-proxies). The peer API can serve TLS itself (below).
 
 ### Credentials and signing
 
@@ -46,7 +46,7 @@ Each address is `IP:port`. z3 serves plain HTTP on all three; see
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
 | `Z3_PEER_TOKEN` | `--peer-token` | empty | Token peers must present to pull from this node. The replication API is off while it is empty (this node can still pull from others). Also enables [cluster mode](/deploy/cluster) |
-| `Z3_CLUSTER_ADDR` | `--cluster-addr` | `http://127.0.0.1:<peer port>` | This node's peer API as other cluster members reach it |
+| `Z3_CLUSTER_ADDR` | `--cluster-addr` | `http://127.0.0.1:<peer port>` (`https://` with peer TLS in `mtls` or `tls` mode) | This node's peer API as other cluster members reach it |
 | `Z3_NODE_NAME` | `--node-name` | host name | This node's name in a cluster |
 | `Z3_CLUSTER_COPIES` | `--cluster-copies` | `3` | Copies of each chunk in a cluster, capped at the member count |
 | `Z3_CLUSTER_READS` | `--cluster-reads` | `consistent` | `consistent` (followers catch up with the leader before reads) or `local` |
@@ -56,6 +56,20 @@ Each address is `IP:port`. z3 serves plain HTTP on all three; see
 | `Z3_LOG_RETENTION_DAYS` | | `30` | Days a bucket's change log is kept once every peer applied it; also how far back [point-in-time rollback](/storage/point-in-time) goes. `0` keeps it forever ([pruning](/replication/overview#change-log-pruning)) |
 | `Z3_TOMBSTONE_RETENTION_DAYS` | | `30` | Days a removed version's tombstone is kept once every peer applied the removal (at least the log retention) |
 | `Z3_PRUNE_INTERVAL` | | `3600` | Seconds between change-log pruning passes |
+
+### Peer TLS
+
+[Mutual TLS between nodes](/deploy/peer-tls) on the peer API. With none of these set, the peer API
+speaks plain HTTP.
+
+| Variable | Flag | Default | Meaning |
+| --- | --- | --- | --- |
+| `Z3_PEER_TLS_CERT` | `--peer-tls-cert` | empty | PEM certificate of this node: served on the peer port and presented as client certificate to `https://` peers. Needs `Z3_PEER_TLS_KEY` and `Z3_PEER_TLS_CA` |
+| `Z3_PEER_TLS_KEY` | `--peer-tls-key` | empty | PEM private key of that certificate |
+| `Z3_PEER_TLS_CA` | `--peer-tls-ca` | empty | PEM certificate of the CA that signs every node; the only CA trusted for peers. Alone, it verifies `https://` peers while the peer port stays plain |
+| `Z3_PEER_TLS_MODE` | `--peer-tls-mode` | `mtls` | `mtls`: TLS only, client certificate required. `tls`: TLS only, client certificate optional but checked when presented. `mixed`: TLS and plain HTTP on the same port, while rolling TLS out. Changing it needs a restart |
+
+Certificates are read again on `SIGHUP` and when the files change, without a restart.
 
 ### Background work
 

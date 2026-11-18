@@ -38,7 +38,8 @@ z3 admin cluster add http://10.0.0.14:9002
 ```
 
 The node must run with the same `Z3_PEER_TOKEN` and hold no buckets. It runs on the leader (a
-follower forwards it) and returns once the node is a voting member.
+follower forwards it) and returns once the node is a voting member. With
+[mutual TLS](/deploy/cluster#mutual-tls), give an `https://` address.
 
 ## remove
 

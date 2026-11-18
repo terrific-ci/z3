@@ -40,6 +40,8 @@ A peer is another z3 node this node pulls changes from.
 
 <ParamField body="endpoint" type="string" required>
   The peer's replication API, like `http://10.0.0.2:9002` or `https://dc2.example.com:9002`.
+  An `https://` peer is called with this node's certificate when
+  [mutual TLS](/deploy/peer-tls) is on.
 </ParamField>
 
 <ParamField body="token" type="string" required>

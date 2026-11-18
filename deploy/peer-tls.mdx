@@ -1,0 +1,164 @@
+---
+title: "Mutual TLS between nodes"
+description: "Encrypt and authenticate all traffic between z3 nodes on the peer API with certificates from your own CA: replication, site replication, cluster Raft and chunks, and the all-nodes views."
+---
+
+Nodes talk to each other on the **peer API** (`Z3_PEER_ADDR`, port 9002 by default). With mutual
+TLS, z3 serves that port over TLS itself and every node proves who it is with a certificate signed
+by your own CA. No proxy or VPN is needed between nodes.
+
+Each node uses **one certificate for both directions**: it serves it on the peer port, and presents
+it as a client certificate when it calls an `https://` peer. The other side checks it against
+`Z3_PEER_TLS_CA` only, never against public roots. The peer token is still required on top of TLS.
+
+## What it covers
+
+Every call between nodes goes through the same client and listener:
+
+| Traffic | Pages |
+| --- | --- |
+| Bucket replication: pulling the change log and chunks, anti-entropy | [Bucket replication](/replication/bucket-replication) |
+| Site replication, including sending the site configuration | [Site replication](/replication/site-replication) |
+| Geo erasure coding shards | [Geo erasure coding](/replication/geo-erasure-coding) |
+| Lean Replica read-through and part-size lookups | [Lean Replica](/replication/lean-replica) |
+| Cluster Raft, forwarded writes, chunk copies and placement sweeps | [Cluster](/deploy/cluster#mutual-tls) |
+| Trace and logs from every node (`scope=all`) | [Trace and logs](/audit/trace-and-logs) |
+| The replication map topology | [Replication map](/replication/map) |
+| Network speed tests and peer health probes | [Support tools](/operations/support) |
+
+The scheme of each peer's endpoint decides how it is called: `https://` peers with this node's
+certificate and the CA, `http://` peers in plain HTTP.
+
+## Settings
+
+| Variable | Flag | Default | Meaning |
+| --- | --- | --- | --- |
+| `Z3_PEER_TLS_CERT` | `--peer-tls-cert` | empty | PEM certificate of this node (intermediates may follow). Its names must include the host name or IP address in the endpoint that peers use |
+| `Z3_PEER_TLS_KEY` | `--peer-tls-key` | empty | PEM private key of that certificate (PKCS#8, PKCS#1 or SEC1) |
+| `Z3_PEER_TLS_CA` | `--peer-tls-ca` | empty | PEM certificate of the CA that signs every node's certificate. The only CA trusted for `https://` peers and for client certificates |
+| `Z3_PEER_TLS_MODE` | `--peer-tls-mode` | `mtls` | What the peer port accepts (below) |
+
+| Mode | Peer port accepts |
+| --- | --- |
+| `mtls` | TLS only, and every client must present a certificate signed by the CA |
+| `tls` | TLS only. A client certificate is optional, but checked when one is presented |
+| `mixed` | TLS and plain HTTP on the same port. Only for rolling TLS out |
+
+- With none of them set, nothing changes: the peer port speaks plain HTTP, `http://` peers are
+  called in plain HTTP, and `https://` peers (for example behind a
+  [TLS proxy](/deploy/tls-and-proxies#the-replication-api)) are verified against public roots.
+- `Z3_PEER_TLS_CERT` and `Z3_PEER_TLS_KEY` go together, and need `Z3_PEER_TLS_CA`. z3 refuses to
+  start otherwise.
+- `Z3_PEER_TLS_CA` alone verifies `https://` peers against your CA, but this node presents no
+  certificate and its own peer port stays plain HTTP.
+- In `mtls` and `tls` mode, a plain HTTP request to the peer port is answered with
+  `426 Upgrade Required` and the connection is closed.
+- The peer port is still off without `Z3_PEER_TOKEN`.
+
+## Create the certificates
+
+Any CA works. This example creates one with `openssl`, then a certificate for one node called
+`z3-a`, reachable as `z3-a.internal` and `10.0.0.1`:
+
+```bash
+# The CA, once
+openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 3650 -keyout ca.key -out ca.pem \
+  -subj "/CN=z3 peer CA" -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign
+
+# One certificate per node, with its host name and IP address
+printf 'subjectAltName=DNS:z3-a.internal,IP:10.0.0.1\nextendedKeyUsage=serverAuth,clientAuth\n' > a.ext
+openssl req -newkey rsa:2048 -nodes -keyout a.key -out a.csr -subj "/CN=z3-a"
+openssl x509 -req -in a.csr -CA ca.pem -CAkey ca.key -CAcreateserial -sha256 -days 825 -out a.pem -extfile a.ext
+```
+
+Repeat the last three commands for every node with its own names. Copy `ca.pem`, and the node's own
+certificate and key, to each node, and keep `ca.key` somewhere safe. Then:
+
+```bash
+Z3_PEER_TOKEN=token-of-a \
+Z3_PEER_TLS_CERT=/etc/z3/peer/a.pem \
+Z3_PEER_TLS_KEY=/etc/z3/peer/a.key \
+Z3_PEER_TLS_CA=/etc/z3/peer/ca.pem \
+z3
+```
+
+and use `https://z3-a.internal:9002` as this node's endpoint on the other nodes.
+
+<Warning>
+  Certificates signed with SHA-1 are refused. LibreSSL, the `openssl` on macOS, signs with SHA-1
+  unless you pass `-sha256`, and sometimes writes P-256 keys that z3 can't use
+  (`unusable private key`). Create the key again, or use RSA as above.
+</Warning>
+
+## New nodes
+
+For a new replication group, start every node with the certificate settings and add peers or sites
+with `https://` endpoints right away. See [Bucket replication](/replication/bucket-replication) and
+[Site replication](/replication/site-replication).
+
+## Turn it on in a running group
+
+This order keeps replication running. Nodes you haven't changed yet can still talk to the ones you
+have.
+
+<Steps>
+  <Step title="Certificates and mixed mode">
+    Set `Z3_PEER_TLS_CERT`, `Z3_PEER_TLS_KEY`, `Z3_PEER_TLS_CA` and `Z3_PEER_TLS_MODE=mixed` on every
+    node, and restart them one at a time. The peer port now accepts TLS and plain HTTP. Endpoints are
+    still `http://`, so nothing else changes yet.
+  </Step>
+  <Step title="Switch endpoints to https://">
+    Change every peer's endpoint to `https://`: on the **Replication** page in the console, or with
+    `PUT /api/peers/{name}` ([admin API](/api/admin-replication)). For site replication, run
+    `PUT /api/site` once more with `https://` endpoints, or edit it in the console. Links restart
+    and pull over mutual TLS. The **Peer TLS** health check warns about peers still on `http://`.
+  </Step>
+  <Step title="TLS only">
+    Remove `Z3_PEER_TLS_MODE` (the default is `mtls`) and restart the nodes one at a time. From now
+    on, plain HTTP and clients without a valid certificate are refused.
+  </Step>
+</Steps>
+
+To go back, take the same steps in reverse order. For a cluster, see
+[Cluster](/deploy/cluster#mutual-tls).
+
+## Renew certificates
+
+z3 reads the certificate, key and CA again without a restart:
+
+- when the files change (checked every 30 seconds), or
+- when the process receives `SIGHUP` (`systemctl kill -s HUP z3`, or `docker kill -s HUP z3`).
+
+New connections use the new certificate; connections that are already open keep the old one. If a
+new file is invalid, the previous certificates stay in use and the **Peer TLS** health check shows
+the error. Changing `Z3_PEER_TLS_MODE` needs a restart.
+
+To move to a new CA, put both CA certificates in the `Z3_PEER_TLS_CA` file on every node first,
+then issue the new node certificates, then remove the old CA.
+
+## Check it
+
+The **Peer TLS** health check (`peer_tls`, on the console's **Support** page or with
+`z3 admin support health`) shows the mode, this node's certificate (subject, names, validity), the
+CA, reloads, and the handshakes and plain requests refused since the start.
+
+| Level | When |
+| --- | --- |
+| **Fail** | This node's certificate has expired or is not valid yet |
+| **Warn** | It expires in less than 14 days, a reload failed, the mode is `mixed`, or a peer endpoint is still `http://` |
+
+The **Peers and clocks** check has a `tls` flag for every peer. Replication link errors and the
+health checks describe TLS problems in plain words:
+
+| Message | Fix |
+| --- | --- |
+| The peer's certificate has expired | Renew the peer's certificate |
+| Unknown CA, or not signed by `Z3_PEER_TLS_CA` | Sign every node with the same CA, or put both CAs in `Z3_PEER_TLS_CA` |
+| Does not match the endpoint's host name | Add the host name or IP address of the endpoint to the peer's certificate, or change the endpoint |
+| The peer requires a client certificate | Set `Z3_PEER_TLS_CERT` and `Z3_PEER_TLS_KEY` on this node |
+| The peer refused this node's certificate | This node's certificate has expired or isn't signed by the peer's CA |
+| The peer does not speak TLS on this port | The peer has no certificate set; use an `http://` endpoint for it until it does |
+| Signed with an algorithm that is not accepted (SHA-1) | Issue the certificate again with SHA-256 |
+| `426`: this peer API requires TLS | This node calls the peer with `http://`; change the endpoint to `https://` |
+
+See [Support tools](/operations/support#health).

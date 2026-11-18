@@ -63,6 +63,7 @@
               "deploy/disks",
               "deploy/cluster",
               "deploy/tls-and-proxies",
+              "deploy/peer-tls",
               "deploy/migrate-from-minio",
               "deploy/upgrading",
               "deploy/troubleshooting",

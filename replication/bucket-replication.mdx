@@ -28,8 +28,8 @@ bucket `data`.
     Z3_PEER_TOKEN=token-of-b Z3_PEER_ADDR=0.0.0.0:9002 z3
     ```
 
-    Port 9002 must be reachable from the other node. See
-    [TLS and reverse proxies](/deploy/tls-and-proxies#the-replication-api) to put it behind TLS.
+    Port 9002 must be reachable from the other node. To encrypt it, see
+    [Mutual TLS between nodes](/deploy/peer-tls), then use `https://` endpoints below.
   </Step>
   <Step title="Create the bucket on both nodes">
     With any S3 client, with the same versioning state on both (enable versioning on both if you
