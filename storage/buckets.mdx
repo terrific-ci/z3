@@ -92,6 +92,18 @@ Click a bucket to open its **Objects** tab:
   buttons (or the arrow keys) step through the folder's other previewable files. Files stored
   as `application/octet-stream` are previewed by their extension.
 
+### Delete many objects
+
+- **Pick them:** tick the checkbox of each object (the header checkbox ticks the whole page), then
+  **Delete** in the bar above the list. Each key is checked against your rights; keys you may not
+  delete, or that Object Lock keeps, are reported and stay ticked.
+- **By condition:** **Delete by condition…** (needs `admin:ConfigUpdate`) deletes what matches a
+  prefix, a name pattern such as `pegawai_*` (`*` any run of characters, `?` one character) and a
+  modified date range. With no condition it deletes everything under the prefix, after you type the
+  bucket name. **Count matches** shows how many objects match and the first keys; the delete then
+  runs as a [batch job](/storage/batch) with its progress in the dialog. In a versioned bucket you
+  choose between a delete marker per object and removing every version for good.
+
 <Frame>
   <img src="/images/object-preview.png" alt="Object details with a preview" />
 </Frame>

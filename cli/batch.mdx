@@ -75,6 +75,8 @@ Every type takes an optional `filter`; all the conditions given must hold:
 | `filter.tags` | Objects with all of these tags, like `{"kind": "scratch"}` |
 | `filter.size_gt`, `filter.size_lt` | Larger or smaller than this many bytes |
 | `filter.older_than`, `filter.newer_than` | Written at least, or at most, this long ago: `90s`, `15m`, `12h`, `30d`, `2w` |
+| `filter.key_pattern` | Keys (after `source.prefix`) matching a glob: `*` any run of characters, `/` too; `?` one character |
+| `filter.modified_after`, `filter.modified_before` | Written at or after, or before, this RFC 3339 time |
 
 Before starting, z3 checks the definition: the bucket exists, a remote target answers, the KMS key
 exists. A bad definition is refused and nothing runs.

@@ -30,6 +30,8 @@ Every field you fill in must match:
 | `filter.tags` | Objects that carry all of these tags |
 | `filter.size_gt`, `filter.size_lt` | Size in bytes: larger than, smaller than |
 | `filter.older_than`, `filter.newer_than` | Age since the version was written: `90s`, `15m`, `12h`, `30d`, `2w` |
+| `filter.key_pattern` | A glob on the key after `source.prefix`: `*` any run of characters (`/` too), `?` one character. `pegawai_*`, `*.tmp` |
+| `filter.modified_after`, `filter.modified_before` | Written at or after, or before, an RFC 3339 time like `2026-01-01T00:00:00Z` |
 
 ## Start a job
 
