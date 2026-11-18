@@ -86,6 +86,22 @@ every node without losing either version.
   </Accordion>
 </AccordionGroup>
 
+## How fast
+
+On one machine with the same limits for each server (2 CPUs, 2 GiB of memory, one drive), measured
+with warp:
+
+| Workload | z3 1.0.0 | MinIO | RustFS |
+|---|---|---|---|
+| PUT 1 MiB | **150.7 MiB/s** | 124.4 MiB/s | 102.2 MiB/s |
+| GET 1 MiB | **1,486 MiB/s** | 1,265 MiB/s | 609 MiB/s |
+| PUT 16 KiB | 796 objects/s | 732 objects/s | **886 objects/s** |
+| GET 16 KiB | **5,759 objects/s** | 3,357 objects/s | 5,439 objects/s |
+| HEAD 16 KiB | **10,068 objects/s** | 3,663 objects/s | 7,839 objects/s |
+| Peak memory | **174 MiB** | 997 MiB | 284 MiB |
+
+The setup, every workload and how to run it yourself are on [Benchmarks](/deploy/benchmarks).
+
 ## One program
 
 The console is built into the binary, and so are the database, the replication protocol and the
