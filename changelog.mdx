@@ -6,17 +6,23 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.1.0**, released November 18, 2026. To install or upgrade to it:
+The latest release is **v1.2.0**, released November 18, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/z3:1.1.0
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.0
+docker pull terrificci/z3:1.2.0
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.2.0
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.1.0" description="November 18, 2026" tags={["Latest"]}>
+<Update label="v1.2.0" description="November 18, 2026" tags={["Latest"]}>
+
+- **Upgrading:** 1.2.0 cannot open a data directory written by 1.1.0 or 1.0.x: IAM secrets, KMS keys and encrypted objects are now protected by keys under the Zee3 name. Start with an empty data directory and copy objects over with the import, as described in [Upgrading](/deploy/upgrading).
+
+</Update>
+
+<Update label="v1.1.0" description="November 18, 2026">
 
 - **New name:** z3 is now Zee3. The binary and command line are `zee3` and `zee3 admin`, environment variables start with `ZEE3_`, metrics with `zee3_`, headers with `x-zee3-`, and the default credentials are `zee3admin` / `zee3admin-secret`. The Docker image keeps its name, `terrificci/z3`. See [Upgrading](/deploy/upgrading).
 - **Cluster:** a cluster can now replicate buckets with other nodes or clusters, join a site replication group and be one site in geo erasure coding. Only the leader pulls from peers, any member serves them, and a peer endpoint may list several URLs separated by commas. See [Cluster](/deploy/cluster).
