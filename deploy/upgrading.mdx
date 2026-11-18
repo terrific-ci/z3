@@ -104,6 +104,19 @@ too. Upgrade every member before you run `zee3 admin cluster ec`: a member on an
 following the log when the layout is set, until it is upgraded. The on-disk format doesn't change,
 and chunks stored as copies stay readable by every version.
 
+## From 1.1.0 to 1.1.1
+
+<Warning>
+  1.1.1 cannot use a data directory written by an earlier version. The keys that protect IAM secrets,
+  KMS keys and encrypted objects now carry the Zee3 name, so what 1.1.0 and 1.0.x stored can no
+  longer be opened, and cluster members place erasure-coded shards differently.
+</Warning>
+
+Start 1.1.1 with an empty data directory, copy the objects over with the
+[import](/deploy/migrate-from-minio) from the old node (it reads any S3 store), then create users,
+access keys and KMS keys again. Upgrade every node of a replication group and every member of a
+cluster together.
+
 ## From 1.0.x to 1.1.0
 
 1.1.0 renames z3 to Zee3. The metadata format does not change, so the data directory is used as it
