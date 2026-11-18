@@ -4,10 +4,30 @@ description: "Every z3 release, newest first, and what changed in it."
 rss: true
 ---
 
-The latest release is **1.0.0**, released November 18, 2026. To install it, see
+The latest release is **1.0.1**, released November 18, 2026. To install it, see
 [Install](/deploy/install) or [Docker](/deploy/docker).
 
-<Update label="1.0.0" description="November 18, 2026" tags={["Latest"]}>
+<Update label="1.0.1" description="November 18, 2026" tags={["Latest"]}>
+
+Lighter on a machine shared with other services, such as an application server with a database.
+
+- **Bounded memory**: the metadata cache is capped at 128 MiB by default (`Z3_META_CACHE_MB`), so
+  z3's memory levels off instead of growing with the number of objects. At about 200,000 objects
+  it uses about 160 MiB, or about 100 MiB with `Z3_META_CACHE_MB=64`, and writes are as fast. The
+  historical metrics and the cluster log have their own small caps (`Z3_METRICS_CACHE_MB`,
+  `Z3_RAFT_CACHE_MB`).
+- **Gentle full heal**: the weekly full verification pauses between batches and uses at most
+  `Z3_HEAL_DUTY` percent of the time (25 by default), so the disk and CPU stay with requests and
+  other programs.
+- **Footprint measured**: idle CPU, CPU per object and memory against MinIO and RustFS, and
+  settings for a shared machine. See [Running alongside other services](/deploy/shared-host) and
+  [Benchmarks](/deploy/benchmarks#footprint-on-a-shared-machine).
+
+No change to the metadata format: upgrade from 1.0.0 by replacing the binary or the image.
+
+</Update>
+
+<Update label="1.0.0" description="November 18, 2026">
 
 z3 1.0: several nodes as one cluster, branch offices that keep working offline, protection
 against ransomware, rollback to any point in time, a live map of replication, and faster large

@@ -56,7 +56,7 @@ docker compose up -d
 docker compose logs -f z3
 ```
 
-Pin a version tag (`terrificci/z3:1.0.0`) instead of `latest` to choose when you upgrade.
+Pin a version tag (`terrificci/z3:1.0.1`) instead of `latest` to choose when you upgrade.
 
 ## Install script or systemd
 
@@ -92,6 +92,11 @@ The health check's **Peers and clocks** item warns when a peer runs a different 
 
 Restart [cluster](/deploy/cluster) members one at a time, and wait until `z3 admin cluster status`
 shows the restarted member caught up before the next. Reads and writes continue on the others.
+
+## From 1.0.0 to 1.0.1
+
+Replace the binary or the image and restart. The metadata format is unchanged, and 1.0.0 and 1.0.1
+nodes can replicate with each other while you upgrade one after another.
 
 ## From 0.1.0 to 1.0.0
 

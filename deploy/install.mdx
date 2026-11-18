@@ -27,7 +27,7 @@ docker pull terrificci/z3:latest
 | Tag | Meaning |
 | --- | --- |
 | `latest` | The newest release |
-| `1.0.0` | One exact version |
+| `1.0.1` | One exact version |
 
 Pin a version tag to choose when you upgrade. Continue with [Docker](/deploy/docker).
 
@@ -47,13 +47,13 @@ it again to upgrade.
 | Option | Meaning |
 | --- | --- |
 | `--service` | Also run z3 as a systemd service and start it (Linux only); see [systemd](/deploy/systemd) |
-| `--version X` | Install version `X` (such as `1.0.0`) instead of the latest release |
+| `--version X` | Install version `X` (such as `1.0.1`) instead of the latest release |
 | `--dir DIR` | Install into `DIR` instead of `/usr/local/bin` |
 
 Pass options after `sh -s --`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.0.0
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.0.1
 ```
 
 The environment variables `Z3_VERSION` and `Z3_INSTALL_DIR` do the same as `--version` and
@@ -71,7 +71,7 @@ The environment variables `Z3_VERSION` and `Z3_INSTALL_DIR` do the same as `--ve
   | macOS, Intel | `z3-<version>-darwin-amd64.tar.gz` |
 
   ```bash
-  VERSION=1.0.0
+  VERSION=1.0.1
   ASSET=z3-$VERSION-linux-amd64.tar.gz
   curl -fLO https://github.com/terrific-ci/z3/releases/download/v$VERSION/$ASSET
   curl -fLO https://github.com/terrific-ci/z3/releases/download/v$VERSION/SHA256SUMS
