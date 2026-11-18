@@ -25,6 +25,7 @@ Objects are not part of it. To copy data, use [replication](/replication/overvie
 | `peers` | Replication peers |
 | `site` | The site replication configuration (listed, never imported) |
 | `kms_keys` | Internal KMS master keys. Only in an export with secrets |
+| `kms_external` | The [external KMS](/security/encryption) settings (Vault or KES). Its token, AppRole secret id or KES client key only in an export with secrets |
 | `tiers` | [Tiers](/storage/tiers) |
 | `settings` | The [cluster settings](/operations/settings) that are set |
 
@@ -51,7 +52,7 @@ The top of the file says what it is:
 ## Secrets
 
 By default the export has **no secrets**: no user or access key secret keys, peer and site tokens,
-destination and target secrets, tier secret keys, or KMS keys.
+destination and target secrets, tier secret keys, KMS keys, or external KMS credentials.
 
 An export **with secrets** has all of them. It needs both `admin:UserAdmin` and
 `admin:ConfigUpdate`. Without the KMS keys, encrypted objects cannot be read on another node, so
@@ -93,6 +94,9 @@ Exporting needs `admin:ServerInfo`.
 
 **Import/Export → Import configuration**, then pick the file. The result lists what was applied and
 what was skipped, and why.
+
+External KMS settings imported without credentials keep the credentials the node already has; a
+node with none skips them and says so.
 
   </Tab>
   <Tab title="API">
