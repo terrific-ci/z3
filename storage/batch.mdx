@@ -163,7 +163,7 @@ Viewing jobs needs `admin:ServerInfo`. Starting, cancelling and removing them ne
 
 | Endpoint | What it does |
 | --- | --- |
-| `GET /api/batch` | Every job, newest first |
+| `GET /api/batch` | Every job, newest first; `?limit=25` for a page, `&before=<id>` (the last id) for the next |
 | `POST /api/batch` | Start a job |
 | `GET /api/batch/{id}` | One job |
 | `POST /api/batch/{id}/cancel` | Stop a running job |

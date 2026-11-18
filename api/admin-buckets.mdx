@@ -19,7 +19,7 @@ admin right. See [Rights](/api/overview#rights). Every example sends
 | `PUT` | `/api/buckets/{bucket}/versioning` | `s3:PutBucketVersioning` | Enable or suspend versioning |
 | `GET` | `/api/buckets/{bucket}/objects` | `s3:ListBucket` | Folders and objects |
 | `DELETE` | `/api/buckets/{bucket}/objects` | `s3:DeleteObject` / `s3:DeleteObjectVersion` | Delete an object or a version |
-| `GET` | `/api/buckets/{bucket}/objects/versions` | `s3:ListBucketVersions` | Every version of one key |
+| `GET` | `/api/buckets/{bucket}/objects/versions` | `s3:ListBucketVersions` | Versions of one key, a page at a time |
 | `GET` | `/api/buckets/{bucket}/objects/content` | `s3:GetObject` / `s3:GetObjectVersion` | Download or preview |
 | `PUT` | `/api/buckets/{bucket}/objects/content` | `s3:PutObject` | Upload |
 | `GET` | `/api/buckets/{bucket}/changelog` | `admin:ServerInfo` | The bucket's change log |
@@ -162,8 +162,14 @@ Suspending is refused with `409` on a bucket with Object Lock.
 
 ### Versions of a key
 
-`GET /api/buckets/{bucket}/objects/versions?key=2026/a.jpg` answers every version of that key, newest
-first, in the same shape.
+`GET /api/buckets/{bucket}/objects/versions?key=2026/a.jpg` answers the versions of that key, newest
+first, in the same shape: up to `limit` of them (1 to 1000, 1000 by default). For the next page, pass
+the last version id you got as `after`; a page shorter than `limit` is the last one.
+
+```bash
+curl "$Z3_ADMIN_URL/api/buckets/photos/objects/versions?key=2026/a.jpg&limit=50&after=01a1ed6e..." \
+  -H "Authorization: Bearer $TOKEN"
+```
 
 ### Download
 
