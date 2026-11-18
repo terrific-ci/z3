@@ -136,6 +136,13 @@ Suspending is refused with `409` on a bucket with Object Lock.
   `next_cursor` from the previous page.
 </ParamField>
 
+<ParamField query="contains" type="string">
+  Search instead of listing one level: objects under `prefix`, in every subfolder, whose path after
+  `prefix` contains this text, in any case. No `prefixes` come back. One request reads at most
+  20,000 keys and says how many in `scanned`; while `next_cursor` is set, pass it to go on, even
+  when `objects` is empty.
+</ParamField>
+
 ```json
 {
   "prefixes": ["2026/scans/ct/", "2026/scans/mri/"],
