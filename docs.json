@@ -59,6 +59,7 @@
               "deploy/docker",
               "deploy/systemd",
               "deploy/configuration",
+              "deploy/shared-host",
               "deploy/disks",
               "deploy/cluster",
               "deploy/tls-and-proxies",

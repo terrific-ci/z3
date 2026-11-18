@@ -60,6 +60,9 @@ Each address is `IP:port`. z3 serves plain HTTP on all three; see
 | --- | --- | --- | --- |
 | `Z3_HEAL_INTERVAL` | `--heal-interval` | `604800` (7 days) | Seconds between full passes that verify and repair every chunk. `0` turns them off; chunks that reads find damaged are still repaired within seconds |
 | `Z3_GC_INTERVAL` | `--gc-interval` | `600` | Seconds between garbage collection runs. `0` turns off the background loop |
+| `Z3_HEAL_DUTY` | | `25` | Percent of the time a full heal pass may use; it pauses between batches for the rest, so the disk and CPU stay with requests and other programs |
+| `Z3_META_CACHE_MB` | | `128` | Memory for caching metadata pages, in MiB. Beyond it the operating system still caches the file |
+| `Z3_METRICS_CACHE_MB`, `Z3_RAFT_CACHE_MB` | | `16`, `32` | The same for `metrics.redb` and `raft.redb` |
 | `Z3_GC_GRACE` | `--gc-grace` | `3600` | Seconds an unreferenced chunk is kept before garbage collection may delete it |
 | `Z3_UPLOAD_TTL` | `--upload-ttl` | `604800` (7 days) | Multipart uploads older than this many seconds are aborted by garbage collection |
 | `Z3_LIFECYCLE_INTERVAL` | `--lifecycle-interval` | `3600` | Seconds between lifecycle runs. `0`: only when run on demand |

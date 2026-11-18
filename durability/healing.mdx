@@ -21,6 +21,10 @@ and the queue keep damage found in normal use from waiting for the next full pas
 
 ## Change the schedule
 
+A full pass pauses after every batch of 256 chunks for a time proportional to the batch, so it uses
+only `Z3_HEAL_DUTY` percent of the time (25 by default): on a machine shared with a database or
+other services, the weekly verification does not take over the disk or the CPU.
+
 `Z3_HEAL_INTERVAL` sets the default at startup. The `scanner.heal_interval_secs` setting changes it
 at runtime, for every site with site replication:
 

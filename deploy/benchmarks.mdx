@@ -54,6 +54,28 @@ limit; both help on faster drives and more cores.
   change the picture for every server; measure the layout you plan to run.
 </Note>
 
+## Footprint on a shared machine
+
+`bench/footprint.sh` runs each server with no CPU or memory limits, as on a machine shared with
+other services, and measures CPU while idle, CPU per object while writing 4 KiB objects, and the
+process's own memory (anonymous, without the page cache) as objects pile up.
+
+| | z3 | MinIO | RustFS |
+|---|---|---|---|
+| Idle CPU, empty | 0.2% of a core | 0.1% | 0.2% |
+| Idle CPU after ~200,000 objects | **0.26%** | 17% | 15–17% |
+| CPU per object while writing | 1.8 ms | 1.6 ms | 1.8 ms |
+| Memory at start | **2 MiB** | 66 MiB | 22 MiB |
+| Memory at ~200,000 objects | **~105 MiB** with `Z3_META_CACHE_MB=64` | 287 MiB | 196 MiB (still growing) |
+| OS page cache (reclaimable) | **227 MiB** | 2,678 MiB | 1,852 MiB |
+
+- MinIO and RustFS keep scanning their data in the background (about 17% of a core). z3 is quiet
+  when nothing asks it for anything.
+- z3's memory follows its metadata cache, which is capped by `Z3_META_CACHE_MB` (128 MiB by
+  default, so about 160 MiB in all). With 64 MiB it levels off near 100 MiB and writes are just as
+  fast, since the operating system still caches the metadata file. See
+  [Running alongside other services](/deploy/shared-host).
+
 ## Measure it yourself
 
 The script runs the three servers one after another with the same limits and prints one line per
