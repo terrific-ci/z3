@@ -93,6 +93,12 @@ The health check's **Peers and clocks** item warns when a peer runs a different 
 Restart [cluster](/deploy/cluster) members one at a time, and wait until `z3 admin cluster status`
 shows the restarted member caught up before the next. Reads and writes continue on the others.
 
+Replication on a cluster (peers, bucket and site replication, geo erasure coding) adds commands to
+the Raft log that older members can't read. Upgrade every member first, then configure replication
+on the cluster. A member still on the old version stops following the log when the first new command
+arrives, and catches up once it is upgraded. Older single-node peers keep replicating with the
+cluster, but give them one URL or a VIP instead of a comma-separated list.
+
 ## From 1.0.0 to 1.0.1
 
 Replace the binary or the image and restart. The metadata format is unchanged, and 1.0.0 and 1.0.1

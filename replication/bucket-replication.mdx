@@ -7,6 +7,9 @@ Bucket replication links individual buckets to peers. Each node pulls the bucket
 peers you list, so set it up **on every node** of the bucket, each pointing at the others. To
 replicate every bucket at once, use [site replication](/replication/site-replication) instead.
 
+Either side can be a [cluster](/deploy/cluster#replication-with-other-z3-nodes): configure it
+through any member, and give the other side the cluster's members as one endpoint (below).
+
 All the steps below can be done in the console (peers on the **Replication** page, the bucket's
 peers and rules under the bucket's **Settings → Replication** tab) or with the admin API. Changing
 replication needs the `admin:ConfigUpdate` right.
@@ -82,6 +85,20 @@ bucket `data`.
 <Note>
   When you edit a peer in the console and leave the token empty, the existing token is kept.
 </Note>
+
+## Several URLs for one peer
+
+A peer's `endpoint` may list several URLs separated by commas, for example every member of a
+[cluster](/deploy/cluster#how-peers-reach-the-cluster):
+
+```json
+{"endpoint": "http://10.0.0.11:9002,http://10.0.0.12:9002,http://10.0.0.13:9002", "token": "cluster-secret"}
+```
+
+The node uses the URL that last answered, and moves to the next one on a connection error or a
+**503** (a member that left its cluster answers 503). A VIP or load balancer in front of the members,
+or a single member's URL, works too. Older nodes don't understand comma lists: give them one URL or
+a VIP.
 
 ## Bucket configuration
 
@@ -209,7 +226,7 @@ A node can only verify tokens from nodes it pulls from directly for that bucket.
 | `GET /api/peers` | Peers of this node |
 | `PUT /api/peers/{name}`, `DELETE /api/peers/{name}` | Add, change or remove a peer |
 | `GET /api/buckets/{bucket}/replication`, `PUT ...` | A bucket's replication configuration |
-| `POST /api/buckets/{bucket}/replication/resync` | Run anti-entropy for the bucket now |
+| `POST /api/buckets/{bucket}/replication/resync` | Run anti-entropy for the bucket now (in a cluster, on the leader) |
 | `GET /api/buckets/{bucket}/conflicts` | Recent concurrent writes and their winners |
 | `GET /api/replication` | Status of every link |
 

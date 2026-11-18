@@ -46,6 +46,11 @@ To encrypt this traffic and let nodes prove who they are, turn on
 [mutual TLS between nodes](/deploy/peer-tls): every node gets a certificate from your own CA, and
 peers with `https://` endpoints are called with it. The token is still required on top.
 
+A node in this picture can also be a [cluster](/deploy/cluster#replication-with-other-z3-nodes):
+it replicates as one node, its leader pulls from peers, and any member serves them. A peer endpoint
+may list several URLs separated by commas, for example every member of a cluster; the URL that last
+answered is used, and the next one is tried on a connection error or a 503.
+
 ## Who wins
 
 - **Every version is kept on every node.** The current version of a key is the one with the
@@ -147,7 +152,7 @@ runs a pass now.
 | Where | What |
 | --- | --- |
 | **Replication** page | Each link live: state, lag, delay, bytes, conflicts and the last error |
-| `GET /api/replication` | Each link: `streaming` or `error`, cursor, lag in entries and seconds, last delay, bytes on the wire, raw and saved by deduplication, conflicts, last error, last anti-entropy result. The site log's link shows as bucket `<site>` |
+| `GET /api/replication` | Each link: `streaming` or `error`, cursor, lag in entries and seconds, last delay, bytes on the wire, raw and saved by deduplication, conflicts, last error, last anti-entropy result. The site log's link shows as bucket `<site>`. In a cluster, every member shows each link once, with `worker`: the member running it |
 | `GET /api/buckets/{bucket}/conflicts` | Concurrent writes and their winners |
 | `GET /metrics` | `z3_changelog_unacked_entries`, `z3_changelog_floor_seq`, `z3_changelog_pruned_entries_total`, `z3_replication_up`, `z3_replication_lag_seconds`, `z3_replication_lag_entries`, `z3_replication_conflicts_total`, `z3_replication_bytes_*_total`, `z3_replication_throttled_seconds_total`, `z3_replication_paused`, `z3_replication_geo_chunks_total` |
 | **Support** page | The **Replication** check warns on a link in error or more than 5 minutes behind; **Peers and clocks** checks each peer's reachability, version and clock difference; **Peer TLS** checks this node's [certificate](/deploy/peer-tls#check-it) and warns about peers still on `http://` |

@@ -186,6 +186,31 @@ Only one speed test or profile runs at a time; a second one answers `409`.
 
 With data, the files may total at most 1 GiB; above that the answer is `413`.
 
+## Cluster
+
+`GET /api/cluster` answers the [cluster](/deploy/cluster) as this member sees it:
+
+```json
+{
+  "enabled": true, "member_id": "5168186497781187492", "name": "z3-2", "addr": "http://10.0.0.12:9002",
+  "state": "Follower", "term": 3, "leader": "2200471768134479368", "leader_log": 1840,
+  "last_log": 1840, "last_applied": 1840,
+  "members": [
+    { "id": "2200471768134479368", "name": "z3-1", "addr": "http://10.0.0.11:9002", "version": "1.0.2",
+      "voter": true, "leader": true, "me": false, "role": "leader", "matched": 1840 }
+  ],
+  "copies": 3, "copies_configured": 3, "consistent_reads": true,
+  "sweep": { "at": 1794921000000, "report": { "...": "..." } },
+  "replication_worker": "z3-1"
+}
+```
+
+- `role` is `leader`, `follower` or `leaving`; `matched` is the last log entry the member matches
+  on the leader.
+- `replication_worker` is the member running the
+  [replication links](/deploy/cluster#replication-with-other-z3-nodes) (the leader), or `null`
+  outside a cluster or while there is no leader.
+
 ## Pools
 
 `GET /api/pools`:
@@ -388,7 +413,9 @@ Geo shards rebuilt that way don't count as lost.
 | `errors` | Up to 10 distinct reasons |
 
 `POST /api/heal/geo` runs only that repair, without verifying every chunk first, and answers the same
-object as `geo`. It checks missing shards and the ones reads found bad.
+object as `geo`. It checks missing shards and the ones reads found bad. On a
+[cluster](/deploy/cluster#geo-erasure-coding), call it on the leader: on a follower it checks
+nothing (`checked: 0`).
 
 `POST /api/gc` runs garbage collection now with the configured grace period. `?grace_secs=0` deletes
 unreferenced chunks at once:

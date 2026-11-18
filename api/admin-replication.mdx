@@ -9,6 +9,9 @@ These endpoints set up and watch [replication](/replication/overview). Reading n
 Replication itself runs between nodes on the **peer API** (port 9002), which needs `Z3_PEER_TOKEN`
 on the node being pulled from. The endpoints below are on the admin API.
 
+On a [cluster](/deploy/cluster#replication-with-other-z3-nodes), call them on any member: peers and
+replication settings are stored in the cluster's metadata, and every member answers the same.
+
 ## Endpoints
 
 | Method | Path | Description |
@@ -18,7 +21,7 @@ on the node being pulled from. The endpoints below are on the admin API.
 | `DELETE` | `/api/peers/{name}` | Remove a peer |
 | `GET` | `/api/buckets/{bucket}/replication` | A bucket's replication |
 | `PUT` | `/api/buckets/{bucket}/replication` | Set a bucket's replication (empty `peers` turns it off) |
-| `POST` | `/api/buckets/{bucket}/replication/resync` | Run Merkle anti-entropy against each peer now |
+| `POST` | `/api/buckets/{bucket}/replication/resync` | Run Merkle anti-entropy against each peer now (on a cluster follower, it runs on the leader) |
 | `GET` | `/api/buckets/{bucket}/conflicts` | Concurrent writes resolved by HLC |
 | `GET` | `/api/replication` | Live state of every link |
 | `GET` | `/api/replication?view=peers` | Per peer: online or offline, last contact, changes waiting to send and to receive ([Edge](/replication/edge#monitoring)) |
@@ -41,7 +44,10 @@ A peer is another z3 node this node pulls changes from.
 <ParamField body="endpoint" type="string" required>
   The peer's replication API, like `http://10.0.0.2:9002` or `https://dc2.example.com:9002`.
   An `https://` peer is called with this node's certificate when
-  [mutual TLS](/deploy/peer-tls) is on.
+  [mutual TLS](/deploy/peer-tls) is on. Several URLs separated by commas, like the members of a
+  cluster (`http://10.0.0.11:9002,http://10.0.0.12:9002`), are tried in turn: the URL that last
+  answered is used, and the next one on a connection error or a 503. Each URL must start with
+  `http://` or `https://`.
 </ParamField>
 
 <ParamField body="token" type="string" required>
@@ -116,7 +122,8 @@ A rule:
 ### Resync
 
 `POST /api/buckets/{bucket}/replication/resync` compares the bucket with each peer through Merkle
-trees and repairs what differs, without waiting for the next anti-entropy run:
+trees and repairs what differs, without waiting for the next anti-entropy run. On a cluster, a
+follower runs it on the leader, where the links run:
 
 ```json
 [ { "peer": "dc2", "divergent_leaves": 3, "repaired": 12 } ]
@@ -156,6 +163,7 @@ from different nodes. Both versions are kept; the one with the higher HLC is cur
 | Field | Meaning |
 | --- | --- |
 | `state` | `connecting`, `streaming`, `error`, or `paused` (outside the peer's windows) |
+| `worker` | On a [cluster](/deploy/cluster#monitoring): the member running the link (the leader). Every member shows each link once. Absent on a single node |
 | `cursor`, `remote_head` | The last peer log entry applied here, and the peer's newest |
 | `lag_entries`, `lag_ms` | Entries not applied yet, and the age of the oldest (0 when caught up) |
 | `last_delay_ms` | From the origin's commit to the local apply, for the last change |
@@ -164,6 +172,8 @@ from different nodes. Both versions are kept; the one with the higher HLC is cur
 | `geo_chunks` | Geo-erasure-coded chunks for which only this site's shards were fetched |
 | `last_contact_ms`, `offline`, `offline_since_ms` | When the peer last answered, and whether it counts as offline (no answer for 10 s on any link) |
 | `outgoing_entries` | Changes made here that the peer has not pulled yet |
+
+`GET /api/replication?view=peers` carries the same `worker` on each peer.
 
 The same figures feed the `z3_replication_*` [Prometheus metrics](/operations/prometheus#replication).
 
@@ -191,7 +201,7 @@ authenticating with that site's token, so **one call sets up the whole group**:
 | Field | Meaning |
 | --- | --- |
 | `name` | This node's own site, one of the keys of `sites` |
-| `sites` | Every site (at least two): its replication API `endpoint`, its `Z3_PEER_TOKEN`, and optionally `max_bytes_per_sec` and `windows` for pulling from it |
+| `sites` | Every site (at least two): its replication API `endpoint` (several URLs separated by commas for a cluster's members), its `Z3_PEER_TOKEN`, and optionally `max_bytes_per_sec` and `windows` for pulling from it |
 | `topology` | `"mesh"` (every site pulls from every other), `{"hub_spoke": {"hub": "jkt"}}`, or `{"chain": {"order": ["jkt", "sby", "bdg"]}}` (each site pulls from its neighbours). Changes are relayed, so every topology reaches every site |
 
 The answer says how the push to each other site went:

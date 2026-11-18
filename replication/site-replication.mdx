@@ -67,11 +67,27 @@ sends it to every other site, using each site's token:
 | Field | Meaning |
 | --- | --- |
 | `name` | This node's own site; must be one of `sites` |
-| `sites` | At least two sites, by name. Each has `endpoint` (`http://` or `https://`, the site's replication API) and `token` (that site's `Z3_PEER_TOKEN`) |
+| `sites` | At least two sites, by name. Each has `endpoint` (`http://` or `https://`, the site's replication API; several URLs separated by commas for the members of a cluster) and `token` (that site's `Z3_PEER_TOKEN`) |
 | `sites.*.max_bytes_per_sec`, `sites.*.windows` | Optional bandwidth limit and UTC time windows for pulling from that site; see [Bandwidth limits](/replication/bucket-replication#bandwidth-limits-and-time-windows) |
 | `topology` | Who pulls from whom (below); `"mesh"` by default |
 
 Setting it up needs the `admin:ConfigUpdate` right.
+
+## A cluster as a site
+
+A site can be a [cluster](/deploy/cluster#replication-with-other-z3-nodes). Set up or change site
+replication through any of its members; the configuration is stored in the cluster's metadata, so
+every member has it.
+
+- Give the site's `endpoint` as every member separated by commas
+  (`http://10.0.0.11:9002,http://10.0.0.12:9002,http://10.0.0.13:9002`), a VIP or load balancer in
+  front of them, or one member's URL. With several URLs, the URL that last answered is used, and the
+  next one is tried on a connection error or a 503. The same goes for every call between sites: geo
+  shards, geo repair, the replication map and health checks.
+- Older single-node sites don't understand comma lists: give them one URL or a VIP.
+- The cluster's leader pulls from the other sites; any member serves them, including the call that
+  joins the cluster to the group.
+- Every member needs the same `Z3_SITE_NAME`, or none.
 
 ## Mutual TLS between sites
 

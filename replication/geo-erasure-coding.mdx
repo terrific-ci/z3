@@ -24,6 +24,10 @@ the data instead of 3 times, and objects stay readable when any one site is down
 Without site replication, name each node with `Z3_SITE_NAME` and give each peer the same name as
 that node's site, since the bucket's peers stand for its sites.
 
+A site can be a [cluster](/deploy/cluster#geo-erasure-coding). Give every member the same
+`Z3_SITE_NAME`, or none and use site replication. The cluster's shards are ordinary chunks placed on
+its members, and cutting chunks down to shards and repair from other sites run on its leader.
+
 ## Turn it on
 
 Set `geo` in the bucket's replication configuration. With site replication the peers follow the
@@ -127,7 +131,9 @@ A layout with more parity can rebuild from fewer sites, at the cost of more stor
 - Versions in the [trash](/storage/deletion-protection) aren't repaired until they're restored.
 - Sites running an older z3 without the peer route `POST /v1/geo/repair` are skipped, like a site
   that doesn't answer.
-- Geo erasure coding, and so this repair, isn't available on [cluster](/deploy/cluster) members.
+- In a [cluster](/deploy/cluster#geo-erasure-coding), this repair runs on the leader, and a shard
+  counts as missing only when no member holds it. Call `POST /api/heal/geo` on the leader: on a
+  follower it checks nothing.
 
 ## Watching it
 

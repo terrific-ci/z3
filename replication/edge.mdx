@@ -198,5 +198,6 @@ from both sides on both, and the conflict recorded on both.
 - Change logs, tombstones and internal delete markers are not pruned yet.
 - Conflicts resolve automatically (highest HLC wins); there is no manual or rule-based
   resolution yet.
-- Replication is not available in cluster mode (Raft). A branch node is a single node, optionally
-  with several disks.
+- A hub or a branch can be a [cluster](/deploy/cluster#replication-with-other-z3-nodes). Its
+  leader decides which peers are offline and the other members follow it every second, so
+  `on_offline: local` works through any member.

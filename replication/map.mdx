@@ -14,6 +14,10 @@ The node you are signed in to asks every node it knows (site members and peers) 
 replication, so the map also shows links between two other nodes, for example two spokes that both
 pull from the hub. A node that does not answer still appears, marked unreachable with the error.
 
+A [cluster](/deploy/cluster#replication-with-other-z3-nodes) is one card, and its links appear once
+whichever member you are signed in to. A peer listed with several URLs is asked at the first one
+that answers.
+
 ## Reading the map
 
 - **Cards** show the node's role (hub, spoke, site or peer), whether it answered, its peer address,
@@ -33,13 +37,15 @@ for a chain, a circle for a mesh or plain peers.
 
 Click a card or a line to open its details beside the map.
 
-- **A node**: node id, version, uptime, objects and bytes, topology, the nodes it pulls from and
+- **A node**: node id, version, uptime, objects and bytes, topology, the members of a cluster and
+  the member running its links, the nodes it pulls from and
   the nodes that pull from it, every replicated bucket with its mode, peers, priority, rules, geo
   erasure coding and offline behaviour, and the bandwidth limits and windows it pulls with.
 - **A link**, in both directions: for each bucket (and the site configuration log), its state,
   how many changes are behind and for how long, changes applied, conflicts, the last delay, the last
   sync, anti-entropy runs and repairs, time throttled, changes waiting to send while the peer is
-  offline, and the last error. **Compare now** runs Merkle anti-entropy for a bucket this node pulls.
+  offline, the last error, and on a cluster the member running the link. **Compare now** runs Merkle
+  anti-entropy for a bucket this node pulls.
 
 <Frame>
   <img src="/images/replication-map-link.png" alt="The details of a link: per bucket state and counters in both directions" />
@@ -80,5 +86,18 @@ node's, as asked over the peer API (`GET /v1/replication/topology` with the peer
 }
 ```
 
-Links have the fields of [`GET /api/replication`](/api/admin-replication#link-status). Tokens are
-never included. Each node is asked with a four-second timeout.
+Links have the fields of [`GET /api/replication`](/api/admin-replication#link-status), including
+`worker` on a cluster. A cluster's description also has `cluster`: its members and the member
+running the links.
+
+```json
+"cluster": {
+  "members": [
+    { "id": "2200471768134479368", "name": "z3-1", "addr": "http://10.0.0.11:9002", "leader": true },
+    { "id": "5168186497781187492", "name": "z3-2", "addr": "http://10.0.0.12:9002", "leader": false }
+  ],
+  "replication_worker": "z3-1"
+}
+```
+
+Tokens are never included. Each node is asked with a four-second timeout.
