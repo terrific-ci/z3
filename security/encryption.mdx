@@ -13,7 +13,8 @@ as Amazon S3:
 | **SSE-C** | A 256-bit key the client sends with every request | `x-amz-server-side-encryption-customer-algorithm`, `-customer-key` and `-customer-key-MD5` |
 
 Keys live in z3's **internal KMS** unless you connect an
-[external KMS](/security/external-kms) (HashiCorp Vault or MinIO KES).
+[external KMS](/security/external-kms): HashiCorp Vault, MinIO KES, AWS KMS, Azure Key Vault or
+Google Cloud KMS.
 
 <Frame>
   <img src="/images/encryption.png" alt="The Encryption page with KMS keys and encrypted buckets" />
@@ -81,6 +82,10 @@ Named keys are for SSE-KMS. Names are 1 to 64 characters: letters, digits, `-`, 
 </Tabs>
 
 Managing KMS keys needs `admin:ConfigUpdate`.
+
+With Vault or KES connected, **Create key** creates the key there. With AWS KMS, Azure Key Vault or
+Google Cloud KMS, create keys in the cloud instead; z3 never creates them (see
+[Keys](/security/external-kms#keys)).
 
 <Warning>
   Deleting a key makes every object encrypted with it **unreadable**, on every site. A key that is
@@ -177,8 +182,8 @@ An empty `key_id` moves objects to the default SSE-S3 key. Start with `"dry_run"
 would change. SSE-C objects are skipped, since their key is only at the client. After a rotation,
 the old key is no longer needed for the objects that moved.
 
-Rotation also moves objects from the internal KMS to an
-[external KMS](/security/external-kms#move-objects-to-the-external-kms).
+Rotation also moves objects from the internal KMS, or from a retired key store, to the active
+[external KMS](/security/external-kms#move-objects-to-another-kms).
 
 ## With replication
 

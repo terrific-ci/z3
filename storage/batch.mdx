@@ -111,7 +111,10 @@ Rotate to another key:
 ```
 
 An empty `key_id` means the default SSE-S3 key (`z3-default`). Rotation also moves objects
-from the internal KMS to an [external KMS](/security/external-kms) once one is connected.
+from the internal KMS to an [external KMS](/security/external-kms) once one is connected, and from a
+[retired key store](/security/external-kms#retired-key-stores) (for example Vault after switching to
+AWS KMS) to the active KMS. Once nothing is sealed there any more, the retired key store can be
+forgotten.
 
 ## Follow, cancel and remove jobs
 

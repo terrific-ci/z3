@@ -44,6 +44,10 @@ them. The replication link counters are the exception: they carry over restarts 
 | `z3_disk_online` | gauge | `disk`, `path` | `1` when the disk is usable, `0` when it is offline or foreign |
 | `z3_heal_shards_repaired_total` | counter | | Shards or copies rewritten by [healing](/durability/healing) |
 | `z3_heal_chunks_lost_total` | counter | | Chunks found with too few good shards to rebuild |
+| `z3_heal_chunks_lost` | gauge | | Chunks found lost and not repaired since |
+| `z3_heal_geo_shards_repaired_total` | counter | | This site's [geo shards](/replication/geo-erasure-coding#healing-across-sites) (or full chunks) rebuilt from other sites |
+| `z3_heal_geo_chunks_failed_total` | counter | | Geo chunk repairs that failed because too few sites answered (counted per pass) |
+| `z3_heal_geo_unrepairable` | gauge | | Geo chunks the last repair pass could not rebuild from other sites |
 | `z3_orphan_chunks_deleted_total` | counter | | Unreferenced chunk files deleted by the [orphan sweep](/durability/healing#orphaned-chunks) |
 | `z3_orphan_bytes_freed_total` | counter | | Bytes freed by the orphan sweep |
 

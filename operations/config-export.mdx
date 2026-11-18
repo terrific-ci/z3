@@ -25,7 +25,8 @@ Objects are not part of it. To copy data, use [replication](/replication/overvie
 | `peers` | Replication peers |
 | `site` | The site replication configuration (listed, never imported) |
 | `kms_keys` | Internal KMS master keys. Only in an export with secrets |
-| `kms_external` | The [external KMS](/security/encryption) settings (Vault or KES). Its token, AppRole secret id or KES client key only in an export with secrets |
+| `kms_external` | The [external KMS](/security/external-kms) settings (Vault, KES, AWS KMS, Azure Key Vault or Google Cloud KMS). Its credentials (Vault token or AppRole secret id, KES client key, AWS secret access key and session token, Azure client secret, Google Cloud service account key) only in an export with secrets |
+| `kms_external_retired` | [Retired key stores](/security/external-kms#retired-key-stores), the same way. Left out when there are none, like `kms_external` |
 | `tiers` | [Tiers](/storage/tiers) |
 | `settings` | The [cluster settings](/operations/settings) that are set |
 
@@ -95,8 +96,8 @@ Exporting needs `admin:ServerInfo`.
 **Import/Export → Import configuration**, then pick the file. The result lists what was applied and
 what was skipped, and why.
 
-External KMS settings imported without credentials keep the credentials the node already has; a
-node with none skips them and says so.
+External KMS settings and retired key stores imported without credentials keep the credentials
+the node already has for the same kind of KMS; a node with none skips them and says so.
 
   </Tab>
   <Tab title="API">

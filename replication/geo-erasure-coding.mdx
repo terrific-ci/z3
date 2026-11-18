@@ -1,6 +1,6 @@
 ---
 title: "Geo erasure coding"
-description: "Split a bucket's chunks into shards across sites instead of keeping a full copy at each: 1.5x storage for three sites, still readable with one site down."
+description: "Split a bucket's chunks into shards across sites instead of keeping a full copy at each: 1.5x storage for three sites, still readable with one site down, and a site's lost shards rebuilt from the others."
 ---
 
 Normal replication keeps a **full copy** of every object at every site: three sites store three
@@ -74,10 +74,75 @@ Shard `i` is kept by site number `i mod sites`, with the sites sorted by name.
 
 In tests with three sites, each site stored exactly 3 MiB for a 6 MiB object.
 
+## Healing across sites
+
+Local [erasure coding](/durability/erasure-coding) protects a site's shards against failed disks.
+When this site's own shards are gone from **every** local copy, it rebuilds them from the shards the
+other sites keep. That happens when:
+
+- the site was rebuilt with empty disks, but its metadata was kept,
+- every disk of a set was replaced,
+- a shard is corrupt on every disk.
+
+z3 fetches shards from the other sites, puts the chunk together with Reed-Solomon, checks it against
+its BLAKE3 hash, and writes back only this site's shards. A full chunk the writing site still keeps
+(not yet cut down to shards) is rebuilt the same way. No manual step is needed.
+
+### When it runs
+
+| Trigger | What happens |
+| --- | --- |
+| **A full heal** | At the end of every full heal (`POST /api/heal`, `Z3_HEAL_INTERVAL`, a disk that comes back or is replaced), the shards it found missing or damaged are rebuilt |
+| **Start** | About 10 seconds after start, missing shards only, without a full verification. A site that comes back with empty disks and its metadata fills up again by itself |
+| **A read finds a bad shard** | The chunk is rebuilt shortly after (within 30 seconds) |
+| **Retry** | While some chunks can't be rebuilt, again every `Z3_GEO_HEAL_RETRY` seconds (300 by default) |
+| **On demand** | `POST /api/heal/geo` rebuilds missing shards now, without verifying every chunk |
+
+A site rebuilt with **new** metadata (resynced from another site) gets its shards as it pulls the
+versions, like any replica.
+
+### Residency and traffic
+
+- Objects that a [residency rule](/replication/bucket-replication#data-residency) keeps off this
+  site are never fetched here; they're counted as `skipped`. The other sites check too: they refuse
+  to send shards of such objects to an excluded site.
+- Repair traffic follows each peer's [bandwidth limit](/replication/bucket-replication#bandwidth-limits-and-time-windows)
+  (at low priority) and its time windows: a site outside its window isn't asked.
+- The repair pass keeps to `Z3_HEAL_DUTY`, like a full heal.
+
+### How many sites must answer
+
+A chunk needs `data` shards to be put together. When too few sites answer, its chunks are reported
+(not an error) and tried again on the next pass.
+
+| Sites | Layout | Shards per site | To rebuild one site's shards |
+| --- | --- | --- | --- |
+| 3 | 4+2 | 2 | Both other sites must answer |
+| 3 | 2+4 | 2 | One other site is enough |
+
+A layout with more parity can rebuild from fewer sites, at the cost of more storage.
+
+### Limits
+
+- Versions in the [trash](/storage/deletion-protection) aren't repaired until they're restored.
+- Sites running an older z3 without the peer route `POST /v1/geo/repair` are skipped, like a site
+  that doesn't answer.
+- Geo erasure coding, and so this repair, isn't available on [cluster](/deploy/cluster) members.
+
 ## Watching it
 
 `z3_replication_geo_chunks_total` on `/metrics` counts geo-coded chunks. The [Support](/operations/support)
 page's **Inspect** shows how an object's chunks are stored on this node.
+
+Repairs from other sites show in:
+
+| Where | What |
+| --- | --- |
+| **Disks** page | Geo shards rebuilt from other sites, geo chunks not rebuildable now, the last geo check |
+| `POST /api/heal`, `POST /api/heal/geo` | The `geo` result: `checked`, `damaged`, `repaired`, `failed`, `skipped`, `failed_chunks`, `errors` ([API](/api/admin-operations#disks-healing-and-garbage-collection)) |
+| `GET /api/disks` | Healing totals: `geo_passes`, `geo_shards_repaired`, `geo_chunks_failed`, `geo_unrepairable`, `geo_skipped`, `last_geo_pass`, `last_geo_pass_ms` |
+| Health check | The **Healing** item warns while some geo chunks can't be rebuilt |
+| Prometheus | `z3_heal_geo_shards_repaired_total`, `z3_heal_geo_chunks_failed_total`, `z3_heal_geo_unrepairable` |
 
 ## When not to use it
 

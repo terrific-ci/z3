@@ -1,6 +1,6 @@
 ---
 title: "Healing"
-description: "How z3 repairs damaged and missing shards: after reads, when a disk comes back or is replaced, on a schedule and on demand. And how it sweeps chunk files a crash left behind."
+description: "How z3 repairs damaged and missing shards: after reads, when a disk comes back or is replaced, on a schedule, on demand, and from other sites for geo erasure coding. And how it sweeps chunk files a crash left behind."
 ---
 
 Healing rebuilds shards that are missing or damaged on an erasure-coded disk set, from the shards
@@ -15,6 +15,7 @@ that remain. It runs by itself; you rarely need to start it.
 | **A disk comes back, or an empty replacement appears** | Disks are checked every 5 seconds. When one comes online, a full heal runs at once |
 | **On a schedule** | Every `Z3_HEAL_INTERVAL` seconds (7 days by default), every referenced chunk is verified and repaired |
 | **On demand** | **Verify and repair now** on the console's **Disks** page, or `POST /api/heal` |
+| **Geo shards lost on this site** | Rebuilt from the other sites; see [Geo erasure coding](#geo-erasure-coding) |
 
 A full pass reads every chunk, so on large nodes it takes a while and adds disk load. The read path
 and the queue keep damage found in normal use from waiting for the next full pass.
@@ -75,8 +76,15 @@ missing at once.
 ## Lost chunks
 
 A chunk is **lost** when fewer shards than its data shard count are readable, for example when more
-disks than the parity failed at once. The heal result lists such chunks under `lost_chunks`, the
-health check fails, and `z3_heal_chunks_lost_total` counts them.
+disks than the parity failed at once. The heal result lists such chunks under `lost_chunks`, and
+`z3_heal_chunks_lost_total` counts every one found since the start.
+
+`lost_now` in the healing totals (and the `z3_heal_chunks_lost` gauge) counts the chunks lost and not
+repaired since. The health check fails only while it is above zero, so a chunk that a later pass, or
+a rebuild from other sites, repaired no longer fails it.
+
+With [geo erasure coding](/replication/geo-erasure-coding), chunks already cut down to this site's
+shards are not counted as lost by a full heal.
 
 If the bucket is replicated, [anti-entropy](/replication/overview#anti-entropy) compares Merkle trees
 with the other sites and pulls back what is missing.
@@ -142,9 +150,11 @@ See [`POST /api/gc/sweep`](/api/admin-operations#orphan-sweep) for the parameter
 | --- | --- |
 | **Disks** page | Disk states, layout, healing totals and the **Orphaned chunks** panel |
 | `GET /api/disks` | The same as JSON, with `orphan_sweep` |
-| **Support** page, `z3 admin support health` | The **Healing** check: chunks checked, shards repaired, chunks lost |
+| **Support** page, `z3 admin support health` | The **Healing** check: chunks checked, shards repaired, chunks lost. It fails while a chunk is lost and not repaired, and warns while some geo chunks can't be rebuilt from other sites |
 | `z3_heal_shards_repaired_total` | Shards rebuilt (Prometheus) |
-| `z3_heal_chunks_lost_total` | Chunks that couldn't be rebuilt (Prometheus) |
+| `z3_heal_chunks_lost_total` | Chunks that couldn't be rebuilt, since the start (Prometheus) |
+| `z3_heal_chunks_lost` | Chunks lost and not repaired since (Prometheus) |
+| `z3_heal_geo_shards_repaired_total`, `z3_heal_geo_chunks_failed_total`, `z3_heal_geo_unrepairable` | Geo shards rebuilt from other sites, failed geo repairs, geo chunks the last pass couldn't rebuild (Prometheus) |
 | `z3_orphan_chunks_deleted_total`, `z3_orphan_bytes_freed_total` | Orphaned chunk files deleted and bytes freed by the sweep (Prometheus) |
 | `z3_disk_online{disk,path}` | 1 per online disk (Prometheus) |
 
@@ -153,3 +163,9 @@ See [`POST /api/gc/sweep`](/api/admin-operations#orphan-sweep) for the parameter
 The same background loop also finishes [geo erasure coding](/replication/geo-erasure-coding): once
 every site has acknowledged a new version, it cuts the writing site's full chunks down to that site's
 shards.
+
+When local parity can't rebuild this site's own geo shards (they're gone from every local copy), it
+fetches shards from the other sites and rebuilds them: at the end of every full heal, about 10
+seconds after start, shortly after a read finds a bad shard, every `Z3_GEO_HEAL_RETRY` seconds while
+some chunks can't be rebuilt, and on demand with `POST /api/heal/geo`. See
+[Healing across sites](/replication/geo-erasure-coding#healing-across-sites).

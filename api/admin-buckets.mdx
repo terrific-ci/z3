@@ -48,6 +48,7 @@ admin right. See [Rights](/api/overview#rights). Every example sends
 | `DELETE` | `/api/kms/keys/{name}` | `admin:ConfigUpdate` | Delete a KMS key |
 | `GET` | `/api/kms/external` | `admin:ServerInfo` | External KMS settings and state |
 | `PUT`, `DELETE` | `/api/kms/external` | `admin:ConfigUpdate` | Set or remove the external KMS |
+| `DELETE` | `/api/kms/external/retired/{kind}` | `admin:ConfigUpdate` | Forget a retired key store |
 | `POST` | `/api/kms/external/test` | `admin:ConfigUpdate` | Try external KMS settings without saving |
 | `GET` | `/api/tiers` | `admin:ServerInfo` | Tiers, what this node keeps in each, health |
 | `POST` | `/api/tiers` | `admin:ConfigUpdate` | Add a tier |
@@ -168,7 +169,7 @@ Suspending is refused with `409` on a bucket with Object Lock.
 | `user_metadata` | The `x-amz-meta-*` metadata, without the prefix |
 | `headers` | The stored [object headers](/api/s3-compatibility#object-headers): `cache_control`, `content_disposition`, `content_encoding`, `content_language` and `expires`, only those that are set |
 | `lock` | Retention mode (`governance`, `compliance` or `null`), retain-until time, legal hold |
-| `encryption` | `kind` is `sse-s3`, `sse-kms` or `sse-c`; `key_id` for SSE-KMS; `kms` is the KMS that sealed the data key (`internal`, `vault` or `kes`; none for SSE-C) |
+| `encryption` | `kind` is `sse-s3`, `sse-kms` or `sse-c`; `key_id` for SSE-KMS; `kms` is the KMS that sealed the data key (`internal`, `vault`, `kes`, `aws`, `azure` or `gcp`; none for SSE-C) |
 | `tier` | The tier holding the data once lifecycle moved it |
 
 ### Versions of a key
@@ -355,32 +356,45 @@ default.
 }
 ```
 
-`kms` is `internal`, `vault`, `kes`, or `unavailable` when an external KMS is set but cannot be used.
+`kms` is `internal`, `vault`, `kes`, `aws`, `azure`, `gcp`, or `unavailable` when an external KMS is
+set but cannot be used.
 
 `POST /api/kms/keys` with `{"name": "records-key", "description": "Patient records"}` creates a key
-(`201`). `DELETE /api/kms/keys/{name}` deletes one.
+(`201`), in Vault or KES when one is connected. With AWS KMS, Azure Key Vault or Google Cloud KMS it
+is refused: create keys there. `DELETE /api/kms/keys/{name}` deletes one.
 
 ### External KMS
 
-`PUT /api/kms/external` sets HashiCorp Vault (Transit) or MinIO KES as the KMS for new data keys:
+`PUT /api/kms/external` sets the KMS for new data keys: HashiCorp Vault (Transit), MinIO KES, AWS
+KMS, Azure Key Vault or Google Cloud KMS.
 
 | Field | Meaning |
 | --- | --- |
-| `kind` | `vault` or `kes` |
-| `endpoint` | Like `https://vault.example:8200` |
-| `default_key` | The key SSE-S3 seals with (default `z3-default`, created when missing) |
+| `kind` | `vault`, `kes`, `aws`, `azure` or `gcp` |
+| `endpoint` | Vault and KES: like `https://vault.example:8200`. Azure: the vault URL. AWS and Google Cloud: an optional override |
+| `default_key` | The key SSE-S3 seals with (default `z3-default`). Vault and KES create it when missing; in the cloud it must exist |
 | `ca_pem` | PEM CA bundle for a private CA |
 | `mount` | Vault: the Transit mount (default `transit`) |
 | `namespace` | Vault Enterprise namespace |
 | `auth` | Vault: `token` (default) or `approle` |
 | `approle_mount`, `role_id` | Vault AppRole (mount default `approle`) |
 | `client_cert_pem` | KES: the client certificate for mutual TLS |
-| `token`, `secret_id`, `client_key_pem` | Credentials: the Vault token, the AppRole secret id, the KES client key. Stored sealed and never sent back; leave them out to keep the saved ones |
+| `region`, `access_key` | AWS: the region (required) and the access key id |
+| `tenant_id`, `client_id`, `authority` | Azure: the service principal, and an optional authority host |
+| `key_ring`, `token_uri` | Google Cloud: `projects/<p>/locations/<l>/keyRings/<r>`, and an optional token URI |
+| `token`, `secret_id`, `client_key_pem`, `secret_key`, `session_token`, `client_secret`, `service_account` | Credentials: the Vault token, the AppRole secret id, the KES client key, the AWS secret access key and session token, the Azure client secret, the Google Cloud service account key file (JSON). Stored sealed and never sent back; leave them out to keep the saved ones for that kind |
+
+Saving a KMS of another kind keeps the previous one as a retired key store, which still opens the
+data keys it sealed. Saving one of the same kind replaces it.
 
 `POST /api/kms/external/test` tries the settings without saving and answers
 `{"ok", "error", "latency_ms", "version", "keys"}`. `GET /api/kms/external` answers the settings
-(without credentials), an `error` and the `status`. `DELETE` goes back to the internal KMS; objects
-sealed by either keep opening. See [External KMS](/security/external-kms).
+(without credentials, with `has_token`, `has_secret_id`, `has_client_key`, `has_secret_key`,
+`has_session_token`, `has_client_secret` and `has_service_account`), an `error`, the `status`, and
+`retired`: the retired key stores, each with its `config`, `error` and `status`. `DELETE` goes back
+to the internal KMS, and the KMS that was active becomes a retired key store.
+`DELETE /api/kms/external/retired/{kind}` forgets one; objects still sealed there can no longer be
+read. See [External KMS](/security/external-kms).
 
 ## Tiers
 

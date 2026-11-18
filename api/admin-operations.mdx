@@ -40,6 +40,7 @@ These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing
 | `POST` | `/api/batch/rollback/preview` | `admin:ConfigUpdate` | Plan a point-in-time rollback, changing nothing |
 | `GET` | `/api/disks` | `admin:ServerInfo` | Disks, erasure layout, healing and orphan sweep totals |
 | `POST` | `/api/heal` | `admin:ConfigUpdate` | Verify and repair every chunk now |
+| `POST` | `/api/heal/geo` | `admin:ConfigUpdate` | Rebuild this site's missing geo shards from other sites now |
 | `POST` | `/api/gc` | `admin:ConfigUpdate` | Run garbage collection now |
 | `POST` | `/api/gc/sweep` | `admin:ConfigUpdate` | Delete orphaned chunk files on this node now |
 | `GET` | `/api/config/export` | `admin:ServerInfo` (+ more for IAM and secrets) | Configuration as JSON |
@@ -135,7 +136,8 @@ See [Support tools](/operations/support) for what each tool does.
 ```
 
 Check ids: `disks`, `disk_latency`, `healing`, `peers`, `peer_tls`, `replication`, `resources`,
-`errors`, `credentials`. `level` is `ok`, `warn` or `fail`; the report's level is the worst.
+`errors`, `log_history`, `credentials`, `kms`, `trash`, `lean`. `level` is `ok`, `warn` or `fail`;
+the report's level is the worst.
 
 ### Speed test
 
@@ -331,8 +333,11 @@ time in the future answers `400`. A rollback job carries `rollback` with the sam
     { "pool": 0, "index": 3, "path": "/mnt/d4", "state": "offline", "reason": "No such file or directory (os error 2)",
       "total_bytes": null, "free_bytes": null }
   ],
-  "healing": { "chunks_checked": 2203114, "shards_repaired": 12, "chunks_lost": 0, "full_scans": 3,
-               "last_full_scan_ms": 1794834588308, "last_full_scan": { "checked": 2203114, "damaged": 4, "repaired": 12, "lost": 0, "lost_chunks": [] } },
+  "healing": { "chunks_checked": 2203114, "shards_repaired": 12, "chunks_lost": 0, "lost_now": 0, "full_scans": 3,
+               "last_full_scan_ms": 1794834588308, "last_full_scan": { "checked": 2203114, "damaged": 4, "repaired": 12, "lost": 0, "lost_chunks": [] },
+               "geo_passes": 5, "geo_shards_repaired": 3, "geo_chunks_failed": 0, "geo_unrepairable": 0, "geo_skipped": 0,
+               "last_geo_pass_ms": 1794834590120, "last_geo_pass": { "checked": 81220, "damaged": 3, "repaired": 3, "failed": 0,
+                                                                      "skipped": 0, "failed_chunks": [], "errors": [] } },
   "orphan_sweep": { "runs": 3, "chunks_deleted": 14, "bytes_freed": 58720256, "last_run_ms": 1794834601120,
                     "last": { "dry_run": false, "dirs": 4096, "chunks_checked": 2203128, "orphans": 14, "young": 0,
                               "deleted": 14, "bytes_freed": 58720256, "tmp_files": 1, "tmp_bytes": 4194304, "duration_ms": 41200 } }
@@ -341,17 +346,49 @@ time in the future answers `400`. A rollback job carries `rollback` with the sam
 
 `erasure` is `null` for a single data directory. A disk's `state` is `online`, `offline` or `foreign`
 (it holds another set's data and is never written), with a `reason` for the last two.
+
+In `healing`, `chunks_lost` counts every lost chunk found since the start, and `lost_now` the ones
+not repaired since (the health check uses `lost_now`). The `geo_` totals are for
+[rebuilding geo shards from other sites](/replication/geo-erasure-coding#healing-across-sites):
+
+| Field | Meaning |
+| --- | --- |
+| `geo_passes` | Repair passes run since the start |
+| `geo_shards_repaired` | This site's shards (or full chunks) rebuilt from other sites |
+| `geo_chunks_failed` | Failed repairs because too few sites answered, counted per pass |
+| `geo_unrepairable` | Geo chunks the last pass couldn't rebuild |
+| `geo_skipped` | Damaged geo chunks the last pass left alone because a residency rule keeps them off this site |
+| `last_geo_pass_ms`, `last_geo_pass` | When the last pass ran, and its result (`null` before the first) |
 `orphan_sweep` holds the [orphan sweep](/durability/healing#orphaned-chunks) totals since the node
 started and the result of the last run (`null` before the first).
 
 `POST /api/heal` verifies every chunk and repairs damaged shards now, and answers when it is done:
 
 ```json
-{ "checked": 2203114, "damaged": 4, "repaired": 12, "lost": 0, "lost_chunks": [] }
+{ "checked": 2203114, "damaged": 4, "repaired": 12, "lost": 0, "lost_chunks": [],
+  "geo": { "checked": 81220, "damaged": 3, "repaired": 3, "failed": 0, "skipped": 0,
+           "failed_chunks": [], "errors": [] } }
 ```
 
 `lost_chunks` lists up to 100 hashes of chunks with too few good shards to rebuild. See
 [Healing](/durability/healing).
+
+On a site with [geo erasure coding](/replication/geo-erasure-coding#healing-across-sites), `geo` is
+the repair from other sites that ends the pass (left out when there are no geo chunks to check).
+Geo shards rebuilt that way don't count as lost.
+
+| Field | Meaning |
+| --- | --- |
+| `checked` | Chunk references of geo versions checked |
+| `damaged` | Chunks with this site's shards (or its full copy) missing or corrupt |
+| `repaired` | Shards or full chunks rebuilt from other sites and written back |
+| `failed` | Damaged chunks that couldn't be rebuilt because too few sites answered; tried again on the next pass |
+| `skipped` | Damaged chunks of versions a residency rule keeps off this site, left alone |
+| `failed_chunks` | Up to 100 hashes of chunks that couldn't be rebuilt |
+| `errors` | Up to 10 distinct reasons |
+
+`POST /api/heal/geo` runs only that repair, without verifying every chunk first, and answers the same
+object as `geo`. It checks missing shards and the ones reads found bad.
 
 `POST /api/gc` runs garbage collection now with the configured grace period. `?grace_secs=0` deletes
 unreferenced chunks at once:

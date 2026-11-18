@@ -30,7 +30,7 @@ Each check is `ok`, `warn` or `fail`; the report takes the worst level.
 | --- | --- | --- |
 | Disks | Each disk's state, the erasure layout, free space | **Fail**: more disks offline than the parity allows. **Warn**: a disk offline, or under 10% free |
 | Disk writes | Writes, syncs, reads back and deletes a 4 KiB file on every disk | **Fail**: a disk cannot write. **Warn**: slower than 500 ms |
-| Healing | Chunks checked, shards repaired, chunks lost | **Fail**: a chunk could not be repaired |
+| Healing | Chunks checked, shards repaired, chunks lost, [geo shards rebuilt from other sites](/replication/geo-erasure-coding#healing-across-sites) | **Fail**: a chunk was lost and is not repaired yet (`lost_now`). **Warn**: some geo chunks can't be rebuilt from the other sites yet (too few sites answered) |
 | Peers and clocks | A hello to each replication peer: round trip, version, clock difference (from its `Date` header), and whether it is reached over TLS (`tls`) | **Fail**: a peer is unreachable; TLS errors are explained (expired certificate, unknown CA, host name mismatch, client certificate required). **Warn**: a clock more than 5 s off, or another z3 version |
 | Peer TLS | [Mutual TLS between nodes](/deploy/peer-tls#check-it): mode, this node's certificate (subject, names, validity), CA, reloads, refused handshakes and plain requests | **Fail**: this node's certificate has expired or is not valid yet. **Warn**: it expires in less than 14 days, a reload failed, the mode is `mixed`, or a peer endpoint is still `http://` |
 | Replication | The state of each replication link | **Warn**: a link failing, or more than 5 minutes behind |
@@ -38,6 +38,7 @@ Each check is `ok`, `warn` or `fail`; the report takes the worst level.
 | Errors in the last hour | Errors and warnings in the log, the last five errors | **Warn**: any error |
 | Log history | The [log history on disk](/audit/trace-and-logs#log-history-on-disk): size, files, lines dropped | **Warn**: the history can't be written (disk full or unwritable), lines were dropped since the start, or it could not be opened |
 | Root credentials | Whether root still uses the default keys | **Warn** |
+| Key store | The [external KMS](/security/external-kms#health) and any retired key stores: reachable, error, latency | **Fail**: the active KMS is down, so encrypted writes fail. **Warn**: a [retired key store](/security/external-kms#retired-key-stores) is down, so objects it sealed can't be read |
 
 In the console, open a check to see its details. **Report** downloads the whole report as JSON, to
 attach when asking for help.
@@ -58,6 +59,7 @@ z3 0.1.0 on node 01a1e9a0-be79-7462-83e2-8685ea015598: warn
   ok    Errors in the last hour  No errors, 1 warning
   ok    Log history              12.4 MiB of 64 MiB in 3 files
   WARN  Root credentials         Root still uses the default access and secret key; set Z3_ACCESS_KEY and Z3_SECRET_KEY
+  ok    Key store                AWS KMS reachable (38 ms)
 ```
 
 The command exits with status 1 when a check fails, so it fits in a monitoring script.

@@ -129,9 +129,10 @@ z3 stores these headers with an object and returns them on `GetObject` and `Head
 
 ## Encryption
 
-SSE-S3, SSE-KMS (named keys in z3's own KMS, or an external Vault or KES) and SSE-C, on `PutObject`,
-`CopyObject` and multipart uploads, plus bucket default encryption. Encrypted data stays encrypted
-on disk, in replication and in tiers. See [Encryption](/security/encryption).
+SSE-S3, SSE-KMS (named keys in z3's own KMS, or an external Vault, KES, AWS KMS, Azure Key Vault or
+Google Cloud KMS) and SSE-C, on `PutObject`, `CopyObject` and multipart uploads, plus bucket default
+encryption. Encrypted data stays encrypted on disk, in replication and in tiers. See
+[Encryption](/security/encryption).
 
 ## Differences from AWS S3
 

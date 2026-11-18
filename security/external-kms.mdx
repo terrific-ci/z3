@@ -1,10 +1,10 @@
 ---
 title: "External KMS"
-description: "Seal data keys with HashiCorp Vault (Transit, token or AppRole, namespaces, private CA) or MinIO KES (mutual TLS), check its health, and move objects over from the internal KMS."
+description: "Seal data keys with HashiCorp Vault, MinIO KES, AWS KMS, Azure Key Vault or Google Cloud KMS, check its health, keep older key stores as retired ones, and move objects between them."
 ---
 
 By default, data keys of [encrypted objects](/security/encryption) are sealed by z3's **internal
-KMS**. You can hand that job to an external key manager instead:
+KMS**. You can hand that job to an external key manager instead. Self-hosted:
 
 | | HashiCorp Vault (Transit secrets engine) | MinIO KES |
 | --- | --- | --- |
@@ -13,7 +13,18 @@ KMS**. You can hand that job to an external key manager instead:
 | Options | Transit mount (default `transit`), AppRole mount (default `approle`), namespace (Vault Enterprise, sent as `X-Vault-Namespace`) | |
 | API used | `transit/encrypt`, `transit/decrypt`, `transit/keys` (check, create, list), `sys/health` | `/v1/key/generate`, `/v1/key/encrypt`, `/v1/key/decrypt`, `/v1/key/create`, `/v1/key/describe`, `/v1/key/list`, `/v1/status` |
 
-Both take a **CA bundle** (PEM) for a server with a private CA. Empty means the public roots.
+In the cloud:
+
+| | AWS KMS | Azure Key Vault | Google Cloud KMS |
+| --- | --- | --- | --- |
+| Location | A **region** (required). Optional endpoint override, for a VPC endpoint or a proxy; empty means `https://kms.<region>.amazonaws.com` | The **vault URL**: `https://<vault>.vault.azure.net`, or a Managed HSM | A **key ring**: `projects/<p>/locations/<l>/keyRings/<r>`. Optional endpoint override; empty means `https://cloudkms.googleapis.com` |
+| Authentication | Access key id and secret access key, with an optional session token for temporary credentials. z3 signs requests with Signature V4 itself | A service principal: tenant id, client id and client secret. Optional authority host (default `https://login.microsoftonline.com`) | A service account key (the JSON key file). Optional token URI override; empty uses the one in the key file |
+| New data keys | `GenerateDataKey` (`AES_256`) for new objects, `Encrypt` for rotation | z3 makes the data key and `wrapKey` wraps it: `RSA-OAEP-256` for RSA keys, `A256KW` for `oct` keys on Managed HSM | z3 makes the data key and `encrypt` wraps it |
+| Opening | `Decrypt` without a key id: the ciphertext names its key, so pointing an alias at another key keeps old objects readable | `unwrapKey` with the key version that wrapped it | `decrypt` on the crypto key (the version is in the ciphertext) |
+| Checks | `DescribeKey` (the key must be `Enabled`, `ENCRYPT_DECRYPT`, `SYMMETRIC_DEFAULT`), `ListAliases` | Reads the key (latest version, type, `wrapKey` allowed), lists keys | Reads the crypto key (purpose `ENCRYPT_DECRYPT`, primary version enabled), lists crypto keys |
+
+All of them take a **CA bundle** (PEM) for a server with a private CA, or a TLS proxy. Empty means
+the public roots.
 
 Once an external KMS is saved, **every new data key** (SSE-S3 and SSE-KMS) is sealed there. SSE-C
 doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpdate`.
@@ -71,6 +82,73 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
     `kes identity of client.crt` prints the identity.
 
   </Tab>
+  <Tab title="AWS KMS">
+
+    Create the default key (a symmetric encrypt and decrypt key) and its alias:
+
+    ```bash
+    aws kms create-key --description "z3 default key" --query KeyMetadata.KeyId --output text
+    aws kms create-alias --alias-name alias/z3-default --target-key-id <key id>
+    ```
+
+    Give z3 an IAM user with an access key and this policy:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        { "Effect": "Allow",
+          "Action": ["kms:GenerateDataKey", "kms:Encrypt", "kms:Decrypt", "kms:DescribeKey"],
+          "Resource": "arn:aws:kms:ap-southeast-3:111122223333:key/*" },
+        { "Effect": "Allow", "Action": "kms:ListAliases", "Resource": "*" }
+      ]
+    }
+    ```
+
+    `kms:ListAliases` is only needed to list keys on the Encryption page.
+
+  </Tab>
+  <Tab title="Azure">
+
+    Create the default key and a service principal for z3:
+
+    ```bash
+    az keyvault key create --vault-name rs-vault --name z3-default --kty RSA --size 3072
+    az ad sp create-for-rbac --name z3-kms   # prints appId (client id), password (secret), tenant
+    ```
+
+    Give the service principal **get**, **wrapKey** and **unwrapKey** on keys, and **list** to
+    list them on the Encryption page. With Azure RBAC, that is the **Key Vault Crypto Service
+    Encryption User** role on the vault:
+
+    ```bash
+    az role assignment create --role "Key Vault Crypto Service Encryption User" \
+      --assignee <client id> --scope <vault resource id>
+    ```
+
+    Use an RSA key, or an `oct` key on Managed HSM.
+
+  </Tab>
+  <Tab title="Google Cloud">
+
+    Create a key ring, the default key and a service account for z3:
+
+    ```bash
+    gcloud kms keyrings create z3 --location asia-southeast2
+    gcloud kms keys create z3-default --keyring z3 --location asia-southeast2 --purpose encryption
+
+    gcloud iam service-accounts create z3-kms
+    for role in roles/cloudkms.cryptoKeyEncrypterDecrypter roles/cloudkms.viewer; do
+      gcloud kms keyrings add-iam-policy-binding z3 --location asia-southeast2 \
+        --member serviceAccount:z3-kms@<project>.iam.gserviceaccount.com --role $role
+    done
+    gcloud iam service-accounts keys create z3-kms.json \
+      --iam-account z3-kms@<project>.iam.gserviceaccount.com
+    ```
+
+    **Cloud KMS Viewer** is needed because z3 reads each key before using it.
+
+  </Tab>
 </Tabs>
 
 ## Connect
@@ -78,15 +156,24 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
 <Tabs>
   <Tab title="Console">
 
-    1. Open **Encryption**. Under **Key store**, click **Connect Vault or KES**.
-    2. Pick **HashiCorp Vault** or **MinIO KES** and fill in the **Connection**:
-       **Endpoint**, **Default key (SSE-S3)**, and for Vault the **Transit mount** and an optional
-       **Namespace**.
-    3. Under **Credentials**: for Vault pick **Token** (paste the token) or **AppRole** (**Role
-       ID**, **Secret ID**, **AppRole mount**); for KES paste the **Client certificate** and
-       **Client private key**.
-    4. Under **TLS**, paste a **CA bundle** if the server uses a private CA.
-    5. Click **Test connection**. When it succeeds, click **Connect**.
+    1. Open **Encryption**. Under **Key store**, click **Connect an external KMS**.
+    2. Pick **Vault**, **KES**, **AWS**, **Azure** or **GCP**.
+    3. Fill in the **Connection**: the **Endpoint** (Vault, KES), the **Region** and an optional
+       **Endpoint override** (AWS), the **Vault URL** (Azure), or the **Key ring** and an optional
+       **Endpoint override** (GCP). Then the **Default key (SSE-S3)**, and for Vault the
+       **Transit mount** and an optional **Namespace**.
+    4. Fill in the **Credentials**:
+
+       | KMS | Fields |
+       | --- | --- |
+       | Vault | **Token**, or **AppRole**: **Role ID**, **Secret ID**, **AppRole mount** |
+       | KES | **Client certificate** and **Client private key** |
+       | AWS | **Access key ID**, **Secret access key**, optional **Session token** |
+       | Azure | **Tenant ID**, **Client ID**, **Client secret**, optional **Authority host** |
+       | GCP | **Service account key** (paste the JSON key file), optional **Token URI** |
+
+    5. Under **TLS**, paste a **CA bundle** if the server uses a private CA.
+    6. Click **Test connection**. When it succeeds, click **Connect**.
 
     Credential fields left empty when editing keep the saved values.
 
@@ -108,36 +195,78 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
            \"client_cert_pem\": $(jq -Rs . < client.crt),
            \"client_key_pem\": $(jq -Rs . < client.key),
            \"ca_pem\": $(jq -Rs . < ca.pem)}"
+
+    # AWS KMS
+    curl -X PUT http://127.0.0.1:9001/api/kms/external \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+      -d '{"kind": "aws", "region": "ap-southeast-3", "endpoint": "",
+           "access_key": "AKIA...", "secret_key": "...", "session_token": ""}'
+
+    # Azure Key Vault
+    curl -X PUT http://127.0.0.1:9001/api/kms/external \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+      -d '{"kind": "azure", "endpoint": "https://rs-vault.vault.azure.net",
+           "tenant_id": "...", "client_id": "...", "client_secret": "...", "authority": ""}'
+
+    # Google Cloud KMS
+    curl -X PUT http://127.0.0.1:9001/api/kms/external \
+      -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+      -d "{\"kind\": \"gcp\", \"key_ring\": \"projects/rs-prod/locations/asia-southeast2/keyRings/z3\",
+           \"service_account\": $(jq -Rs . < z3-kms.json)}"
     ```
 
     `POST /api/kms/external/test` takes the same body and tries it without saving. Token auth
-    uses `"auth": "token", "token": "..."`. Empty credentials keep the saved ones.
+    uses `"auth": "token", "token": "..."`. `default_key` works for every kind. Empty credentials
+    keep the saved ones for that kind.
 
   </Tab>
 </Tabs>
 
 ## Keys
 
-- The **default key** (default `z3-default`) seals SSE-S3 data keys. z3 creates it in the KMS
-  when it's missing.
+- The **default key** (default `z3-default`) seals SSE-S3 data keys. Vault and KES create it when
+  it's missing.
+- With **AWS, Azure and Google Cloud, z3 never creates keys**. Create the default key and every
+  SSE-KMS key in the cloud first. **Test connection** tells you when the default key is missing.
 - Named keys for SSE-KMS must **already exist** in the KMS. z3 checks first, because Transit would
   otherwise quietly create a mistyped key on `encrypt`.
-- **Create key** on the Encryption page creates the key in Vault or KES.
+- **Create key** on the Encryption page creates the key in Vault or KES. It's hidden for AWS, Azure
+  and Google Cloud, and the API refuses it there.
 - External keys aren't deleted from z3. Delete them in the KMS itself, and only once no object
   needs them.
 - Opened data keys are cached in memory for 5 minutes (at most 10,000), so repeated GETs don't
   always call the KMS.
 
+What an SSE-KMS key id (`x-amz-server-side-encryption-aws-kms-key-id`, or a bucket default) means
+in each cloud:
+
+| KMS | Key id |
+| --- | --- |
+| AWS KMS | An alias name (`records-key` means `alias/records-key`), a key id, a multi-Region `mrk-` id, or a key or alias ARN |
+| Azure Key Vault | The key name (letters, digits and `-`). The latest version wraps; the version is kept with the object, so old objects still open after the key is rotated |
+| Google Cloud KMS | A crypto key name in the key ring, or its full resource name `projects/.../cryptoKeys/<name>` |
+
+Access tokens for Azure and Google Cloud (and Vault AppRole tokens) are cached and renewed at three
+quarters of their lifetime. A request refused with 401 gets a new token and one retry.
+
 ## Health
 
 The **Key store** panel shows which KMS seals new keys, the endpoint, the authentication and the
-default key, and its health: reachable, authenticated (by listing keys), the number of keys, the
-version and the latency. Errors are shown as the KMS reports them.
+default key, and its health: reachable, authenticated, the number of keys, the version and the
+latency. For a cloud KMS, healthy means the default key can be used; the number of keys shows when
+z3 may list them.
+
+Errors say what went wrong: sign-in refused (for example `invalid_client` or
+`UnrecognizedClientException`), access denied (`AccessDeniedException`, `PERMISSION_DENIED`), key
+not found, or a network error (`cannot reach ...` with the TLS or connection cause).
+
+The [health check](/operations/support#health) has a **Key store** item: it fails when the active
+KMS is down, and warns when a [retired key store](#retired-key-stores) is.
 
 <Warning>
   While the KMS is down, encrypted writes fail with `KMS.KMSInternalException` (HTTP 503), and
-  objects whose data key isn't in the cache can't be read. Run Vault or KES highly available, and
-  watch its health.
+  objects whose data key isn't in the cache can't be read. Run the KMS highly available, and watch
+  its health.
 </Warning>
 
 ## Older objects stay readable
@@ -149,19 +278,35 @@ Every sealed data key records the KMS that sealed it:
 | `v1:` | The internal KMS |
 | `kms:vault:` | Vault, with the version's key id |
 | `kms:kes:` | KES, with the version's key id |
+| `kms:aws:` | AWS KMS (the key is named in the ciphertext) |
+| `kms:azure:` | Azure Key Vault, with the version's key id and the key version |
+| `kms:gcp:` | Google Cloud KMS, with the version's key id |
 
-So objects from the internal KMS are still opened with the internal key after Vault or KES is
-connected. Only one external KMS is connected at a time: an object sealed by an external KMS that
-isn't the connected one fails with a clear error ("…sealed by vault, which is not configured on
-this node"). Before switching from one external KMS to another, make sure no object still needs
-the old one. The object details in the
-console show the KMS of each object.
+So objects from the internal KMS are still opened with the internal key after an external KMS is
+connected, and reads go to the KMS that sealed each object. The object details in the console show
+the KMS of each object.
 
-## Move objects to the external KMS
+### Retired key stores
 
-A **rotate** [batch job](/storage/batch) seals data keys again with the **active** KMS. With Vault
-connected, objects from the internal KMS move to Vault; only the data keys change, the data isn't
-rewritten. Objects already on the target key and KMS are skipped.
+When you switch to **another kind** of KMS (for example from Vault to AWS KMS), or disconnect, the
+previous one stays as a **retired key store**. It no longer seals new keys, but it still opens the
+data keys it sealed, as long as it's reachable. There is one per kind.
+
+- **Encryption → Key store** lists retired key stores under **Retired key stores**, with their
+  health.
+- Connecting a retired kind again uses its saved credentials when the fields are left empty.
+- Saving a config of the **same kind** (for example another AWS account) replaces the old one: the
+  sealed key only records the kind.
+- **Forget** (or `DELETE /api/kms/external/retired/{kind}`) drops a retired key store. Objects still
+  sealed there then fail with a clear error (`…sealed by vault, which is not configured on this
+  node`). [Move them](#move-objects-to-another-kms) first.
+
+## Move objects to another KMS
+
+A **rotate** [batch job](/storage/batch) seals data keys again with the **active** KMS. Objects from
+the internal KMS, or from a retired key store (for example Vault after switching to AWS KMS), move
+to the active one. Only the data keys change; the data isn't rewritten. Objects already on the
+target key and KMS are skipped.
 
 ```json
 { "type": "rotate", "source": { "bucket": "records" }, "key_id": "" }
@@ -172,39 +317,45 @@ z3 admin batch start rotate.json --wait
 ```
 
 Run one job per bucket. Once every object has moved, old internal keys may be deleted (the internal
-`z3-default` stays). A `CopyObject` with the same encryption but a different KMS also reseals with
-the active KMS.
+`z3-default` stays) and the retired key store may be forgotten. A `CopyObject` with the same
+encryption but a different KMS also reseals with the active KMS.
 
 ## Disconnect
 
 **Disconnect** on the Encryption page (or `DELETE /api/kms/external`) goes back to the internal KMS
-for new data keys.
-
-<Warning>
-  Objects sealed by an external KMS can only be opened while that KMS is the one connected. After
-  a disconnect they can't be read (apart from data keys still in the 5-minute cache) until you
-  connect the same Vault or KES again.
-</Warning>
+for new data keys. The KMS you disconnect stays as a [retired key store](#retired-key-stores), so
+objects it sealed keep reading while it's reachable. Rotate them, then forget it.
 
 ## With replication
 
-The external KMS settings are stored as an IAM document with the credentials sealed. With
-[site replication](/replication/site-replication) they reach every site, resealed with the site
-group's key. Every site must be able to reach the same Vault or KES.
+The external KMS settings, and retired key stores, are stored as IAM documents with the credentials
+sealed. With [site replication](/replication/site-replication) they reach every site, resealed with
+the site group's key. Every site must be able to reach the same KMS; each site gets its own access
+tokens.
+
+A [configuration export](/operations/config-export) includes the settings and the retired key
+stores. Their credentials are only in an export with secrets.
 
 ## Admin API
 
 | Endpoint | What it does |
 | --- | --- |
-| `GET /api/kms/external` | `{config, error, status}`: the settings without credentials (`has_token`, `has_secret_id`, `has_client_key`) and the health |
-| `PUT /api/kms/external` | Connect or change the external KMS |
+| `GET /api/kms/external` | `{config, error, status, retired}`: the settings without credentials (`has_token`, `has_secret_id`, `has_client_key`, `has_secret_key`, `has_session_token`, `has_client_secret`, `has_service_account`) and the health. `retired` lists the retired key stores the same way |
+| `PUT /api/kms/external` | Connect or change the external KMS (`kind`: `vault`, `kes`, `aws`, `azure` or `gcp`). One of another kind becomes a retired key store |
 | `POST /api/kms/external/test` | Try settings without saving |
-| `DELETE /api/kms/external` | Go back to the internal KMS |
+| `DELETE /api/kms/external` | Go back to the internal KMS; the one that was active becomes a retired key store |
+| `DELETE /api/kms/external/retired/{kind}` | Forget a retired key store |
 
 ## Not supported yet
 
-- AWS KMS, Azure Key Vault and GCP KMS.
-- Setting the external KMS with environment variables at startup (only the console and the admin
-  API), and including it in a configuration export.
+- Setting the external KMS with environment variables at startup (only the console, the admin API
+  and a configuration import).
 - Vault authentication other than token and AppRole (Kubernetes, TLS certificates). z3 makes its
   own data keys and Transit wraps them; Transit `datakey` isn't used.
+- AWS credentials from an instance profile, IRSA, `AssumeRole` or `~/.aws` (only an access key), and
+  encryption context.
+- Azure managed identity, workload identity and certificate credentials (only a client secret).
+- Google Cloud Application Default Credentials, workload identity and the metadata server (only a
+  service account key file).
+- Creating keys or aliases in AWS, Azure or Google Cloud from z3.
+- Two configs of the same kind at once (for example two AWS accounts): a new one replaces the old one.

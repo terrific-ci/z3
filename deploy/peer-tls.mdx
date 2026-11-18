@@ -19,7 +19,7 @@ Every call between nodes goes through the same client and listener:
 | --- | --- |
 | Bucket replication: pulling the change log and chunks, anti-entropy | [Bucket replication](/replication/bucket-replication) |
 | Site replication, including sending the site configuration | [Site replication](/replication/site-replication) |
-| Geo erasure coding shards | [Geo erasure coding](/replication/geo-erasure-coding) |
+| Geo erasure coding shards, for reads and for rebuilding a site's lost shards | [Geo erasure coding](/replication/geo-erasure-coding) |
 | Lean Replica read-through and part-size lookups | [Lean Replica](/replication/lean-replica) |
 | Cluster Raft, forwarded writes, chunk copies and placement sweeps | [Cluster](/deploy/cluster#mutual-tls) |
 | Trace and logs from every node (`scope=all`) | [Trace and logs](/audit/trace-and-logs) |
