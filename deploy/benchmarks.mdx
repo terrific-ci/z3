@@ -45,9 +45,8 @@ workload.
   and answers HEAD requests fastest.
 - **Memory:** Zee3 stays under 180 MiB through every workload, less than a fifth of MinIO.
 
-Zee3 1.0.0 matches 0.1.0 on every workload (within 2%). Uploads now write several chunks at once and
-downloads read ahead, which made no difference on this machine, where the drive sets the upload
-limit; both help on faster drives and more cores.
+Uploads write several chunks at once and downloads read ahead, which makes no difference on this
+machine, where the drive sets the upload limit; both help on faster drives and more cores.
 
 ### io_uring
 
@@ -86,12 +85,12 @@ process's own memory (anonymous, without the page cache) as objects pile up.
 | Idle CPU after ~200,000 objects | **0.26%** | 17% | 15–17% |
 | CPU per object while writing | 1.8 ms | 1.6 ms | 1.8 ms |
 | Memory at start | **2 MiB** | 66 MiB | 22 MiB |
-| Memory at ~200,000 objects | **~105 MiB** (1.0.1, `ZEE3_META_CACHE_MB=64`) | 287 MiB | 196 MiB (still growing) |
+| Memory at ~200,000 objects | **~105 MiB** (`ZEE3_META_CACHE_MB=64`) | 287 MiB | 196 MiB (still growing) |
 | OS page cache (reclaimable) | **227 MiB** | 2,678 MiB | 1,852 MiB |
 
 - MinIO and RustFS keep scanning their data in the background (about 17% of a core). Zee3 is quiet
   when nothing asks it for anything.
-- Zee3's memory follows its metadata cache. Since 1.0.1 it is capped by `ZEE3_META_CACHE_MB` (128 MiB by
+- Zee3's memory follows its metadata cache. It is capped by `ZEE3_META_CACHE_MB` (128 MiB by
   default, so about 160 MiB in all). With 64 MiB it levels off near 100 MiB and writes are just as
   fast, since the operating system still caches the metadata file. See
   [Running alongside other services](/deploy/shared-host).

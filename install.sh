@@ -1,8 +1,7 @@
 #!/bin/sh
 # Install zee3 on Linux: downloads the zee3 binary of a GitHub release of
 # terrific-ci/z3, checks it against SHA256SUMS and puts it in /usr/local/bin.
-# Releases up to 1.0.1 also have macOS binaries (--version 1.0.1); on macOS,
-# run newer releases with Docker (terrificci/z3).
+# On macOS, run Zee3 with Docker (terrificci/z3).
 #
 #   curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
 #
@@ -44,7 +43,7 @@ need tar
 
 case "$(uname -s)" in
   Linux) os=linux ;;
-  Darwin) os=darwin ;;
+  Darwin) die "there are no macOS binaries; run zee3 with Docker instead: docker run -p 9000:9000 -p 9001:9001 terrificci/z3" ;;
   *) die "unsupported system $(uname -s); use the Docker image terrificci/z3" ;;
 esac
 case "$(uname -m)" in
@@ -59,20 +58,13 @@ if [ "$VERSION" = latest ]; then
 fi
 VERSION=${VERSION#v}
 
-# Releases before the rename to zee3 (1.0.x and older) ship a binary named z3.
-bin=zee3
-case "$VERSION" in 0.*|1.0.*) bin=z3 ;; esac
-[ "$bin" = zee3 ] || [ -z "$SERVICE" ] || die "--service needs zee3 1.1 or newer; v$VERSION is still named z3"
-asset="$bin-$VERSION-$os-$arch.tar.gz"
+asset="zee3-$VERSION-$os-$arch.tar.gz"
 base="https://github.com/$REPO/releases/download/v$VERSION"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 say "Downloading zee3 $VERSION for $os/$arch"
-if ! curl -fsSL -o "$tmp/$asset" "$base/$asset"; then
-  [ "$os" = darwin ] && die "release v$VERSION has no macOS build (the last one is 1.0.1: --version 1.0.1); run zee3 with Docker instead: docker run -p 9000:9000 -p 9001:9001 terrificci/z3"
-  die "no $asset in release v$VERSION"
-fi
+curl -fsSL -o "$tmp/$asset" "$base/$asset" || die "no $asset in release v$VERSION"
 curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" || die "no SHA256SUMS in release v$VERSION"
 want=$(grep " $asset\$" "$tmp/SHA256SUMS" | cut -d' ' -f1)
 if command -v sha256sum >/dev/null 2>&1; then got=$(sha256sum "$tmp/$asset" | cut -d' ' -f1); else got=$(shasum -a 256 "$tmp/$asset" | cut -d' ' -f1); fi
@@ -85,8 +77,8 @@ while [ ! -d "$probe" ]; do probe=$(dirname "$probe"); done
 SUDO=""
 if [ ! -w "$probe" ] && [ "$(id -u)" != 0 ]; then need sudo; SUDO=sudo; fi
 $SUDO mkdir -p "$DIR"
-$SUDO install -m 0755 "$tmp/$bin" "$DIR/$bin"
-say "Installed $DIR/$bin ($("$DIR/$bin" --version 2>/dev/null || echo "$bin $VERSION"))"
+$SUDO install -m 0755 "$tmp/zee3" "$DIR/zee3"
+say "Installed $DIR/zee3 ($("$DIR/zee3" --version 2>/dev/null || echo "zee3 $VERSION"))"
 
 [ -n "$SERVICE" ] || exit 0
 [ "$os" = linux ] || die "--service sets up systemd, which is Linux only"

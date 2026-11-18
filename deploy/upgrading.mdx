@@ -56,7 +56,7 @@ docker compose up -d
 docker compose logs -f zee3
 ```
 
-Pin a version tag (`terrificci/z3:1.0.1`) instead of `latest` to choose when you upgrade.
+Pin a version tag (`terrificci/z3:1.0.0`) instead of `latest` to choose when you upgrade.
 
 ## Install script or systemd
 
@@ -92,81 +92,6 @@ The health check's **Peers and clocks** item warns when a peer runs a different 
 
 Restart [cluster](/deploy/cluster) members one at a time, and wait until `zee3 admin cluster status`
 shows the restarted member caught up before the next. Reads and writes continue on the others.
-
-Replication on a cluster (peers, bucket and site replication, geo erasure coding) adds commands to
-the Raft log that older members can't read. Upgrade every member first, then configure replication
-on the cluster. A member still on the old version stops following the log when the first new command
-arrives, and catches up once it is upgraded. Older single-node peers keep replicating with the
-cluster, but give them one URL or a VIP instead of a comma-separated list.
-
-[Erasure coding across members](/deploy/cluster#erasure-coding-across-members) adds Raft commands
-too. Upgrade every member before you run `zee3 admin cluster ec`: a member on an older version stops
-following the log when the layout is set, until it is upgraded. The on-disk format doesn't change,
-and chunks stored as copies stay readable by every version.
-
-## From 1.1.0 to 1.2.0
-
-<Warning>
-  1.2.0 cannot use a data directory written by an earlier version. The keys that protect IAM secrets,
-  KMS keys and encrypted objects now carry the Zee3 name, so what 1.1.0 and 1.0.x stored can no
-  longer be opened, and cluster members place erasure-coded shards differently.
-</Warning>
-
-Start 1.2.0 with an empty data directory, copy the objects over with the
-[import](/deploy/migrate-from-minio) from the old node (it reads any S3 store), then create users,
-access keys and KMS keys again. Upgrade every node of a replication group and every member of a
-cluster together.
-
-## From 1.0.x to 1.1.0
-
-1.1.0 renames z3 to Zee3. The metadata format does not change, so the data directory is used as it
-is, but names around it do:
-
-| Before (1.0.x) | From 1.1.0 |
-| --- | --- |
-| Binary and command line `z3`, `z3 admin` | `zee3`, `zee3 admin` |
-| Environment variables `Z3_*` | `ZEE3_*` (for example `ZEE3_DATA_DIR`, `ZEE3_ACCESS_KEY`) |
-| Default credentials `z3admin` / `z3admin-secret` | `zee3admin` / `zee3admin-secret` |
-| Metrics `z3_*` | `zee3_*` |
-| Headers `x-z3-*` (such as `x-z3-session`) | `x-zee3-*` |
-| Event destination ARNs `arn:z3:sqs::...` | `arn:zee3:sqs::...` (MinIO's `arn:minio:sqs::...` still works) |
-| Configuration exports with `"z3_config"` | `"zee3_config"` |
-
-<Steps>
-  <Step title="Rename the settings">
-    In the environment file, systemd unit or Compose file, rename every `Z3_` variable to `ZEE3_`.
-    Keep `ZEE3_DATA_DIR` pointing at the existing data directory (or move the directory and point it
-    there). Change the credentials if you relied on the defaults.
-  </Step>
-  <Step title="Upgrade every node together">
-    Stop every node of a replication group and every member of a cluster, install 1.1.0, then start
-    them. Nodes on 1.0.x and 1.1.0 use different header names between them, so they do not replicate
-    with each other. With the install script, 1.1.0 installs a binary named `zee3`; the Docker image
-    keeps its name, `terrificci/z3`.
-  </Step>
-  <Step title="Update what talks to Zee3">
-    Dashboards and alerts that use `z3_*` metrics, clients that send `x-z3-session`, bucket
-    notification configurations that name `arn:z3:` ARNs, and scripts that call `z3 admin`.
-  </Step>
-  <Step title="Take a new configuration export">
-    Exports taken from 1.0.x do not import into 1.1.0. Temporary STS credentials issued before the
-    upgrade stop working; ask for new ones.
-  </Step>
-</Steps>
-
-## From 1.0.0 to 1.0.1
-
-Replace the binary or the image and restart. The metadata format is unchanged, and 1.0.0 and 1.0.1
-nodes can replicate with each other while you upgrade one after another.
-
-## From 0.1.0 to 1.0.0
-
-- The metadata format moves from version 6 to 7 when the node starts (the deletion-protection trash
-  and the restore entry in the change log). Nothing is rewritten, but 0.1.0 cannot open the data
-  directory afterwards.
-- Upgrade every node of a replication group: 1.0.0 adds peer messages (restores, the replication
-  map) that 0.1.0 does not know.
-- New settings are off until you turn them on: cluster mode, deletion delays, `on_offline`.
 
 ## Downgrading
 

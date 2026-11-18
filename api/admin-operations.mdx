@@ -60,7 +60,7 @@ These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing
 
 ```json
 {
-  "version": "0.1.0", "uptime_secs": 86400, "node_id": "01a1e9a0-be79-7462-83e2-8685ea015598",
+  "version": "1.0.0", "uptime_secs": 86400, "node_id": "01a1e9a0-be79-7462-83e2-8685ea015598",
   "buckets": 12, "objects": 1204331, "logical_bytes": 2309011234511, "physical_bytes": 1840223344012,
   "chunks": 2203114, "multipart_uploads": 3, "dedup_ratio": 1.2547
 }
@@ -125,7 +125,7 @@ See [Support tools](/operations/support) for what each tool does.
 
 ```json
 {
-  "generated_ms": 1794921056000, "version": "0.1.0", "node_id": "01a1e9a0-be79-7462-83e2-8685ea015598",
+  "generated_ms": 1794921056000, "version": "1.0.0", "node_id": "01a1e9a0-be79-7462-83e2-8685ea015598",
   "uptime_secs": 86400, "level": "warn",
   "host": { "hostname": "zee3-jkt-1", "cpus": 16, "...": "..." },
   "checks": [
@@ -197,7 +197,7 @@ With data, the files may total at most 1 GiB; above that the answer is `413`.
   "state": "Follower", "term": 3, "leader": "2200471768134479368", "leader_log": 1840,
   "last_log": 1840, "last_applied": 1840,
   "members": [
-    { "id": "2200471768134479368", "name": "zee3-1", "addr": "http://10.0.0.11:9002", "version": "1.0.3",
+    { "id": "2200471768134479368", "name": "zee3-1", "addr": "http://10.0.0.11:9002", "version": "1.0.0",
       "voter": true, "leader": true, "me": false, "role": "leader", "matched": 1840,
       "chunks": { "at": 1794921000000, "shards": 24102, "shard_bytes": 11166914560, "copies": 3911,
                   "copy_bytes": 420688691, "rebuilt": 0, "converted": 1840, "failed": 0 } }

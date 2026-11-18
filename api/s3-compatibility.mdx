@@ -79,12 +79,6 @@ not (an unsigned one in a presigned URL too, as MinIO allows).
 - Once [lifecycle](/storage/lifecycle#transitions) moved a version to a [tier](/storage/tiers),
   its storage class is the tier's name.
 
-<Warning>
-  Releases up to 1.0.2 accepted any storage class and ignored it. Clients that send other values,
-  such as `STANDARD_IA` or `GLACIER`, now get `InvalidStorageClass`: drop the header or send
-  `STANDARD`.
-</Warning>
-
 ## Checksums
 
 The additional checksums CRC32, CRC32C, CRC64NVME, SHA1 and SHA256 are checked on `PutObject` and
@@ -237,10 +231,6 @@ encryption. Encrypted data stays encrypted on disk, in replication and in tiers.
   Check these before you move an application to Zee3.
 </Warning>
 
-- **`partNumber` on older objects:** Zee3 keeps the part sizes of multipart objects completed by
-  releases after 1.0.2. A multipart object completed before that answers `partNumber` with
-  `NotImplemented` (part 1 of a one-part upload still works); ranged reads work for every object.
-  A replica asks its peers for the part sizes, so upgrade every node of a replication group.
 - **CORS** is set for the whole cluster with `api.cors_allow_origins`; per-bucket CORS
   (`PutBucketCors`, `GetBucketCors`) is not supported.
 - **Replication** is configured in the console or the [admin API](/api/admin-replication), not with
