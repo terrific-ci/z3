@@ -1,8 +1,8 @@
-# ceph/s3-tests tests z3 leaves out, beyond the areas in s3tests-markers.txt:
+# ceph/s3-tests tests Zee3 leaves out, beyond the areas in s3tests-markers.txt:
 # test_name<TAB>reason (every parametrization of the test). Grouped by area;
 # docs/conformance.md explains each area.
 
-# ACL: z3 has no ACLs (access is IAM and bucket policies); Get/Put*Acl are NotImplemented
+# ACL: Zee3 has no ACLs (access is IAM and bucket policies); Get/Put*Acl are NotImplemented
 test_bucket_list_objects_anonymous	ACL
 test_bucket_listv2_objects_anonymous	ACL
 test_expected_bucket_owner	ACL
@@ -89,7 +89,7 @@ test_put_get_delete_public_block	public access block is not implemented
 test_get_undefined_public_block	public access block is not implemented
 test_block_public_restrict_public_buckets	public access block is not implemented
 
-# CORS: z3 has one CORS setting for the S3 port, no per-bucket CORS configuration
+# CORS: Zee3 has one CORS setting for the S3 port, no per-bucket CORS configuration
 test_set_cors	per-bucket CORS
 test_cors_origin_response	per-bucket CORS
 test_cors_origin_wildcard	per-bucket CORS
@@ -105,7 +105,7 @@ test_cors_presigned_put_object_tenant	per-bucket CORS
 test_cors_presigned_put_object_tenant_v2	per-bucket CORS
 test_cors_presigned_put_object_tenant_with_acl	per-bucket CORS
 
-# One account: z3 has no bucket owners, so another user cannot own buckets or be refused one by name
+# One account: Zee3 has no bucket owners, so another user cannot own buckets or be refused one by name
 test_bucket_create_exists_nonowner	one account (BucketAlreadyOwnedByYou for everyone)
 test_object_copy_not_owned_bucket	one account (alt creates its own bucket)
 test_bucket_policy_upload_part_copy	one account (alt creates its own bucket)
@@ -124,12 +124,12 @@ test_bucket_policy_put_obj_s3_kms	root ignores a Deny in a bucket policy
 test_bucket_policy_put_obj_kms_noenc	root ignores a Deny in a bucket policy
 test_bucket_policy_put_obj_kms_s3	root ignores a Deny in a bucket policy
 test_bucket_policy_set_condition_operator_end_with_IfExists	root ignores a Deny in a bucket policy
-test_bucket_policy_put_obj_request_obj_tag	alt needs s3:PutObjectTagging too (z3 checks it for x-amz-tagging)
+test_bucket_policy_put_obj_request_obj_tag	alt needs s3:PutObjectTagging too (Zee3 checks it for x-amz-tagging)
 test_bucket_policy_put_obj_copy_source	the copy source policy is checked for alt on GetObject; the test reads with alt without a grant
 test_bucket_policy_put_obj_copy_source_meta	same as test_bucket_policy_put_obj_copy_source
-test_head_object_404_with_policy_prefix	z3 answers 403 for a missing key unless the caller may read it (S3 answers 404 to callers with s3:ListBucket)
+test_head_object_404_with_policy_prefix	Zee3 answers 403 for a missing key unless the caller may read it (S3 answers 404 to callers with s3:ListBucket)
 
-# Bucket policy features z3 does not have
+# Bucket policy features Zee3 does not have
 test_bucket_policy_get_obj_existing_tag	condition key s3:ExistingObjectTag
 test_bucket_policy_get_obj_tagging_existing_tag	condition key s3:ExistingObjectTag
 test_bucket_policy_put_obj_tagging_existing_tag	condition key s3:ExistingObjectTag
@@ -137,16 +137,16 @@ test_encryption_sse_c_enforced_with_bucket_policy	condition key s3:x-amz-server-
 test_encryption_sse_c_deny_algo_with_bucket_policy	condition key s3:x-amz-server-side-encryption-customer-algorithm
 test_bucket_policy_another_bucket	a bucket policy may only name its own bucket
 test_bucketv2_policy_another_bucket	a bucket policy may only name its own bucket
-test_set_get_del_bucket_policy	z3 returns the policy as normalized JSON, not the submitted text
+test_set_get_del_bucket_policy	Zee3 returns the policy as normalized JSON, not the submitted text
 
 # Multipart
-test_multipart_get_part	partNumber past the parts: z3 answers 416 InvalidPartNumber (as S3 and MinIO), the test wants 400 InvalidPart
+test_multipart_get_part	partNumber past the parts: Zee3 answers 416 InvalidPartNumber (as S3 and MinIO), the test wants 400 InvalidPart
 test_multipart_sse_c_get_part	same as test_multipart_get_part
 test_multipart_single_get_part	same as test_multipart_get_part
 test_non_multipart_get_part	same as test_multipart_get_part
 test_non_multipart_sse_c_get_part	same as test_multipart_get_part
-test_multipart_upload	completes the same upload twice (z3: NoSuchUpload the second time)
-test_multipart_upload_small	completes the same upload twice (z3: NoSuchUpload the second time)
+test_multipart_upload	completes the same upload twice (Zee3: NoSuchUpload the second time)
+test_multipart_upload_small	completes the same upload twice (Zee3: NoSuchUpload the second time)
 test_multipart_resend_first_finishes_last	uploads parts to an upload it already completed
 test_multipart_checksum_sha256	objects completed from parts keep no checksum
 test_multipart_reupload_checksum_and_etag	objects completed from parts keep no checksum
@@ -158,20 +158,20 @@ test_multipart_use_cksum_helper_crc64nvme	objects completed from parts keep no c
 test_get_multipart_checksum_object_attributes	objects completed from parts keep no checksum
 
 # Versioning: suspending a bucket that never had versioning leaves it unversioned (deletes stay permanent)
-test_versioning_bucket_create_suspend	z3 reports no versioning status, S3 reports Suspended
-test_versioning_bucket_atomic_upload_return_version_id	z3 reports no versioning status, S3 reports Suspended
-test_versioning_bucket_multipart_upload_return_version_id	z3 reports no versioning status, S3 reports Suspended
-test_object_lock_put_obj_lock_enable_after_create	z3 reports no versioning status, S3 reports Suspended
+test_versioning_bucket_create_suspend	Zee3 reports no versioning status, S3 reports Suspended
+test_versioning_bucket_atomic_upload_return_version_id	Zee3 reports no versioning status, S3 reports Suspended
+test_versioning_bucket_multipart_upload_return_version_id	Zee3 reports no versioning status, S3 reports Suspended
+test_object_lock_put_obj_lock_enable_after_create	Zee3 reports no versioning status, S3 reports Suspended
 
 # Encryption
-test_encryption_sse_c_other_key	a wrong SSE-C key is 403 AccessDenied in z3 (the test wants 400)
-test_encryption_sse_c_multipart_invalid_chunks_1	a wrong SSE-C key is 403 AccessDenied in z3 (the test wants 400)
-test_encryption_sse_c_multipart_bad_download	a wrong SSE-C key is 403 AccessDenied in z3 (the test wants 400)
-test_copy_part_enc	a wrong SSE-C key is 403 AccessDenied in z3 (the test wants 400)
+test_encryption_sse_c_other_key	a wrong SSE-C key is 403 AccessDenied in Zee3 (the test wants 400)
+test_encryption_sse_c_multipart_invalid_chunks_1	a wrong SSE-C key is 403 AccessDenied in Zee3 (the test wants 400)
+test_encryption_sse_c_multipart_bad_download	a wrong SSE-C key is 403 AccessDenied in Zee3 (the test wants 400)
+test_copy_part_enc	a wrong SSE-C key is 403 AccessDenied in Zee3 (the test wants 400)
 test_sse_kms_no_key	aws:kms without a key id uses the default key (as S3), the test wants an error
-test_sse_kms_not_declared	z3 opens SSE-KMS objects without the request naming them (as S3), the test wants an error
+test_sse_kms_not_declared	Zee3 opens SSE-KMS objects without the request naming them (as S3), the test wants an error
 
-# Lifecycle: z3 returns a rule's legacy top-level Prefix as Filter/Prefix
+# Lifecycle: Zee3 returns a rule's legacy top-level Prefix as Filter/Prefix
 test_lifecycle_get	lifecycle rules come back as Filter, not the legacy Prefix element
 test_lifecycle_get_no_id	lifecycle rules come back as Filter, not the legacy Prefix element
 
@@ -184,7 +184,7 @@ test_post_object_invalid_date_format	s3s accepts the policy's expiration date fo
 test_object_raw_put_authenticated_expired	s3s answers an expired presigned URL with 400 (S3: 403)
 test_object_create_date_and_amz_date	s3s requires x-amz-date with SigV4 (the test signs with Date only)
 test_object_create_amz_date_and_no_date	s3s requires x-amz-date with SigV4 (the test signs with Date only)
-test_object_write_with_chunked_transfer_encoding	z3 needs Content-Length (or aws-chunked) on PutObject
+test_object_write_with_chunked_transfer_encoding	Zee3 needs Content-Length (or aws-chunked) on PutObject
 test_object_set_get_unicode_metadata	metadata values are returned as sent (RFC 2047 encoded), not decoded
 test_object_read_unreadable	a key that is not valid UTF-8 is 404 NoSuchKey (the test wants 400)
 test_get_object_torrent	BitTorrent is not implemented (501)

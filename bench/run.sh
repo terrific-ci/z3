@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# S3 benchmark: zee3, MinIO and RustFS, one at a time, each on CPUs 0-1 with 2 GiB,
+# S3 benchmark: Zee3, MinIO and RustFS, one at a time, each on CPUs 0-1 with 2 GiB,
 # warp on CPUs 2-3, single drive each, same workloads.
 #   ./run.sh [round]      results go to results-<round>.txt
 set -euo pipefail

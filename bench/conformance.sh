@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# S3 conformance: MinIO Mint and the ceph/s3-tests subset against one z3
+# S3 conformance: MinIO Mint and the ceph/s3-tests subset against one Zee3
 # image (docs/conformance.md). Runs on the bench server, never the laptop.
 #   ./conformance.sh [--build] [all|mint|s3tests]
-#     --build   build the repository (..) into $Z3_IMAGE first
-#   Z3_IMAGE=terrificci/z3:1.0.3 ./conformance.sh     test an existing image
+#     --build   build the repository (..) into $ZEE3_IMAGE first
+#   ZEE3_IMAGE=terrificci/z3:1.0.3 ./conformance.sh     test an existing image
 # Prints a summary per suite and exits 1 when anything in the subset fails
 # (excluded failures are listed with their reason). Results: $OUT.
 set -euo pipefail
@@ -19,13 +19,13 @@ for a in "$@"; do
     *) sed -n '2,8p' "$0"; exit 2 ;;
   esac
 done
-Z3_IMAGE=${Z3_IMAGE:-z3bench:conformance}
+ZEE3_IMAGE=${ZEE3_IMAGE:-zee3bench:conformance}
 MINT_IMAGE=${MINT_IMAGE:-minio/mint:edge}
 S3TESTS_DIR=${S3TESTS_DIR:-$HOME/s3-tests}
 S3TESTS_REF=${S3TESTS_REF:-5b39871}
 OUT=${OUT:-$HERE/conformance-results}
-NET=z3conformance
-NAME=z3conformance
+NET=zee3conformance
+NAME=zee3conformance
 AK=conformadmin
 SK=conform-secret-12345
 docker network create $NET >/dev/null 2>&1 || true
@@ -36,7 +36,7 @@ if [ "$(df --output=avail -k "$OUT" | tail -1)" -lt $((6 * 1024 * 1024)) ]; then
 fi
 
 if [ $BUILD = 1 ]; then
-  DOCKER_BUILDKIT=1 docker build -t "$Z3_IMAGE" .. >"$OUT/build.log" 2>&1 || { tail -30 "$OUT/build.log"; exit 1; }
+  DOCKER_BUILDKIT=1 docker build -t "$ZEE3_IMAGE" .. >"$OUT/build.log" 2>&1 || { tail -30 "$OUT/build.log"; exit 1; }
 fi
 
 stop() { # with its anonymous /data volume (Mint writes gigabytes)
@@ -45,13 +45,13 @@ stop() { # with its anonymous /data volume (Mint writes gigabytes)
 
 start() { # a fresh node; SigV2 on, since Mint and s3-tests exercise it
   stop
-  docker run -d --name $NAME --network $NET -e Z3_ACCESS_KEY=$AK -e Z3_SECRET_KEY=$SK \
-    -e Z3_GC_INTERVAL=0 -e Z3_ENABLE_SIGV2=true -e RUST_LOG=warn "$Z3_IMAGE" >/dev/null
+  docker run -d --name $NAME --network $NET -e ZEE3_ACCESS_KEY=$AK -e ZEE3_SECRET_KEY=$SK \
+    -e ZEE3_GC_INTERVAL=0 -e ZEE3_ENABLE_SIGV2=true -e RUST_LOG=warn "$ZEE3_IMAGE" >/dev/null
   for _ in $(seq 60); do
-    if docker exec $NAME z3 healthcheck >/dev/null 2>&1; then return 0; fi
+    if docker exec $NAME zee3 healthcheck >/dev/null 2>&1; then return 0; fi
     sleep 1
   done
-  echo "z3 did not start"; docker logs $NAME | tail -20; exit 1
+  echo "Zee3 did not start"; docker logs $NAME | tail -20; exit 1
 }
 
 trap stop EXIT
@@ -76,7 +76,7 @@ if [ "$WHAT" != mint ]; then
   fi
   git -C "$S3TESTS_DIR" checkout -q "$S3TESTS_REF"
   # The test runner with its requirements (cached; rebuilt when they change).
-  tag="z3conformance-s3tests:$(sha256sum "$S3TESTS_DIR/requirements.txt" | cut -c1-12)"
+  tag="zee3conformance-s3tests:$(sha256sum "$S3TESTS_DIR/requirements.txt" | cut -c1-12)"
   if ! docker image inspect "$tag" >/dev/null 2>&1; then
     tmp=$(mktemp -d)
     cp "$S3TESTS_DIR/requirements.txt" "$tmp/"

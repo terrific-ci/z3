@@ -1,11 +1,11 @@
-"""Creates the IAM users ceph/s3-tests needs on a fresh z3 node and writes
+"""Creates the IAM users ceph/s3-tests needs on a fresh Zee3 node and writes
 its config file.
 
 usage: setup_users.py <admin-url> <s3-host> <s3-port> <root-access> <root-secret> <out.conf>
 
 The main user is the root account. alt and tenant are IAM users without
 policies: like another AWS account, they reach main's buckets only through
-bucket policies (z3 has one account and no bucket owners, so tests that need
+bucket policies (Zee3 has one account and no bucket owners, so tests that need
 alt to own buckets are excluded, see s3tests-exclude.txt). The KMS keys
 testkey-1 and testkey-2 back the SSE-KMS tests.
 """

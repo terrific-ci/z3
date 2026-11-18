@@ -1,4 +1,4 @@
-# MinIO Mint failures z3 leaves out on purpose: suite<TAB>pattern<TAB>reason.
+# MinIO Mint failures Zee3 leaves out on purpose: suite<TAB>pattern<TAB>reason.
 # The first column is a prefix of the entry name, the pattern is matched
 # against "name :: function" of a failed entry
 # (`*` = every failure of the suite; NO-RESULTS = the suite may log nothing).
@@ -7,14 +7,14 @@ aws-sdk-java-v2	NO-RESULTS	the suite logs JSON only for failures; a clean run pr
 s3select	*	S3 Select is not implemented (AWS closed it to new customers in 2024)
 minio-js	selectObjectContent	S3 Select is not implemented
 minio-js	"after all" hook for "Remove Object post select of content	cleanup after the S3 Select test that cannot pass
-minio-go: testListMultipartUpload	*	MinIO ignores key-marker when it names the listed object; z3 lists only keys after key-marker, as S3 does
+minio-go: testListMultipartUpload	*	MinIO ignores key-marker when it names the listed object; Zee3 lists only keys after key-marker, as S3 does
 aws-sdk-php	abortMultipartupload	aborting an unknown upload id is 404 NoSuchUpload on S3 (and in ceph/s3-tests), MinIO answers 204
 minio-go: testBucketVersioningExcludedPrefixes	*	MinIO extension (ExcludedPrefixes/ExcludeFolders in the versioning configuration)
 minio-py:test_set_get_bucket_versioning	*	MinIO extension (ExcludeFolders in the versioning configuration)
 minio-java	uploadSnowballObjects	MinIO extension (snowball: tar archives extracted on upload)
 minio-java	putObjectFanOut	MinIO extension (fan-out POST uploads)
 minio-java	removeBucket()	cleanup of the snowball bucket above
-minio-java	addUser()	MinIO admin API (z3 has its own admin API on the console port)
+minio-java	addUser()	MinIO admin API (Zee3 has its own admin API on the console port)
 minio-java	addCannedPolicy()	MinIO admin API
 minio-java	setPolicy()	MinIO admin API
 minio-java	getUserInfo()	MinIO admin API

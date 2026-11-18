@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Resource footprint of zee3, MinIO and RustFS on a shared machine: no CPU or
+# Resource footprint of Zee3, MinIO and RustFS on a shared machine: no CPU or
 # memory limits, CPU use while idle, CPU per object while writing, and memory
 # (anonymous, i.e. the process's own, not the page cache) as objects pile up.
 #   ./footprint.sh [stages] [servers...]   results go to footprint-<date>.txt

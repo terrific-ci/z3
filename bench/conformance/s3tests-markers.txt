@@ -1,4 +1,4 @@
-# pytest -m expression for ceph/s3-tests: whole areas z3 does not have
+# pytest -m expression for ceph/s3-tests: whole areas Zee3 does not have
 # (reasons in docs/conformance.md). Lines are joined with spaces.
 not fails_on_aws
 and not s3website and not s3website_routing_rules and not s3website_redirect_location

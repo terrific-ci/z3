@@ -1,4 +1,4 @@
-"""pytest plugin: deselects the ceph/s3-tests tests z3 leaves out.
+"""pytest plugin: deselects the ceph/s3-tests tests Zee3 leaves out.
 
 Loaded with `-p s3tests_subset` (this directory on PYTHONPATH). Reads
 s3tests-exclude.txt next to it: one `test_name<TAB>reason` per line (the
