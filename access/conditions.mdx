@@ -82,9 +82,9 @@ is a value that doesn't fit the operator (an address that isn't one, a bad date)
 
 ## Trusted proxies
 
-z3 serves plain HTTP. When it sits behind a reverse proxy that handles TLS, the TCP peer is the
+Zee3 serves plain HTTP. When it sits behind a reverse proxy that handles TLS, the TCP peer is the
 proxy, not the client. List the proxy's addresses or networks in the `api.trusted_proxies`
-[setting](/operations/settings). Then, **only for requests from those addresses**, z3 uses:
+[setting](/operations/settings). Then, **only for requests from those addresses**, Zee3 uses:
 
 - the first address in `X-Forwarded-For` for `aws:SourceIp`, and
 - `X-Forwarded-Proto: https` for `aws:SecureTransport`.
@@ -99,10 +99,10 @@ Without a trusted proxy, `aws:SecureTransport` is always `false`.
     `10.0.0.0/24`.
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="zee3 admin">
 
     ```bash
-    z3 admin settings set api 'trusted_proxies=["10.0.0.5", "10.0.1.0/24"]'
+    zee3 admin settings set api 'trusted_proxies=["10.0.0.5", "10.0.1.0/24"]'
     ```
 
   </Tab>
@@ -117,7 +117,7 @@ See [TLS and reverse proxies](/deploy/tls-and-proxies).
   `aws:UserAgent`, `aws:Referer`), time and identity. A user whose policy allows access only from
   the office network can't use the console from elsewhere either.
 - **File protocols**: `aws:SourceIp` (not for NFS), `aws:SecureTransport` (`true` for FTPS and
-  SFTP), and `aws:UserAgent` set to `z3-webdav`, `z3-ftp`, `z3-sftp` or `z3-nfs`. WebDAV uses the
+  SFTP), and `aws:UserAgent` set to `zee3-webdav`, `zee3-ftp`, `zee3-sftp` or `zee3-nfs`. WebDAV uses the
   client's own user agent when it sends one. See [File protocols](/protocols/overview).
 
 ## In the console

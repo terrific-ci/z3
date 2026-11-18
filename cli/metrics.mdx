@@ -1,13 +1,13 @@
 ---
-title: "z3 admin metrics"
+title: "zee3 admin metrics"
 description: "Traffic and storage over a past range, for the whole node or one bucket, from the terminal."
 ---
 
-`z3 admin metrics` summarises the node's [historical metrics](/operations/metrics) over a range:
+`zee3 admin metrics` summarises the node's [historical metrics](/operations/metrics) over a range:
 requests, errors, traffic and what is stored, node-wide with a table of buckets, or for one bucket.
 
 ```bash
-z3 admin metrics [--range RANGE] [--bucket BUCKET]
+zee3 admin metrics [--range RANGE] [--bucket BUCKET]
 ```
 
 | Option | Default | What it does |
@@ -20,7 +20,7 @@ It needs `admin:ServerInfo` (the built-in `diagnostics` policy has it).
 ## The node
 
 ```bash
-z3 admin metrics --range 7d
+zee3 admin metrics --range 7d
 ```
 
 ```
@@ -48,7 +48,7 @@ node over 7d, 168 points of 1 h:
 ## One bucket
 
 ```bash
-z3 admin metrics --range 30d --bucket radiology
+zee3 admin metrics --range 30d --bucket radiology
 ```
 
 ```
@@ -63,7 +63,7 @@ Requests count for a bucket by their path (path-style addressing).
 ## Errors
 
 ```bash
-z3 admin metrics --range 5y
+zee3 admin metrics --range 5y
 # Error: range must look like 90m, 24h, 7d or 1y (1 minute to 3 years)
 ```
 

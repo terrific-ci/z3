@@ -3,7 +3,7 @@ title: "Pools"
 description: "Add capacity with new disk pools, spread data evenly with rebalance, and empty a pool with decommission before removing it."
 ---
 
-A disk set can't grow, so z3 adds capacity in **pools**. A node can have several pools, each either
+A disk set can't grow, so Zee3 adds capacity in **pools**. A node can have several pools, each either
 an erasure-coded disk set (two or more paths) or a plain directory (one path), with its own layout
 and parity. Objects stay readable while data moves between them, and operations continue after a
 restart.
@@ -14,19 +14,19 @@ restart.
 
 ## Add a pool
 
-`Z3_POOLS` lists the pools separated by `;`, and the disks of each pool separated by `,`. It
-replaces `Z3_DISKS`, so the existing set becomes the first pool:
+`ZEE3_POOLS` lists the pools separated by `;`, and the disks of each pool separated by `,`. It
+replaces `ZEE3_DISKS`, so the existing set becomes the first pool:
 
 ```bash
 # Before: one set of four disks
-Z3_DISKS=/mnt/a1,/mnt/a2,/mnt/a3,/mnt/a4 z3
+ZEE3_DISKS=/mnt/a1,/mnt/a2,/mnt/a3,/mnt/a4 zee3
 
 # After: the old set and a new set of six disks
-Z3_POOLS="/mnt/a1,/mnt/a2,/mnt/a3,/mnt/a4;/mnt/b1,/mnt/b2,/mnt/b3,/mnt/b4,/mnt/b5,/mnt/b6" z3
+ZEE3_POOLS="/mnt/a1,/mnt/a2,/mnt/a3,/mnt/a4;/mnt/b1,/mnt/b2,/mnt/b3,/mnt/b4,/mnt/b5,/mnt/b6" zee3
 ```
 
-A node without `Z3_DISKS` keeps its chunks in `Z3_DATA_DIR`; list that directory as the first pool.
-Leave `Z3_PARITY` unset when the pools have different parity (see [Disks](/deploy/disks#growing-with-pools)).
+A node without `ZEE3_DISKS` keeps its chunks in `ZEE3_DATA_DIR`; list that directory as the first pool.
+Leave `ZEE3_PARITY` unset when the pools have different parity (see [Disks](/deploy/disks#growing-with-pools)).
 
 After a restart with the new list:
 
@@ -57,7 +57,7 @@ run.
   </Tab>
   <Tab title="CLI">
     ```bash
-    z3 admin pools rebalance --wait
+    zee3 admin pools rebalance --wait
     ```
   </Tab>
   <Tab title="Admin API">
@@ -75,20 +75,20 @@ When it finishes, the pool's state is `decommissioned`.
 
 <Steps>
   <Step title="Start the decommission">
-    Pools are numbered from 0 in `Z3_POOLS` order.
+    Pools are numbered from 0 in `ZEE3_POOLS` order.
 
     ```bash
-    z3 admin pools decommission 0 --wait
+    zee3 admin pools decommission 0 --wait
     ```
 
     Or **Pools → Decommission** on that pool in the console, or
     `POST /api/pools/{index}/decommission`.
   </Step>
   <Step title="Wait for decommissioned">
-    `z3 admin pools` shows the progress and, at the end, the state `decommissioned`.
+    `zee3 admin pools` shows the progress and, at the end, the state `decommissioned`.
   </Step>
   <Step title="Remove the pool">
-    Delete it from `Z3_POOLS` and restart z3. You can then take the disks out.
+    Delete it from `ZEE3_POOLS` and restart Zee3. You can then take the disks out.
   </Step>
 </Steps>
 
@@ -104,15 +104,15 @@ If a decommission is cancelled or fails, the pool takes new data again. No data 
   another pool instead of being deduplicated into the old one.
 - Only one operation (rebalance or decommission) runs per node at a time. Its progress is saved, so
   an operation interrupted by a restart or crash continues from the last directory it reached.
-- Pool states are stored by pool id, not by position, so you may reorder `Z3_POOLS`.
+- Pool states are stored by pool id, not by position, so you may reorder `ZEE3_POOLS`.
 
 ## Commands and API
 
 ```bash
-z3 admin pools                        # pools, state, usage and the current operation
-z3 admin pools rebalance --wait
-z3 admin pools decommission 0 --wait
-z3 admin pools cancel                 # stop the running operation
+zee3 admin pools                        # pools, state, usage and the current operation
+zee3 admin pools rebalance --wait
+zee3 admin pools decommission 0 --wait
+zee3 admin pools cancel                 # stop the running operation
 ```
 
 | Endpoint | What |
@@ -123,4 +123,4 @@ z3 admin pools cancel                 # stop the running operation
 | `POST /api/pools/cancel` | Stop the running operation |
 
 Viewing needs `admin:ServerInfo`; starting or stopping needs `admin:ConfigUpdate`. See also
-[`z3 admin pools`](/cli/pools).
+[`zee3 admin pools`](/cli/pools).

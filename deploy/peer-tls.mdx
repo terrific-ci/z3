@@ -1,15 +1,15 @@
 ---
 title: "Mutual TLS between nodes"
-description: "Encrypt and authenticate all traffic between z3 nodes on the peer API with certificates from your own CA: replication, site replication, cluster Raft and chunks, and the all-nodes views."
+description: "Encrypt and authenticate all traffic between Zee3 nodes on the peer API with certificates from your own CA: replication, site replication, cluster Raft and chunks, and the all-nodes views."
 ---
 
-Nodes talk to each other on the **peer API** (`Z3_PEER_ADDR`, port 9002 by default). With mutual
-TLS, z3 serves that port over TLS itself and every node proves who it is with a certificate signed
+Nodes talk to each other on the **peer API** (`ZEE3_PEER_ADDR`, port 9002 by default). With mutual
+TLS, Zee3 serves that port over TLS itself and every node proves who it is with a certificate signed
 by your own CA. No proxy or VPN is needed between nodes.
 
 Each node uses **one certificate for both directions**: it serves it on the peer port, and presents
 it as a client certificate when it calls an `https://` peer. The other side checks it against
-`Z3_PEER_TLS_CA` only, never against public roots. The peer token is still required on top of TLS.
+`ZEE3_PEER_TLS_CA` only, never against public roots. The peer token is still required on top of TLS.
 
 ## What it covers
 
@@ -33,10 +33,10 @@ certificate and the CA, `http://` peers in plain HTTP.
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_PEER_TLS_CERT` | `--peer-tls-cert` | empty | PEM certificate of this node (intermediates may follow). Its names must include the host name or IP address in the endpoint that peers use |
-| `Z3_PEER_TLS_KEY` | `--peer-tls-key` | empty | PEM private key of that certificate (PKCS#8, PKCS#1 or SEC1) |
-| `Z3_PEER_TLS_CA` | `--peer-tls-ca` | empty | PEM certificate of the CA that signs every node's certificate. The only CA trusted for `https://` peers and for client certificates |
-| `Z3_PEER_TLS_MODE` | `--peer-tls-mode` | `mtls` | What the peer port accepts (below) |
+| `ZEE3_PEER_TLS_CERT` | `--peer-tls-cert` | empty | PEM certificate of this node (intermediates may follow). Its names must include the host name or IP address in the endpoint that peers use |
+| `ZEE3_PEER_TLS_KEY` | `--peer-tls-key` | empty | PEM private key of that certificate (PKCS#8, PKCS#1 or SEC1) |
+| `ZEE3_PEER_TLS_CA` | `--peer-tls-ca` | empty | PEM certificate of the CA that signs every node's certificate. The only CA trusted for `https://` peers and for client certificates |
+| `ZEE3_PEER_TLS_MODE` | `--peer-tls-mode` | `mtls` | What the peer port accepts (below) |
 
 | Mode | Peer port accepts |
 | --- | --- |
@@ -47,27 +47,27 @@ certificate and the CA, `http://` peers in plain HTTP.
 - With none of them set, nothing changes: the peer port speaks plain HTTP, `http://` peers are
   called in plain HTTP, and `https://` peers (for example behind a
   [TLS proxy](/deploy/tls-and-proxies#the-replication-api)) are verified against public roots.
-- `Z3_PEER_TLS_CERT` and `Z3_PEER_TLS_KEY` go together, and need `Z3_PEER_TLS_CA`. z3 refuses to
+- `ZEE3_PEER_TLS_CERT` and `ZEE3_PEER_TLS_KEY` go together, and need `ZEE3_PEER_TLS_CA`. Zee3 refuses to
   start otherwise.
-- `Z3_PEER_TLS_CA` alone verifies `https://` peers against your CA, but this node presents no
+- `ZEE3_PEER_TLS_CA` alone verifies `https://` peers against your CA, but this node presents no
   certificate and its own peer port stays plain HTTP.
 - In `mtls` and `tls` mode, a plain HTTP request to the peer port is answered with
   `426 Upgrade Required` and the connection is closed.
-- The peer port is still off without `Z3_PEER_TOKEN`.
+- The peer port is still off without `ZEE3_PEER_TOKEN`.
 
 ## Create the certificates
 
 Any CA works. This example creates one with `openssl`, then a certificate for one node called
-`z3-a`, reachable as `z3-a.internal` and `10.0.0.1`:
+`zee3-a`, reachable as `zee3-a.internal` and `10.0.0.1`:
 
 ```bash
 # The CA, once
 openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 3650 -keyout ca.key -out ca.pem \
-  -subj "/CN=z3 peer CA" -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign
+  -subj "/CN=zee3 peer CA" -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign
 
 # One certificate per node, with its host name and IP address
-printf 'subjectAltName=DNS:z3-a.internal,IP:10.0.0.1\nextendedKeyUsage=serverAuth,clientAuth\n' > a.ext
-openssl req -newkey rsa:2048 -nodes -keyout a.key -out a.csr -subj "/CN=z3-a"
+printf 'subjectAltName=DNS:zee3-a.internal,IP:10.0.0.1\nextendedKeyUsage=serverAuth,clientAuth\n' > a.ext
+openssl req -newkey rsa:2048 -nodes -keyout a.key -out a.csr -subj "/CN=zee3-a"
 openssl x509 -req -in a.csr -CA ca.pem -CAkey ca.key -CAcreateserial -sha256 -days 825 -out a.pem -extfile a.ext
 ```
 
@@ -75,18 +75,18 @@ Repeat the last three commands for every node with its own names. Copy `ca.pem`,
 certificate and key, to each node, and keep `ca.key` somewhere safe. Then:
 
 ```bash
-Z3_PEER_TOKEN=token-of-a \
-Z3_PEER_TLS_CERT=/etc/z3/peer/a.pem \
-Z3_PEER_TLS_KEY=/etc/z3/peer/a.key \
-Z3_PEER_TLS_CA=/etc/z3/peer/ca.pem \
-z3
+ZEE3_PEER_TOKEN=token-of-a \
+ZEE3_PEER_TLS_CERT=/etc/zee3/peer/a.pem \
+ZEE3_PEER_TLS_KEY=/etc/zee3/peer/a.key \
+ZEE3_PEER_TLS_CA=/etc/zee3/peer/ca.pem \
+zee3
 ```
 
-and use `https://z3-a.internal:9002` as this node's endpoint on the other nodes.
+and use `https://zee3-a.internal:9002` as this node's endpoint on the other nodes.
 
 <Warning>
   Certificates signed with SHA-1 are refused. LibreSSL, the `openssl` on macOS, signs with SHA-1
-  unless you pass `-sha256`, and sometimes writes P-256 keys that z3 can't use
+  unless you pass `-sha256`, and sometimes writes P-256 keys that Zee3 can't use
   (`unusable private key`). Create the key again, or use RSA as above.
 </Warning>
 
@@ -103,7 +103,7 @@ have.
 
 <Steps>
   <Step title="Certificates and mixed mode">
-    Set `Z3_PEER_TLS_CERT`, `Z3_PEER_TLS_KEY`, `Z3_PEER_TLS_CA` and `Z3_PEER_TLS_MODE=mixed` on every
+    Set `ZEE3_PEER_TLS_CERT`, `ZEE3_PEER_TLS_KEY`, `ZEE3_PEER_TLS_CA` and `ZEE3_PEER_TLS_MODE=mixed` on every
     node, and restart them one at a time. The peer port now accepts TLS and plain HTTP. Endpoints are
     still `http://`, so nothing else changes yet.
   </Step>
@@ -114,7 +114,7 @@ have.
     and pull over mutual TLS. The **Peer TLS** health check warns about peers still on `http://`.
   </Step>
   <Step title="TLS only">
-    Remove `Z3_PEER_TLS_MODE` (the default is `mtls`) and restart the nodes one at a time. From now
+    Remove `ZEE3_PEER_TLS_MODE` (the default is `mtls`) and restart the nodes one at a time. From now
     on, plain HTTP and clients without a valid certificate are refused.
   </Step>
 </Steps>
@@ -124,22 +124,22 @@ To go back, take the same steps in reverse order. For a cluster, see
 
 ## Renew certificates
 
-z3 reads the certificate, key and CA again without a restart:
+Zee3 reads the certificate, key and CA again without a restart:
 
 - when the files change (checked every 30 seconds), or
-- when the process receives `SIGHUP` (`systemctl kill -s HUP z3`, or `docker kill -s HUP z3`).
+- when the process receives `SIGHUP` (`systemctl kill -s HUP zee3`, or `docker kill -s HUP zee3`).
 
 New connections use the new certificate; connections that are already open keep the old one. If a
 new file is invalid, the previous certificates stay in use and the **Peer TLS** health check shows
-the error. Changing `Z3_PEER_TLS_MODE` needs a restart.
+the error. Changing `ZEE3_PEER_TLS_MODE` needs a restart.
 
-To move to a new CA, put both CA certificates in the `Z3_PEER_TLS_CA` file on every node first,
+To move to a new CA, put both CA certificates in the `ZEE3_PEER_TLS_CA` file on every node first,
 then issue the new node certificates, then remove the old CA.
 
 ## Check it
 
 The **Peer TLS** health check (`peer_tls`, on the console's **Support** page or with
-`z3 admin support health`) shows the mode, this node's certificate (subject, names, validity), the
+`zee3 admin support health`) shows the mode, this node's certificate (subject, names, validity), the
 CA, reloads, and the handshakes and plain requests refused since the start.
 
 | Level | When |
@@ -153,9 +153,9 @@ health checks describe TLS problems in plain words:
 | Message | Fix |
 | --- | --- |
 | The peer's certificate has expired | Renew the peer's certificate |
-| Unknown CA, or not signed by `Z3_PEER_TLS_CA` | Sign every node with the same CA, or put both CAs in `Z3_PEER_TLS_CA` |
+| Unknown CA, or not signed by `ZEE3_PEER_TLS_CA` | Sign every node with the same CA, or put both CAs in `ZEE3_PEER_TLS_CA` |
 | Does not match the endpoint's host name | Add the host name or IP address of the endpoint to the peer's certificate, or change the endpoint |
-| The peer requires a client certificate | Set `Z3_PEER_TLS_CERT` and `Z3_PEER_TLS_KEY` on this node |
+| The peer requires a client certificate | Set `ZEE3_PEER_TLS_CERT` and `ZEE3_PEER_TLS_KEY` on this node |
 | The peer refused this node's certificate | This node's certificate has expired or isn't signed by the peer's CA |
 | The peer does not speak TLS on this port | The peer has no certificate set; use an `http://` endpoint for it until it does |
 | Signed with an algorithm that is not accepted (SHA-1) | Issue the certificate again with SHA-256 |

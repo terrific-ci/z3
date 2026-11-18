@@ -1,9 +1,9 @@
 ---
 title: "Cluster"
-description: "Run several nodes as one z3: metadata replicated through Raft, each chunk on a few members, and any member answering S3 requests."
+description: "Run several nodes as one Zee3: metadata replicated through Raft, each chunk on a few members, and any member answering S3 requests."
 ---
 
-In cluster mode several nodes act as one z3. Metadata is replicated to every member through Raft,
+In cluster mode several nodes act as one Zee3. Metadata is replicated to every member through Raft,
 each chunk is kept on a few members, and any member answers S3 requests, so clients can reach all
 of them through a load balancer. Members join and leave without downtime, chunk copies move on
 their own, and members can be upgraded one at a time.
@@ -21,30 +21,30 @@ Cluster mode rides on the peer API (the same port and token as replication). Sta
 the same token:
 
 ```bash
-Z3_PEER_TOKEN=cluster-secret \
-Z3_CLUSTER_ADDR=http://10.0.0.11:9002 \
-Z3_NODE_NAME=z3-1 \
-z3
+ZEE3_PEER_TOKEN=cluster-secret \
+ZEE3_CLUSTER_ADDR=http://10.0.0.11:9002 \
+ZEE3_NODE_NAME=zee3-1 \
+zee3
 ```
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `Z3_PEER_TOKEN` | (required) | Peer API token, the same on every member |
-| `Z3_CLUSTER_ADDR` | `http://127.0.0.1:<peer port>` (`https://` with [mutual TLS](#mutual-tls)) | This node's peer API as the other members reach it |
-| `Z3_NODE_NAME` | host name | The node's name in the console and the CLI |
-| `Z3_CLUSTER_COPIES` | `3` | Copies of each chunk, capped at the number of members |
-| `Z3_CLUSTER_READS` | `consistent` | `consistent`: followers catch up with the leader before reads; `local`: read at once |
-| `Z3_CLUSTER_SWEEP_INTERVAL` | `600` | Seconds between placement sweeps |
+| `ZEE3_PEER_TOKEN` | (required) | Peer API token, the same on every member |
+| `ZEE3_CLUSTER_ADDR` | `http://127.0.0.1:<peer port>` (`https://` with [mutual TLS](#mutual-tls)) | This node's peer API as the other members reach it |
+| `ZEE3_NODE_NAME` | host name | The node's name in the console and the CLI |
+| `ZEE3_CLUSTER_COPIES` | `3` | Copies of each chunk, capped at the number of members |
+| `ZEE3_CLUSTER_READS` | `consistent` | `consistent`: followers catch up with the leader before reads; `local`: read at once |
+| `ZEE3_CLUSTER_SWEEP_INTERVAL` | `600` | Seconds between placement sweeps |
 
 ## Form the cluster
 
 Start a cluster on one node, then add the others by their peer address:
 
 ```bash
-z3 admin cluster init                       # on the first node
-z3 admin cluster add http://10.0.0.12:9002
-z3 admin cluster add http://10.0.0.13:9002
-z3 admin cluster status
+zee3 admin cluster init                       # on the first node
+zee3 admin cluster add http://10.0.0.12:9002
+zee3 admin cluster add http://10.0.0.13:9002
+zee3 admin cluster status
 ```
 
 The **Cluster** page in the console does the same.
@@ -54,7 +54,7 @@ The **Cluster** page in the console does the same.
 </Frame>
 
 - A node that joins must be **empty** (no buckets). It receives the cluster's metadata from a
-  snapshot, including the cluster's node id, so the whole cluster shows up as one z3 node.
+  snapshot, including the cluster's node id, so the whole cluster shows up as one Zee3 node.
 - A node with replication peers or site replication can't start a cluster.
 - Run **three or five** members. Three members keep taking writes with one member down, five with
   two. With two members, losing one stops writes.
@@ -66,10 +66,10 @@ The **Cluster** page in the console does the same.
   produces the same version ids, timestamps and change log.
 - Followers forward writes to the leader, and answer once they have applied the write themselves:
   a write through a node can be read on that node right away.
-- With `Z3_CLUSTER_READS=consistent`, a follower asks the leader for its commit point before a GET,
+- With `ZEE3_CLUSTER_READS=consistent`, a follower asks the leader for its commit point before a GET,
   HEAD or List and waits until it has applied that point. Concurrent reads share one round trip. A
   write acknowledged on any member is visible on every member.
-- The Raft log is in `raft.redb` under `Z3_DATA_DIR`, with a snapshot every 5,000 entries. A member
+- The Raft log is in `raft.redb` under `ZEE3_DATA_DIR`, with a snapshot every 5,000 entries. A member
   that falls far behind receives the snapshot.
 - Background work that changes metadata runs on the leader only: garbage collection, lifecycle
   (including tier transitions) and the tier delete queue.
@@ -77,7 +77,7 @@ The **Cluster** page in the console does the same.
 ## Data
 
 - Each chunk's owners are picked by **rendezvous hashing** over the voting members. A chunk is
-  written to `Z3_CLUSTER_COPIES` owners in parallel, and the write succeeds once most of them have it.
+  written to `ZEE3_CLUSTER_COPIES` owners in parallel, and the write succeeds once most of them have it.
 - When an owner is down, its copy goes to the next member in line, and the placement sweep hands it
   to the owner once it is back.
 - A read fetches a chunk this node lacks from its owners, then from any member, and verifies it
@@ -87,83 +87,83 @@ The **Cluster** page in the console does the same.
 
 ### Placement sweep
 
-Every member runs a sweep after each membership change and every `Z3_CLUSTER_SWEEP_INTERVAL`
+Every member runs a sweep after each membership change and every `ZEE3_CLUSTER_SWEEP_INTERVAL`
 seconds:
 
 1. It fetches chunks it owns but lacks.
 2. It drops copies it no longer owns, but only once every owner holds one, handing the copy over
    first when an owner lacks it.
 
-The console shows the last sweep's counts. `z3 admin cluster sweep`, or **Repair copies** in the
+The console shows the last sweep's counts. `zee3 admin cluster sweep`, or **Repair copies** in the
 console, runs a sweep on every member now.
 
 The [orphan sweep](/durability/healing#orphaned-chunks), which deletes chunk files a crash left
 unreferenced, is separate: every member runs it on its own disks only. Copies a member holds for an
 owner that is down are still referenced, so they are kept. Because other members may place chunks
 before the commit that references them arrives, its minimum age in a cluster is the larger of
-`Z3_GC_GRACE` and `Z3_UPLOAD_TTL`.
+`ZEE3_GC_GRACE` and `ZEE3_UPLOAD_TTL`.
 
 ## Remove a member
 
 ```bash
-z3 admin cluster remove <member id>
+zee3 admin cluster remove <member id>
 ```
 
 The member stops owning chunks at once and stays as a learner (**Leaving**), still serving chunk
 reads. The leader runs a sweep on every voter, and once every copy is on its new owners, the member
-leaves the cluster. Wipe its `Z3_DATA_DIR` before using it again.
+leaves the cluster. Wipe its `ZEE3_DATA_DIR` before using it again.
 
 ## Mutual TLS
 
 Raft, forwarded writes and chunk copies all run on the peer API, so a cluster uses the same
-[mutual TLS](/deploy/peer-tls) as replication: set `Z3_PEER_TLS_CERT`, `Z3_PEER_TLS_KEY` and
-`Z3_PEER_TLS_CA` on every member.
+[mutual TLS](/deploy/peer-tls) as replication: set `ZEE3_PEER_TLS_CERT`, `ZEE3_PEER_TLS_KEY` and
+`ZEE3_PEER_TLS_CA` on every member.
 
 ```bash
-Z3_PEER_TOKEN=cluster-secret \
-Z3_PEER_TLS_CERT=/etc/z3/peer/z3-1.pem \
-Z3_PEER_TLS_KEY=/etc/z3/peer/z3-1.key \
-Z3_PEER_TLS_CA=/etc/z3/peer/ca.pem \
-Z3_CLUSTER_ADDR=https://10.0.0.11:9002 \
-Z3_NODE_NAME=z3-1 \
-z3
+ZEE3_PEER_TOKEN=cluster-secret \
+ZEE3_PEER_TLS_CERT=/etc/zee3/peer/zee3-1.pem \
+ZEE3_PEER_TLS_KEY=/etc/zee3/peer/zee3-1.key \
+ZEE3_PEER_TLS_CA=/etc/zee3/peer/ca.pem \
+ZEE3_CLUSTER_ADDR=https://10.0.0.11:9002 \
+ZEE3_NODE_NAME=zee3-1 \
+zee3
 ```
 
-- Each member's certificate must include the host name or IP address in its `Z3_CLUSTER_ADDR`.
-- In `mtls` and `tls` mode, `Z3_CLUSTER_ADDR` defaults to `https://127.0.0.1:<peer port>`, and an
+- Each member's certificate must include the host name or IP address in its `ZEE3_CLUSTER_ADDR`.
+- In `mtls` and `tls` mode, `ZEE3_CLUSTER_ADDR` defaults to `https://127.0.0.1:<peer port>`, and an
   `http://` address is refused at startup.
-- Add new members with `https://` addresses: `z3 admin cluster add https://10.0.0.14:9002`.
+- Add new members with `https://` addresses: `zee3 admin cluster add https://10.0.0.14:9002`.
 - Member addresses are stored in the Raft membership as they were added, so the console may still
   show `http://` for older members. The scheme used to reach them follows each node's own
-  `Z3_CLUSTER_ADDR`: a member with an `https://` address calls every member over TLS.
+  `ZEE3_CLUSTER_ADDR`: a member with an `https://` address calls every member over TLS.
 
 To turn it on in a running cluster, restart members one at a time as in a
 [rolling upgrade](#rolling-upgrade), and wait until each one is caught up:
 
 <Steps>
   <Step title="Certificates and mixed mode">
-    Set the certificate variables and `Z3_PEER_TLS_MODE=mixed` on every member. Addresses stay
+    Set the certificate variables and `ZEE3_PEER_TLS_MODE=mixed` on every member. Addresses stay
     `http://`.
   </Step>
   <Step title="https:// addresses">
-    Set `Z3_CLUSTER_ADDR=https://...` on every member. Members you have changed call the others over
+    Set `ZEE3_CLUSTER_ADDR=https://...` on every member. Members you have changed call the others over
     TLS, the rest still in plain HTTP; `mixed` mode accepts both.
   </Step>
   <Step title="TLS only">
-    Remove `Z3_PEER_TLS_MODE` (the default is `mtls`).
+    Remove `ZEE3_PEER_TLS_MODE` (the default is `mtls`).
   </Step>
 </Steps>
 
 ## Rolling upgrade
 
-Restart members one at a time, and wait until `z3 admin cluster status` shows the member caught up
+Restart members one at a time, and wait until `zee3 admin cluster status` shows the member caught up
 before moving on. Reads and writes continue on the other members meanwhile. Each member's version is
 in the status. Don't use features of the new version until every member runs it.
 
 ## Limitations
 
 - Bucket replication, site replication and geo erasure coding aren't available on cluster members
-  yet. Replicate to another z3 from standalone nodes.
+  yet. Replicate to another Zee3 from standalone nodes.
 - Every member holds all the metadata, so its size is bounded by one node.
 - Writes are slower than on a single node, since each change waits for Raft and for chunk copies on
   several members.

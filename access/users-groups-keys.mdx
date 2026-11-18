@@ -3,23 +3,23 @@ title: "Users, groups and access keys"
 description: "Give every person and application its own identity: the root account, IAM users, groups and access keys with their own policy and expiry."
 ---
 
-z3 has its own identities, so every person and application gets only the rights it needs. The same
+Zee3 has its own identities, so every person and application gets only the rights it needs. The same
 identities sign S3 requests and sign in to the console. What each one may do comes from
 [policies](/access/policies).
 
 | Identity | Signs in with | Rights |
 | --- | --- | --- |
-| **Root** | `Z3_ACCESS_KEY` / `Z3_SECRET_KEY` | Everything. Can't be limited or deleted. |
+| **Root** | `ZEE3_ACCESS_KEY` / `ZEE3_SECRET_KEY` | Everything. Can't be limited or deleted. |
 | **User** | Its name as the access key, plus its secret key | Its own policies plus those of its enabled groups |
 | **Access key** | An access key (20 characters) and secret key (40 characters) | The same as its parent user, or less when it has its own policy |
 | **Temporary credentials** | A `ZSTS…` access key, secret key and session token from [STS](/access/sts) | The identity behind them (a user, an access key, or an OIDC or LDAP user), narrowed by session policies if any. S3 API only |
 
 People can also sign in through [OpenID Connect or LDAP](/access/openid-connect-ldap) without a
-z3 user; their policies come from the identity provider.
+Zee3 user; their policies come from the identity provider.
 
 <Warning>
-  The default root credentials (`z3admin` / `z3admin-secret`) are for trying z3 out. Set your own
-  `Z3_ACCESS_KEY` and `Z3_SECRET_KEY` before z3 is reachable on a network, and use users and access
+  The default root credentials (`zee3admin` / `zee3admin-secret`) are for trying Zee3 out. Set your own
+  `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` before Zee3 is reachable on a network, and use users and access
   keys for everyday work. See [Configuration](/deploy/configuration).
 </Warning>
 
@@ -179,7 +179,7 @@ the admin rights.
   the root secret key.
 
   <Warning>
-    If you change `Z3_SECRET_KEY`, stored secrets can no longer be opened. Users and access keys
+    If you change `ZEE3_SECRET_KEY`, stored secrets can no longer be opened. Users and access keys
     then need new secrets.
   </Warning>
 

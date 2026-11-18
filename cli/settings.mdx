@@ -1,23 +1,23 @@
 ---
-title: "z3 admin settings"
+title: "zee3 admin settings"
 description: "Show, set and reset cluster settings from the terminal."
 ---
 
-`z3 admin settings` reads and changes the [cluster settings](/operations/settings). Changes take
+`zee3 admin settings` reads and changes the [cluster settings](/operations/settings). Changes take
 effect at once and, with site replication, reach every site.
 
 | Command | What it does | Right |
 | --- | --- | --- |
-| `z3 admin settings get [SUBSYSTEM]` | Show every key, or one subsystem's | `admin:ServerInfo` |
-| `z3 admin settings set SUBSYSTEM KEY=VALUE...` | Set one or more keys of a subsystem | `admin:ConfigUpdate` |
-| `z3 admin settings reset SUBSYSTEM` | Put the whole subsystem back to its defaults | `admin:ConfigUpdate` |
+| `zee3 admin settings get [SUBSYSTEM]` | Show every key, or one subsystem's | `admin:ServerInfo` |
+| `zee3 admin settings set SUBSYSTEM KEY=VALUE...` | Set one or more keys of a subsystem | `admin:ConfigUpdate` |
+| `zee3 admin settings reset SUBSYSTEM` | Put the whole subsystem back to its defaults | `admin:ConfigUpdate` |
 
 Subsystems: `region`, `api`, `compression`, `scanner`, `logger`, `webdav`, `ftp`, `sftp`, `nfs`.
 
 ## get
 
 ```bash
-z3 admin settings get api
+zee3 admin settings get api
 ```
 
 ```
@@ -37,14 +37,14 @@ subsystem, every key of every subsystem is printed.
 ## set
 
 ```bash
-z3 admin settings set api requests_max=500 cors_allow_origins=https://app.example.com
+zee3 admin settings set api requests_max=500 cors_allow_origins=https://app.example.com
 # api: saved
 ```
 
 Each argument is `key=value`, with the key **without** its subsystem. A value that reads as JSON is
 used as JSON (numbers, `true`, `false`, `null`, `["a","b"]`); anything else is text.
 
-- `null` puts one key back to its default: `z3 admin settings set api requests_max=null`.
+- `null` puts one key back to its default: `zee3 admin settings set api requests_max=null`.
 - Lists take JSON or commas: `cors_allow_origins=https://a.example,https://b.example`, or
   `'cors_allow_origins=["https://a.example","https://b.example"]'`.
 - Keys not named stay as they are.
@@ -52,14 +52,14 @@ used as JSON (numbers, `true`, `false`, `null`, `["a","b"]`); anything else is t
 The whole call is checked before anything is saved; a bad value changes nothing:
 
 ```bash
-z3 admin settings set scanner gc_grace_secs=10
+zee3 admin settings set scanner gc_grace_secs=10
 # Error: scanner.gc_grace_secs is between 60 and 2592000
 ```
 
 ## reset
 
 ```bash
-z3 admin settings reset api
+zee3 admin settings reset api
 # api: back to defaults
 ```
 
@@ -67,26 +67,26 @@ z3 admin settings reset api
 
 ```bash
 # Name the region and refuse requests signed for another one
-z3 admin settings set region name=id-jkt-1
+zee3 admin settings set region name=id-jkt-1
 
 # At most 500 S3 requests at once per node; others wait up to 30 seconds
-z3 admin settings set api requests_max=500 requests_deadline_secs=30
+zee3 admin settings set api requests_max=500 requests_deadline_secs=30
 
 # Trust the load balancers' X-Forwarded-For for aws:SourceIp
-z3 admin settings set api trusted_proxies=10.0.0.10,10.0.0.11
+zee3 admin settings set api trusted_proxies=10.0.0.10,10.0.0.11
 
 # Compress new logs and CSV files
-z3 admin settings set compression enabled=true extensions=.log,.csv
+zee3 admin settings set compression enabled=true extensions=.log,.csv
 
 # Lifecycle every 15 minutes, a full heal every 30 days
-z3 admin settings set scanner lifecycle_interval_secs=900 heal_interval_secs=2592000
+zee3 admin settings set scanner lifecycle_interval_secs=900 heal_interval_secs=2592000
 
-# More detail from z3 itself in standard output
-z3 admin settings set logger level=info,z3_server=debug
+# More detail from zee3 itself in standard output
+zee3 admin settings set logger level=info,zee3_server=debug
 
 # FTPS with a certificate on every node
-z3 admin settings set ftp tls_cert=/etc/z3/ftp.pem tls_key=/etc/z3/ftp.key tls_required=true
+zee3 admin settings set ftp tls_cert=/etc/zee3/ftp.pem tls_key=/etc/zee3/ftp.key tls_required=true
 ```
 
-For the file protocols, [`z3 admin protocols`](/cli/protocols) turns them on and off and shows their
+For the file protocols, [`zee3 admin protocols`](/cli/protocols) turns them on and off and shows their
 state.

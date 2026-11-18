@@ -3,16 +3,16 @@ title: "Encryption"
 description: "Encrypt objects at rest with SSE-S3, SSE-KMS and SSE-C, set default encryption per bucket, manage KMS keys, and rotate keys without rewriting data."
 ---
 
-z3 can store object data encrypted on disk (**server-side encryption**), in the same three modes
+Zee3 can store object data encrypted on disk (**server-side encryption**), in the same three modes
 as Amazon S3:
 
 | Mode | The data key is sealed with | Ask for it with |
 | --- | --- | --- |
-| **SSE-S3** | The server's default key, `z3-default` | `x-amz-server-side-encryption: AES256` |
+| **SSE-S3** | The server's default key, `zee3-default` | `x-amz-server-side-encryption: AES256` |
 | **SSE-KMS** | A named KMS key | `x-amz-server-side-encryption: aws:kms` and `x-amz-server-side-encryption-aws-kms-key-id` |
 | **SSE-C** | A 256-bit key the client sends with every request | `x-amz-server-side-encryption-customer-algorithm`, `-customer-key` and `-customer-key-MD5` |
 
-Keys live in z3's **internal KMS** unless you connect an
+Keys live in Zee3's **internal KMS** unless you connect an
 [external KMS](/security/external-kms) (HashiCorp Vault or MinIO KES).
 
 <Frame>
@@ -25,13 +25,13 @@ Keys live in z3's **internal KMS** unless you connect an
   AES-256-GCM (a random nonce per chunk), then stored and replicated as ciphertext. The version's
   metadata holds only the **sealed** data key (sealed by the KMS key or the client's key), the
   mode and the key id.
-- Range reads still work: z3 reads and decrypts only the chunks it needs.
+- Range reads still work: Zee3 reads and decrypts only the chunks it needs.
 - Encrypted objects aren't deduplicated with other objects (every object's ciphertext differs),
   and they're never [compressed](/storage/compression).
 - The ETag is still the MD5 of the original content.
 - Internal KMS keys are sealed with the node's root secret. The default key is created the first
   time it's needed (not at startup), so two sites never create different default keys.
-- **SSE-C**: z3 never stores the client's key, only its MD5, to tell a wrong key (`AccessDenied`)
+- **SSE-C**: Zee3 never stores the client's key, only its MD5, to tell a wrong key (`AccessDenied`)
   from a missing one (`InvalidRequest`). GET, HEAD, UploadPart and CopyObject (as the source) must
   send the same key.
 
@@ -84,7 +84,7 @@ Managing KMS keys needs `admin:ConfigUpdate`.
 
 <Warning>
   Deleting a key makes every object encrypted with it **unreadable**, on every site. A key that is
-  still a bucket's default, and the `z3-default` key, can't be deleted. Rotate objects to another
+  still a bucket's default, and the `zee3-default` key, can't be deleted. Rotate objects to another
   key first (see [Key rotation](#key-rotation)).
 </Warning>
 
@@ -170,7 +170,7 @@ included:
 ```
 
 ```bash
-z3 admin batch start rotate.json --wait
+zee3 admin batch start rotate.json --wait
 ```
 
 An empty `key_id` moves objects to the default SSE-S3 key. Start with `"dry_run": true` to see what

@@ -20,7 +20,7 @@ everyone, including requests **without any credentials**.
 | Principal | Means |
 | --- | --- |
 | `"*"` or `{"AWS": "*"}` | Anyone, including anonymous requests |
-| `{"AWS": "arn:aws:iam::z3:user/analyst"}` | The user `analyst` (any account id in the ARN works) |
+| `{"AWS": "arn:aws:iam::zee3:user/analyst"}` | The user `analyst` (any account id in the ARN works) |
 | `{"AWS": "analyst"}` | The user `analyst`, by name |
 | `{"AWS": ["analyst", "reporter"]}` | Several users |
 
@@ -91,7 +91,7 @@ With **Public read**, any object can be fetched with a plain HTTP GET on the S3 
 path-style URLs:
 
 ```bash
-curl -O http://z3.example.com:9000/web-assets/logo.png
+curl -O http://zee3.example.com:9000/web-assets/logo.png
 ```
 
 Anonymous requests can't list buckets, list the bucket's objects or write, unless you allow those

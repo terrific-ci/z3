@@ -3,7 +3,7 @@ title: "Lifecycle"
 description: "Expire objects, clean up older versions and delete markers, abort unfinished uploads, and move old data to a tier, with per-bucket rules."
 ---
 
-**Lifecycle rules** let z3 tidy a bucket in the background. Each bucket has its own rules, set in
+**Lifecycle rules** let Zee3 tidy a bucket in the background. Each bucket has its own rules, set in
 the console or with `PutBucketLifecycleConfiguration` from any S3 client.
 
 | Action | What it does |
@@ -31,7 +31,7 @@ A rule can be disabled without deleting it. A bucket has at most 1000 rules, and
 Expiring the current version works like a `DeleteObject` without a version id, so it follows the
 bucket's [versioning](/storage/versioning) state:
 
-- **Versioned**: z3 adds a delete marker. The data stays as an older version until an
+- **Versioned**: Zee3 adds a delete marker. The data stays as an older version until an
   older-versions rule removes it.
 - **Not versioned**: the object is deleted for good.
 - **Suspended**: a delete marker with the version id `null`.
@@ -110,7 +110,7 @@ midnight UTC after T + 30 days.
   </Tab>
 </Tabs>
 
-z3 checks rules when they're saved and refuses ones that can't work, with a message that says why:
+Zee3 checks rules when they're saved and refuses ones that can't work, with a message that says why:
 
 - A rule must do something: an expiration, an older-versions action, a transition or an upload abort.
 - An expiration has exactly one of days, a date (`YYYY-MM-DD`) or "delete marker". Days must be positive.
@@ -121,7 +121,7 @@ z3 checks rules when they're saved and refuses ones that can't work, with a mess
 ## Transitions
 
 A transition moves the data of old versions to a [tier](/storage/tiers) (AWS S3, MinIO or another
-z3, Google Cloud Storage, Azure Blob) to free up local disks. Objects stay readable through z3.
+Zee3, Google Cloud Storage, Azure Blob) to free up local disks. Objects stay readable through Zee3.
 
 - **Move to a tier**: the current version moves N days after it was written.
 - **Older versions to a tier**: older versions move N days after being replaced.
@@ -149,7 +149,7 @@ See [Tiered storage](/storage/tiers) for what gets moved and how reads work afte
 
 Rules run every hour by default. Change the interval without a restart with the
 `scanner.lifecycle_interval_secs` [setting](/operations/settings) (default from
-`Z3_LIFECYCLE_INTERVAL`; `0` runs rules only on demand). To run one bucket's rules right away,
+`ZEE3_LIFECYCLE_INTERVAL`; `0` runs rules only on demand). To run one bucket's rules right away,
 click **Run now** in its **Lifecycle** panel, or call `POST /api/buckets/{b}/lifecycle/run`.
 
 The **Lifecycle** page lists every bucket with rules, a summary of the rules and the result of

@@ -70,8 +70,8 @@ collection and a tombstone keeps late replicas from bringing it back.
   <Tab title="CLI">
 
     ```bash
-    z3 admin trash delay medical-records 7d     # 7d, 48h or off
-    z3 admin trash delay medical-records        # show the delay, pending change and trash
+    zee3 admin trash delay medical-records 7d     # 7d, 48h or off
+    zee3 admin trash delay medical-records        # show the delay, pending change and trash
     ```
 
   </Tab>
@@ -114,10 +114,10 @@ makes them current again, in one job.
   <Tab title="CLI">
 
     ```bash
-    z3 admin trash list medical-records --prefix 2026/
-    z3 admin trash restore medical-records --version 2026/p-0042.pdf@01a1ebd2...
-    z3 admin trash restore medical-records --prefix 2026/
-    z3 admin trash restore medical-records --all
+    zee3 admin trash list medical-records --prefix 2026/
+    zee3 admin trash restore medical-records --version 2026/p-0042.pdf@01a1ebd2...
+    zee3 admin trash restore medical-records --prefix 2026/
+    zee3 admin trash restore medical-records --all
     ```
 
   </Tab>
@@ -146,7 +146,7 @@ makes them current again, in one job.
 
 ## Monitoring
 
-- Prometheus: `z3_trash_versions{bucket}` and `z3_trash_bytes{bucket}`.
+- Prometheus: `zee3_trash_versions{bucket}` and `zee3_trash_bytes{bucket}`.
 - The **Deletion protection** health check (in **Support**) warns when more than 1,000 versions
   entered one bucket's trash within the last hour, which usually means a mass deletion.
 
@@ -163,4 +163,4 @@ makes them current again, in one job.
 ## Upgrading
 
 This release moves the metadata format from 6 to 7. Existing data is read as is, so nothing is
-rewritten when you upgrade. Run the same z3 version on every node of a replication group.
+rewritten when you upgrade. Run the same Zee3 version on every node of a replication group.

@@ -1,19 +1,19 @@
 ---
-title: "z3 admin batch"
+title: "zee3 admin batch"
 description: "Start, follow, cancel and remove batch jobs that replicate, expire or re-key many objects, or roll a bucket back to a point in time."
 ---
 
-`z3 admin batch` runs [batch jobs](/storage/batch): one-off work over many objects, in the
+`zee3 admin batch` runs [batch jobs](/storage/batch): one-off work over many objects, in the
 background on the node you talk to.
 
 | Command | What it does | Right |
 | --- | --- | --- |
-| `z3 admin batch list` | Jobs on the node, newest first | `admin:ServerInfo` |
-| `z3 admin batch start FILE [--wait]` | Start a job from a JSON definition (a file, or `-` for standard input) | `admin:ConfigUpdate` |
-| `z3 admin batch status ID` | One job's progress, last errors and dry-run samples | `admin:ServerInfo` |
-| `z3 admin batch cancel ID` | Stop a running job | `admin:ConfigUpdate` |
-| `z3 admin batch remove ID` | Forget a finished job | `admin:ConfigUpdate` |
-| `z3 admin batch rollback BUCKET --at TIME [--prefix P] [--key K] [--dry-run] [--wait]` | Roll a bucket, prefix or key back to a point in time, or preview it | `admin:ConfigUpdate` |
+| `zee3 admin batch list` | Jobs on the node, newest first | `admin:ServerInfo` |
+| `zee3 admin batch start FILE [--wait]` | Start a job from a JSON definition (a file, or `-` for standard input) | `admin:ConfigUpdate` |
+| `zee3 admin batch status ID` | One job's progress, last errors and dry-run samples | `admin:ServerInfo` |
+| `zee3 admin batch cancel ID` | Stop a running job | `admin:ConfigUpdate` |
+| `zee3 admin batch remove ID` | Forget a finished job | `admin:ConfigUpdate` |
+| `zee3 admin batch rollback BUCKET --at TIME [--prefix P] [--key K] [--dry-run] [--wait]` | Roll a bucket, prefix or key back to a point in time, or preview it | `admin:ConfigUpdate` |
 
 ## Job definitions
 
@@ -60,7 +60,7 @@ even when the target already has the same object.
 { "type": "rotate", "source": { "bucket": "medical-records" }, "key_id": "records-key-2027" }
 ```
 
-Without `key_id`, objects move to the default SSE-S3 key (`z3-default`). `"dry_run": true` only
+Without `key_id`, objects move to the default SSE-S3 key (`zee3-default`). `"dry_run": true` only
 counts.
 
   </Tab>
@@ -78,13 +78,13 @@ Every type takes an optional `filter`; all the conditions given must hold:
 | `filter.key_pattern` | Keys (after `source.prefix`) matching a glob: `*` any run of characters, `/` too; `?` one character |
 | `filter.modified_after`, `filter.modified_before` | Written at or after, or before, this RFC 3339 time |
 
-Before starting, z3 checks the definition: the bucket exists, a remote target answers, the KMS key
+Before starting, Zee3 checks the definition: the bucket exists, a remote target answers, the KMS key
 exists. A bad definition is refused and nothing runs.
 
 ## start
 
 ```bash
-z3 admin batch start expire-tmp.json --wait
+zee3 admin batch start expire-tmp.json --wait
 ```
 
 ```
@@ -101,7 +101,7 @@ A definition can come from standard input:
 
 ```bash
 echo '{"type":"rotate","source":{"bucket":"medical-records"},"key_id":"records-key-2027"}' \
-  | z3 admin batch start - --wait
+  | zee3 admin batch start - --wait
 ```
 
 The progress line shows the job id, type and state (`running`, `done`, `failed`, `cancelled`), then:
@@ -117,7 +117,7 @@ The progress line shows the job id, type and state (`running`, `done`, `failed`,
 ## list
 
 ```bash
-z3 admin batch list
+zee3 admin batch list
 ```
 
 ```
@@ -129,7 +129,7 @@ expire-146d75b7b7a2775c      expire    done      matched 2  done 2  skipped 0  f
 ## status
 
 ```bash
-z3 admin batch status expire-146d75b7b7a2775c
+zee3 admin batch status expire-146d75b7b7a2775c
 ```
 
 ```
@@ -144,7 +144,7 @@ errors (`error: ...`), and for a dry run up to 100 keys it would touch (`would t
 ## cancel
 
 ```bash
-z3 admin batch cancel rotate-9f2c41d07ab3e815
+zee3 admin batch cancel rotate-9f2c41d07ab3e815
 # rotate-9f2c41d07ab3e815: cancelling
 ```
 
@@ -153,7 +153,7 @@ Only a running job can be cancelled; otherwise the answer is `Error: the job is 
 ## remove
 
 ```bash
-z3 admin batch remove expire-146d75b7b7a2775c
+zee3 admin batch remove expire-146d75b7b7a2775c
 # expire-146d75b7b7a2775c: removed
 ```
 
@@ -165,7 +165,7 @@ Rolls a versioned bucket, a prefix or one key back to how it looked at `--at`, a
 See [Point-in-time rollback](/storage/point-in-time).
 
 ```bash
-z3 admin batch rollback records --at 2026-11-18T09:30:00Z --prefix patients/ --dry-run
+zee3 admin batch rollback records --at 2026-11-18T09:30:00Z --prefix patients/ --dry-run
 ```
 
 ```
@@ -204,5 +204,5 @@ Jobs run once. For a recurring job, start it from cron:
 
 ```bash
 # Every night at 02:00, expire scratch files older than a week
-0 2 * * * z3 admin batch start /etc/z3/expire-scratch.json
+0 2 * * * zee3 admin batch start /etc/zee3/expire-scratch.json
 ```

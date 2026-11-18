@@ -1,30 +1,30 @@
 ---
-title: "z3 admin cluster"
+title: "zee3 admin cluster"
 description: "See cluster members, start a cluster, add and remove nodes, and repair chunk copies."
 ---
 
-`z3 admin cluster` manages [cluster mode](/deploy/cluster).
+`zee3 admin cluster` manages [cluster mode](/deploy/cluster).
 
 | Command | What it does | Right |
 | --- | --- | --- |
-| `z3 admin cluster` | Same as `status` | `admin:ServerInfo` |
-| `z3 admin cluster status` | Leader, members, their roles and how far each has caught up | `admin:ServerInfo` |
-| `z3 admin cluster init` | Start a cluster with this node as its only member | `admin:ConfigUpdate` |
-| `z3 admin cluster add ADDR` | Add an empty node by its peer API address | `admin:ConfigUpdate` |
-| `z3 admin cluster remove ID` | Remove a member; it hands its chunk copies over, then leaves | `admin:ConfigUpdate` |
-| `z3 admin cluster sweep` | Repair and rebalance chunk copies on every member now | `admin:ConfigUpdate` |
+| `zee3 admin cluster` | Same as `status` | `admin:ServerInfo` |
+| `zee3 admin cluster status` | Leader, members, their roles and how far each has caught up | `admin:ServerInfo` |
+| `zee3 admin cluster init` | Start a cluster with this node as its only member | `admin:ConfigUpdate` |
+| `zee3 admin cluster add ADDR` | Add an empty node by its peer API address | `admin:ConfigUpdate` |
+| `zee3 admin cluster remove ID` | Remove a member; it hands its chunk copies over, then leaves | `admin:ConfigUpdate` |
+| `zee3 admin cluster sweep` | Repair and rebalance chunk copies on every member now | `admin:ConfigUpdate` |
 
 ## status
 
 ```bash
-z3 admin cluster
+zee3 admin cluster
 ```
 
 ```
 term 3  leader 2200471768134479368  copies 2
-2200471768134479368  z3-1       leader    http://10.0.0.11:9002      v0.1.0    log 1840
-5168186497781187492  z3-2       follower  http://10.0.0.12:9002      v0.1.0    log 1840  (this node)
-7709925377133580712  z3-3       follower  http://10.0.0.13:9002      v0.1.0    log 1838
+2200471768134479368  zee3-1       leader    http://10.0.0.11:9002      v0.1.0    log 1840
+5168186497781187492  zee3-2       follower  http://10.0.0.12:9002      v0.1.0    log 1840  (this node)
+7709925377133580712  zee3-3       follower  http://10.0.0.13:9002      v0.1.0    log 1838
 ```
 
 Each line shows the member id, name, role (`leader`, `follower`, or `leaving` while a removed member
@@ -34,17 +34,17 @@ cluster prints `not in a cluster` with its member id.
 ## add
 
 ```bash
-z3 admin cluster add http://10.0.0.14:9002
+zee3 admin cluster add http://10.0.0.14:9002
 ```
 
-The node must run with the same `Z3_PEER_TOKEN` and hold no buckets. It runs on the leader (a
+The node must run with the same `ZEE3_PEER_TOKEN` and hold no buckets. It runs on the leader (a
 follower forwards it) and returns once the node is a voting member. With
 [mutual TLS](/deploy/cluster#mutual-tls), give an `https://` address.
 
 ## remove
 
 ```bash
-z3 admin cluster remove 7709925377133580712
+zee3 admin cluster remove 7709925377133580712
 ```
 
 Returns at once. The member shows as `leaving` until its copies are on the other members, then
@@ -53,7 +53,7 @@ disappears from the status.
 ## sweep
 
 ```bash
-z3 admin cluster sweep
+zee3 admin cluster sweep
 ```
 
 ```

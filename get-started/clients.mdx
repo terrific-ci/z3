@@ -1,14 +1,14 @@
 ---
 title: "Clients"
-description: "Connect the AWS CLI, boto3, mc, rclone and s3cmd to z3: endpoint, path-style addressing, region and credentials."
+description: "Connect the AWS CLI, boto3, mc, rclone and s3cmd to Zee3: endpoint, path-style addressing, region and credentials."
 ---
 
-Any S3 client that speaks Signature V4 works with z3. Three settings matter:
+Any S3 client that speaks Signature V4 works with Zee3. Three settings matter:
 
 | Setting | Value |
 | --- | --- |
 | Endpoint | `http://<host>:9000`, or the `https://` address of your [TLS proxy](/deploy/tls-and-proxies) |
-| Addressing | **Path-style** (`http://host:9000/bucket/key`). z3 doesn't serve virtual-hosted buckets (`bucket.host`) |
+| Addressing | **Path-style** (`http://host:9000/bucket/key`). Zee3 doesn't serve virtual-hosted buckets (`bucket.host`) |
 | Region | Any region, for example `us-east-1`. If the cluster setting `region.name` is set, use exactly that region; requests signed for another one are refused with `AuthorizationHeaderMalformed` |
 
 For credentials, use an [access key](/access/users-groups-keys) rather than the root account.
@@ -16,7 +16,7 @@ The examples below use `AKEXAMPLE` / `SECRETEXAMPLE`.
 
 <Note>
   Signature V2 is off by default. Turn it on only for an old client that can't sign with V4: the
-  `api.sigv2` [setting](/operations/settings), or `Z3_ENABLE_SIGV2=true` at startup.
+  `api.sigv2` [setting](/operations/settings), or `ZEE3_ENABLE_SIGV2=true` at startup.
 </Note>
 
 ## AWS CLI
@@ -37,7 +37,7 @@ aws --endpoint-url http://localhost:9000 s3api list-object-versions --bucket pho
 Or keep it in a profile (AWS CLI v2.13 or newer reads `endpoint_url` from the config file):
 
 ```ini ~/.aws/config
-[profile z3]
+[profile zee3]
 region = us-east-1
 endpoint_url = http://localhost:9000
 s3 =
@@ -45,13 +45,13 @@ s3 =
 ```
 
 ```ini ~/.aws/credentials
-[z3]
+[zee3]
 aws_access_key_id = AKEXAMPLE
 aws_secret_access_key = SECRETEXAMPLE
 ```
 
 ```bash
-aws --profile z3 s3 ls
+aws --profile zee3 s3 ls
 ```
 
 ## boto3 (Python)
@@ -80,26 +80,26 @@ url = s3.generate_presigned_url(
 ```
 
 Keep `signature_version="s3v4"`: without it, some boto3 versions sign presigned URLs with
-Signature V2, which z3 refuses by default.
+Signature V2, which Zee3 refuses by default.
 
 ## MinIO Client (mc)
 
 ```bash
-mc alias set z3 http://localhost:9000 AKEXAMPLE SECRETEXAMPLE --api S3v4 --path on
+mc alias set zee3 http://localhost:9000 AKEXAMPLE SECRETEXAMPLE --api S3v4 --path on
 
-mc mb z3/photos
-mc cp ./photo.jpg z3/photos/
-mc ls z3/photos
-mc version enable z3/photos
+mc mb zee3/photos
+mc cp ./photo.jpg zee3/photos/
+mc ls zee3/photos
+mc version enable zee3/photos
 ```
 
-The bucket and object commands work. `mc admin` talks to MinIO's own admin API, which z3 doesn't
-serve; use the console, the [admin API](/api/overview) or [`z3 admin`](/cli/overview) instead.
+The bucket and object commands work. `mc admin` talks to MinIO's own admin API, which Zee3 doesn't
+serve; use the console, the [admin API](/api/overview) or [`zee3 admin`](/cli/overview) instead.
 
 ## rclone
 
 ```ini ~/.config/rclone/rclone.conf
-[z3]
+[zee3]
 type = s3
 provider = Other
 access_key_id = AKEXAMPLE
@@ -110,10 +110,10 @@ force_path_style = true
 ```
 
 ```bash
-rclone mkdir z3:photos
-rclone copy ./pictures z3:photos/2026
-rclone ls z3:photos
-rclone sync ./pictures z3:photos/2026 --progress
+rclone mkdir zee3:photos
+rclone copy ./pictures zee3:photos/2026
+rclone ls zee3:photos
+rclone sync ./pictures zee3:photos/2026 --progress
 ```
 
 ## s3cmd
@@ -142,7 +142,7 @@ With a TLS proxy in front, set `host_base` and `host_bucket` to its host name an
 
 ## Read your writes across sites
 
-With [replication](/replication/overview), every write answers with an `x-z3-session` header. Send
+With [replication](/replication/overview), every write answers with an `x-zee3-session` header. Send
 it back on a later read at another node and that node waits until it has applied the write before it
 answers. This matters behind GeoDNS or a load balancer that may send the next read to another site.
 See [Session tokens](/replication/bucket-replication#read-your-writes-with-session-tokens).

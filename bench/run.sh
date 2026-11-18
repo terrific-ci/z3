@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# S3 benchmark: z3, MinIO and RustFS, one at a time, each on CPUs 0-1 with 2 GiB,
+# S3 benchmark: zee3, MinIO and RustFS, one at a time, each on CPUs 0-1 with 2 GiB,
 # warp on CPUs 2-3, single drive each, same workloads.
 #   ./run.sh [round]      results go to results-<round>.txt
 set -euo pipefail
@@ -10,7 +10,7 @@ NET=s3bench
 AK=benchadmin
 SK=bench-secret-12345
 DATA=/var/tmp/s3bench-data
-Z3_IMAGE=${Z3_IMAGE:-terrificci/z3:0.1.0}
+ZEE3_IMAGE=${ZEE3_IMAGE:-terrificci/z3:0.1.0}
 docker network create $NET >/dev/null 2>&1 || true
 : > "$OUT"
 
@@ -20,7 +20,7 @@ start() { # name
   mkdir -p "$DATA" && chmod 777 "$DATA"
   local common=(-d --name s3 --network $NET --cpuset-cpus 0,1 --memory 2g -v "$DATA:/data")
   case "$1" in
-    z3) docker run "${common[@]}" -e Z3_ACCESS_KEY=$AK -e Z3_SECRET_KEY=$SK -e RUST_LOG=warn "$Z3_IMAGE" >/dev/null ;;
+    zee3) docker run "${common[@]}" -e ZEE3_ACCESS_KEY=$AK -e ZEE3_SECRET_KEY=$SK -e RUST_LOG=warn "$ZEE3_IMAGE" >/dev/null ;;
     minio) docker run "${common[@]}" -e MINIO_ROOT_USER=$AK -e MINIO_ROOT_PASSWORD=$SK pgsty/minio:latest server /data >/dev/null ;;
     rustfs) docker run "${common[@]}" -e RUSTFS_ACCESS_KEY=$AK -e RUSTFS_SECRET_KEY=$SK -e RUSTFS_VOLUMES=/data -e RUSTFS_ADDRESS=0.0.0.0:9000 rustfs/rustfs:latest >/dev/null ;;
   esac
@@ -43,7 +43,7 @@ warp() { # label args...
   printf '%-7s %-22s %s mem=%s\n' "$SERVER" "$label" "$line" "$mem" | tee -a "$OUT"
 }
 
-for SERVER in z3 minio rustfs; do
+for SERVER in zee3 minio rustfs; do
   start $SERVER
   warp put-1MiB put --obj.size 1MiB --concurrent 16 --duration 40s --bucket b-put
   warp get-1MiB get --obj.size 1MiB --objects 500 --concurrent 16 --duration 40s --bucket b-get

@@ -3,12 +3,12 @@ title: "Prometheus endpoint"
 description: "GET /metrics on the admin port: format, access, label sets and a sample of the output."
 ---
 
-`GET /metrics` on the admin port answers every z3 metric in the Prometheus text format. For what
+`GET /metrics` on the admin port answers every Zee3 metric in the Prometheus text format. For what
 each metric means and example queries, see [Prometheus metrics](/operations/prometheus).
 
 | | |
 | --- | --- |
-| Address | The admin port: `http://127.0.0.1:9001/metrics` by default (`Z3_ADMIN_ADDR`) |
+| Address | The admin port: `http://127.0.0.1:9001/metrics` by default (`ZEE3_ADMIN_ADDR`) |
 | Method | `GET` |
 | Sign-in | None. `/metrics` is open so Prometheus can scrape it |
 | Content type | `text/plain; version=0.0.4` |
@@ -20,21 +20,21 @@ Each node reports only itself. Scrape every node of a group.
 
 | Metrics | Labels | One series per |
 | --- | --- | --- |
-| `z3_buckets`, `z3_objects`, `z3_logical_bytes`, `z3_physical_bytes`, `z3_chunks`, `z3_multipart_uploads` | none | node |
-| `z3_heal_shards_repaired_total`, `z3_heal_chunks_lost_total` | none | node |
-| `z3_orphan_chunks_deleted_total`, `z3_orphan_bytes_freed_total` | none | node ([orphan sweep](/durability/healing#orphaned-chunks)) |
-| `z3_disk_online` | `disk` (index), `path` | disk |
-| `z3_s3_requests_total`, `z3_s3_client_errors_total`, `z3_s3_server_errors_total`, `z3_s3_received_bytes_total`, `z3_s3_sent_bytes_total` | none | node |
-| `z3_bucket_objects`, `z3_bucket_size_bytes`, `z3_bucket_requests_total`, `z3_bucket_errors_total`, `z3_bucket_received_bytes_total`, `z3_bucket_sent_bytes_total` | `bucket` | bucket |
-| `z3_replication_up`, `z3_replication_paused`, `z3_replication_lag_entries`, `z3_replication_lag_seconds`, `z3_replication_last_delay_seconds`, `z3_replication_applied_total`, `z3_replication_conflicts_total`, `z3_replication_errors_total`, `z3_replication_bytes_wire_total`, `z3_replication_bytes_raw_total`, `z3_replication_bytes_deduplicated_total`, `z3_replication_throttled_seconds_total`, `z3_replication_geo_chunks_total` | `peer`, `bucket` | replication link |
-| `z3_changelog_retention_days`, `z3_changelog_pruned_entries_total`, `z3_changelog_pruned_tombstones_total`, `z3_changelog_pruned_markers_total` | none | node ([pruning](/replication/overview#change-log-pruning)) |
-| `z3_changelog_floor_seq`, `z3_changelog_unacked_entries` | `bucket` | bucket |
-| `z3_lean_enabled`, `z3_lean_local_bytes`, `z3_lean_max_bytes`, `z3_lean_evicted_versions_total`, `z3_lean_evicted_bytes_total`, `z3_lean_evict_blocked`, `z3_lean_disk_floor` | none | node ([Lean Replica](/replication/lean-replica#monitoring)) |
-| `z3_lean_stub_versions`, `z3_lean_stub_bytes` | `bucket` | bucket |
-| `z3_lean_readthrough_requests_total` | `result` | outcome |
-| `z3_lean_readthrough_bytes_total` | `peer` | peer |
+| `zee3_buckets`, `zee3_objects`, `zee3_logical_bytes`, `zee3_physical_bytes`, `zee3_chunks`, `zee3_multipart_uploads` | none | node |
+| `zee3_heal_shards_repaired_total`, `zee3_heal_chunks_lost_total` | none | node |
+| `zee3_orphan_chunks_deleted_total`, `zee3_orphan_bytes_freed_total` | none | node ([orphan sweep](/durability/healing#orphaned-chunks)) |
+| `zee3_disk_online` | `disk` (index), `path` | disk |
+| `zee3_s3_requests_total`, `zee3_s3_client_errors_total`, `zee3_s3_server_errors_total`, `zee3_s3_received_bytes_total`, `zee3_s3_sent_bytes_total` | none | node |
+| `zee3_bucket_objects`, `zee3_bucket_size_bytes`, `zee3_bucket_requests_total`, `zee3_bucket_errors_total`, `zee3_bucket_received_bytes_total`, `zee3_bucket_sent_bytes_total` | `bucket` | bucket |
+| `zee3_replication_up`, `zee3_replication_paused`, `zee3_replication_lag_entries`, `zee3_replication_lag_seconds`, `zee3_replication_last_delay_seconds`, `zee3_replication_applied_total`, `zee3_replication_conflicts_total`, `zee3_replication_errors_total`, `zee3_replication_bytes_wire_total`, `zee3_replication_bytes_raw_total`, `zee3_replication_bytes_deduplicated_total`, `zee3_replication_throttled_seconds_total`, `zee3_replication_geo_chunks_total` | `peer`, `bucket` | replication link |
+| `zee3_changelog_retention_days`, `zee3_changelog_pruned_entries_total`, `zee3_changelog_pruned_tombstones_total`, `zee3_changelog_pruned_markers_total` | none | node ([pruning](/replication/overview#change-log-pruning)) |
+| `zee3_changelog_floor_seq`, `zee3_changelog_unacked_entries` | `bucket` | bucket |
+| `zee3_lean_enabled`, `zee3_lean_local_bytes`, `zee3_lean_max_bytes`, `zee3_lean_evicted_versions_total`, `zee3_lean_evicted_bytes_total`, `zee3_lean_evict_blocked`, `zee3_lean_disk_floor` | none | node ([Lean Replica](/replication/lean-replica#monitoring)) |
+| `zee3_lean_stub_versions`, `zee3_lean_stub_bytes` | `bucket` | bucket |
+| `zee3_lean_readthrough_requests_total` | `result` | outcome |
+| `zee3_lean_readthrough_bytes_total` | `peer` | peer |
 
-Names ending in `_total` are counters since the node started, except the `z3_replication_*_total`
+Names ending in `_total` are counters since the node started, except the `zee3_replication_*_total`
 counters, which carry over restarts until the link is removed. The rest are gauges.
 
 ## Sample
@@ -44,33 +44,33 @@ curl -s http://127.0.0.1:9001/metrics
 ```
 
 ```text
-# HELP z3_buckets Number of buckets.
-# TYPE z3_buckets gauge
-z3_buckets 12
-# HELP z3_objects Keys whose current version is a live object.
-# TYPE z3_objects gauge
-z3_objects 1204331
-# HELP z3_logical_bytes Bytes of all stored versions as seen by clients.
-# TYPE z3_logical_bytes gauge
-z3_logical_bytes 2309011234511
-# HELP z3_physical_bytes Bytes referenced in the chunk store after deduplication.
-# TYPE z3_physical_bytes gauge
-z3_physical_bytes 1840223344012
-# HELP z3_disk_online 1 when the disk is usable.
-# TYPE z3_disk_online gauge
-z3_disk_online{disk="0",path="/mnt/d1"} 1
-z3_disk_online{disk="1",path="/mnt/d2"} 1
-# HELP z3_s3_requests_total S3 requests since start.
-# TYPE z3_s3_requests_total counter
-z3_s3_requests_total 18422113
-# HELP z3_bucket_size_bytes Bytes of all stored versions in the bucket.
-# TYPE z3_bucket_size_bytes gauge
-z3_bucket_size_bytes{bucket="radiology"} 1759218604441
-z3_bucket_size_bytes{bucket="lab-results"} 432601211033
-# HELP z3_replication_lag_seconds Age of the oldest unapplied change.
-# TYPE z3_replication_lag_seconds gauge
-z3_replication_lag_seconds{peer="dc2",bucket="radiology"} 0
-z3_replication_lag_seconds{peer="dc2",bucket="lab-results"} 0.42
+# HELP zee3_buckets Number of buckets.
+# TYPE zee3_buckets gauge
+zee3_buckets 12
+# HELP zee3_objects Keys whose current version is a live object.
+# TYPE zee3_objects gauge
+zee3_objects 1204331
+# HELP zee3_logical_bytes Bytes of all stored versions as seen by clients.
+# TYPE zee3_logical_bytes gauge
+zee3_logical_bytes 2309011234511
+# HELP zee3_physical_bytes Bytes referenced in the chunk store after deduplication.
+# TYPE zee3_physical_bytes gauge
+zee3_physical_bytes 1840223344012
+# HELP zee3_disk_online 1 when the disk is usable.
+# TYPE zee3_disk_online gauge
+zee3_disk_online{disk="0",path="/mnt/d1"} 1
+zee3_disk_online{disk="1",path="/mnt/d2"} 1
+# HELP zee3_s3_requests_total S3 requests since start.
+# TYPE zee3_s3_requests_total counter
+zee3_s3_requests_total 18422113
+# HELP zee3_bucket_size_bytes Bytes of all stored versions in the bucket.
+# TYPE zee3_bucket_size_bytes gauge
+zee3_bucket_size_bytes{bucket="radiology"} 1759218604441
+zee3_bucket_size_bytes{bucket="lab-results"} 432601211033
+# HELP zee3_replication_lag_seconds Age of the oldest unapplied change.
+# TYPE zee3_replication_lag_seconds gauge
+zee3_replication_lag_seconds{peer="dc2",bucket="radiology"} 0
+zee3_replication_lag_seconds{peer="dc2",bucket="lab-results"} 0.42
 ```
 
 <Note>

@@ -1,14 +1,14 @@
 ---
 title: "Cluster settings"
-description: "Every setting z3 changes at runtime, by subsystem, with its default, range and effect."
+description: "Every setting Zee3 changes at runtime, by subsystem, with its default, range and effect."
 ---
 
-Cluster settings change how z3 behaves while it runs: region, S3 limits and CORS, compression,
+Cluster settings change how Zee3 behaves while it runs: region, S3 limits and CORS, compression,
 background scanners, logging and the file protocols. A change takes effect at once, without a
 restart, and with [site replication](/replication/site-replication) it reaches every site.
 
 A key that is not set uses its **default**: for some keys a startup option or environment variable
-(such as `Z3_HEAL_INTERVAL`), for the rest a built-in value.
+(such as `ZEE3_HEAL_INTERVAL`), for the rest a built-in value.
 
 <Frame>
   <img src="/images/settings.png" alt="The Settings page" />
@@ -28,12 +28,12 @@ The file protocol subsystems are set on the **Protocols** page.
   <Tab title="CLI">
 
 ```bash
-z3 admin settings get api
-z3 admin settings set api requests_max=500 cors_allow_origins=https://app.example.com
-z3 admin settings reset api
+zee3 admin settings get api
+zee3 admin settings set api requests_max=500 cors_allow_origins=https://app.example.com
+zee3 admin settings reset api
 ```
 
-See [`z3 admin settings`](/cli/settings).
+See [`zee3 admin settings`](/cli/settings).
 
   </Tab>
   <Tab title="API">
@@ -68,8 +68,8 @@ message.
 | `api.cors_allow_origins` | `*` | at most 100 | Web origins browsers may call the S3 API from. `*` allows any; an empty list allows none |
 | `api.max_object_size_mb` | `5120` | 1 to 5,242,880 | Largest single PUT or multipart part, in MiB (`EntityTooLarge`) |
 | `api.presigned_max_expiry_secs` | `604800` | 1 to 604,800 | Longest `X-Amz-Expires` a presigned URL may ask for |
-| `api.trusted_proxies` | empty | at most 100 | Reverse proxies (addresses or networks) whose `X-Forwarded-For` and `X-Forwarded-Proto` z3 believes, for `aws:SourceIp` and `aws:SecureTransport` in [policy conditions](/access/conditions) |
-| `api.sigv2` | `Z3_ENABLE_SIGV2` (`false`) | | Accept legacy Signature V2 requests (HMAC-SHA1, not bound to a region) |
+| `api.trusted_proxies` | empty | at most 100 | Reverse proxies (addresses or networks) whose `X-Forwarded-For` and `X-Forwarded-Proto` Zee3 believes, for `aws:SourceIp` and `aws:SecureTransport` in [policy conditions](/access/conditions) |
+| `api.sigv2` | `ZEE3_ENABLE_SIGV2` (`false`) | | Accept legacy Signature V2 requests (HMAC-SHA1, not bound to a region) |
 
 **CORS.** A preflight `OPTIONS` from an allowed origin is answered with the methods `GET`, `PUT`,
 `POST`, `DELETE`, `HEAD` and the headers it asked for. Normal answers carry
@@ -99,11 +99,11 @@ See [Compression](/storage/compression).
 
 | Key | Default | Range | Meaning |
 | --- | --- | --- | --- |
-| `scanner.lifecycle_interval_secs` | `Z3_LIFECYCLE_INTERVAL` (`3600`) | 0 to 30 days | How often [lifecycle](/storage/lifecycle) rules run. `0`: only on demand (**Run now**) |
-| `scanner.heal_interval_secs` | `Z3_HEAL_INTERVAL` (`604800`) | 0 to 365 days | How often every chunk is verified and repaired, then [orphaned chunk files](/durability/healing#orphaned-chunks) are swept. `0`: never (the sweep then runs only on demand); damaged chunks found by reads are still repaired |
-| `scanner.gc_interval_secs` | `Z3_GC_INTERVAL` (`600`) | 0 to 30 days | How often unreferenced chunks are deleted. `0`: never in the background |
-| `scanner.gc_grace_secs` | `Z3_GC_GRACE` (`3600`) | 60 s to 30 days | How long an unreferenced chunk stays before garbage collection may delete it |
-| `scanner.upload_ttl_secs` | `Z3_UPLOAD_TTL` (`604800`) | 1 hour to 365 days | Multipart uploads older than this are aborted by garbage collection |
+| `scanner.lifecycle_interval_secs` | `ZEE3_LIFECYCLE_INTERVAL` (`3600`) | 0 to 30 days | How often [lifecycle](/storage/lifecycle) rules run. `0`: only on demand (**Run now**) |
+| `scanner.heal_interval_secs` | `ZEE3_HEAL_INTERVAL` (`604800`) | 0 to 365 days | How often every chunk is verified and repaired, then [orphaned chunk files](/durability/healing#orphaned-chunks) are swept. `0`: never (the sweep then runs only on demand); damaged chunks found by reads are still repaired |
+| `scanner.gc_interval_secs` | `ZEE3_GC_INTERVAL` (`600`) | 0 to 30 days | How often unreferenced chunks are deleted. `0`: never in the background |
+| `scanner.gc_grace_secs` | `ZEE3_GC_GRACE` (`3600`) | 60 s to 30 days | How long an unreferenced chunk stays before garbage collection may delete it |
+| `scanner.upload_ttl_secs` | `ZEE3_UPLOAD_TTL` (`604800`) | 1 hour to 365 days | Multipart uploads older than this are aborted by garbage collection |
 
 All values are in seconds.
 
@@ -115,14 +115,14 @@ All values are in seconds.
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `logger.level` | `RUST_LOG` (`info`) | What the server writes to standard output: a level, or a filter like `warn,z3_server=debug` |
-| `logger.console_level` | `Z3_LOG_BUFFER` (`info`) | What the console's [Logs](/audit/trace-and-logs#logs) page keeps, in memory and in the history on disk |
+| `logger.level` | `RUST_LOG` (`info`) | What the server writes to standard output: a level, or a filter like `warn,zee3_server=debug` |
+| `logger.console_level` | `ZEE3_LOG_BUFFER` (`info`) | What the console's [Logs](/audit/trace-and-logs#logs) page keeps, in memory and in the history on disk |
 | `logger.history_max_mb` | `64` | The most the [log history on disk](/audit/trace-and-logs#log-history-on-disk) (`<data dir>/logs/`) may take on each node, in MiB, 0 to 1048576. The oldest files are deleted first. `0` turns the history off and deletes its files |
 | `logger.history_days` | `7` | Log history files last written longer ago than this are deleted, 0 to 3650 days. `0`: only the size limit applies |
 
 ## File protocols
 
-Set on the **Protocols** page or with [`z3 admin protocols`](/cli/protocols). Every node listens on
+Set on the **Protocols** page or with [`zee3 admin protocols`](/cli/protocols). Every node listens on
 the same address. See [File protocols](/protocols/overview).
 
 | Key | Default | Meaning |
@@ -158,7 +158,7 @@ site replication carries it to every site, and a reset on one site applies to ev
 keys that are set, and import applies them.
 
 <Note>
-  Not yet runtime settings: the replication anti-entropy interval (`Z3_ANTI_ENTROPY_INTERVAL`, read
+  Not yet runtime settings: the replication anti-entropy interval (`ZEE3_ANTI_ENTROPY_INTERVAL`, read
   at start), and sending server logs to a webhook (send the audit log through an
   [audit target](/audit/audit-log) instead).
 </Note>

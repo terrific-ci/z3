@@ -1,14 +1,14 @@
 ---
 title: "Configuration"
-description: "Every startup option of z3: environment variables, command-line flags and their defaults, and which ones the runtime settings override."
+description: "Every startup option of Zee3: environment variables, command-line flags and their defaults, and which ones the runtime settings override."
 ---
 
-z3 reads its startup configuration from environment variables or the matching command-line flags.
+Zee3 reads its startup configuration from environment variables or the matching command-line flags.
 A flag wins over the variable. There is no configuration file; put the variables in the Docker
-`environment` block or in `/etc/z3/z3.env` for [systemd](/deploy/systemd).
+`environment` block or in `/etc/zee3/zee3.env` for [systemd](/deploy/systemd).
 
 ```bash
-z3 --help     # every flag with its variable and default
+zee3 --help     # every flag with its variable and default
 ```
 
 ## Startup options
@@ -17,45 +17,45 @@ z3 --help     # every flag with its variable and default
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_DATA_DIR` | `--data-dir` | `./data` (`/data` in Docker) | Directory for metadata, and for chunks unless `Z3_DISKS` or `Z3_POOLS` is set |
-| `Z3_DISKS` | `--disks` | empty | Comma-separated disk directories for an erasure-coded chunk store, such as `/mnt/d1,/mnt/d2,/mnt/d3,/mnt/d4`. Order matters and the set can't grow. See [Disks](/deploy/disks) |
-| `Z3_PARITY` | `--parity` | 2 from four disks up, otherwise 1 | Parity shards per chunk: how many disks of a set may fail. Fixed once the set is formatted |
-| `Z3_POOLS` | `--pools` | empty | Several pools separated by `;`, each a comma-separated disk set or one directory. Replaces `Z3_DISKS`. See [Pools](/durability/pools) |
+| `ZEE3_DATA_DIR` | `--data-dir` | `./data` (`/data` in Docker) | Directory for metadata, and for chunks unless `ZEE3_DISKS` or `ZEE3_POOLS` is set |
+| `ZEE3_DISKS` | `--disks` | empty | Comma-separated disk directories for an erasure-coded chunk store, such as `/mnt/d1,/mnt/d2,/mnt/d3,/mnt/d4`. Order matters and the set can't grow. See [Disks](/deploy/disks) |
+| `ZEE3_PARITY` | `--parity` | 2 from four disks up, otherwise 1 | Parity shards per chunk: how many disks of a set may fail. Fixed once the set is formatted |
+| `ZEE3_POOLS` | `--pools` | empty | Several pools separated by `;`, each a comma-separated disk set or one directory. Replaces `ZEE3_DISKS`. See [Pools](/durability/pools) |
 
 ### Network
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_S3_ADDR` | `--s3-addr` | `0.0.0.0:9000` | Address of the S3 API |
-| `Z3_ADMIN_ADDR` | `--admin-addr` | `127.0.0.1:9001` (`0.0.0.0:9001` in Docker) | Address of the console and admin API |
-| `Z3_PEER_ADDR` | `--peer-addr` | `0.0.0.0:9002` | Address of the replication API that peers pull from |
+| `ZEE3_S3_ADDR` | `--s3-addr` | `0.0.0.0:9000` | Address of the S3 API |
+| `ZEE3_ADMIN_ADDR` | `--admin-addr` | `127.0.0.1:9001` (`0.0.0.0:9001` in Docker) | Address of the console and admin API |
+| `ZEE3_PEER_ADDR` | `--peer-addr` | `0.0.0.0:9002` | Address of the replication API that peers pull from |
 
-Each address is `IP:port`. z3 serves plain HTTP on the S3 API and the console; see
+Each address is `IP:port`. Zee3 serves plain HTTP on the S3 API and the console; see
 [TLS and reverse proxies](/deploy/tls-and-proxies). The peer API can serve TLS itself (below).
 
 ### Credentials and signing
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_ACCESS_KEY` | `--access-key` | `z3admin` | Access key of the root account |
-| `Z3_SECRET_KEY` | `--secret-key` | `z3admin-secret` | Secret key of the root account |
-| `Z3_ENABLE_SIGV2` | `--enable-sigv2` | `false` | Accept legacy Signature V2 (headers and presigned URLs). V2 uses HMAC-SHA1 and doesn't bind requests to a region |
+| `ZEE3_ACCESS_KEY` | `--access-key` | `zee3admin` | Access key of the root account |
+| `ZEE3_SECRET_KEY` | `--secret-key` | `zee3admin-secret` | Secret key of the root account |
+| `ZEE3_ENABLE_SIGV2` | `--enable-sigv2` | `false` | Accept legacy Signature V2 (headers and presigned URLs). V2 uses HMAC-SHA1 and doesn't bind requests to a region |
 
 ### Replication
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_PEER_TOKEN` | `--peer-token` | empty | Token peers must present to pull from this node. The replication API is off while it is empty (this node can still pull from others). Also enables [cluster mode](/deploy/cluster) |
-| `Z3_CLUSTER_ADDR` | `--cluster-addr` | `http://127.0.0.1:<peer port>` (`https://` with peer TLS in `mtls` or `tls` mode) | This node's peer API as other cluster members reach it |
-| `Z3_NODE_NAME` | `--node-name` | host name | This node's name in a cluster |
-| `Z3_CLUSTER_COPIES` | `--cluster-copies` | `3` | Copies of each chunk in a cluster, capped at the member count |
-| `Z3_CLUSTER_READS` | `--cluster-reads` | `consistent` | `consistent` (followers catch up with the leader before reads) or `local` |
-| `Z3_CLUSTER_SWEEP_INTERVAL` | `--cluster-sweep-interval` | `600` | Seconds between placement sweeps in a cluster |
-| `Z3_SITE_NAME` | `--site-name` | empty | This node's site name for residency rules and geo erasure coding when site replication isn't configured |
-| `Z3_ANTI_ENTROPY_INTERVAL` | `--anti-entropy-interval` | `300` | Seconds between Merkle anti-entropy runs on each replication link (at least 10) |
-| `Z3_LOG_RETENTION_DAYS` | | `30` | Days a bucket's change log is kept once every peer applied it; also how far back [point-in-time rollback](/storage/point-in-time) goes. `0` keeps it forever ([pruning](/replication/overview#change-log-pruning)) |
-| `Z3_TOMBSTONE_RETENTION_DAYS` | | `30` | Days a removed version's tombstone is kept once every peer applied the removal (at least the log retention) |
-| `Z3_PRUNE_INTERVAL` | | `3600` | Seconds between change-log pruning passes |
+| `ZEE3_PEER_TOKEN` | `--peer-token` | empty | Token peers must present to pull from this node. The replication API is off while it is empty (this node can still pull from others). Also enables [cluster mode](/deploy/cluster) |
+| `ZEE3_CLUSTER_ADDR` | `--cluster-addr` | `http://127.0.0.1:<peer port>` (`https://` with peer TLS in `mtls` or `tls` mode) | This node's peer API as other cluster members reach it |
+| `ZEE3_NODE_NAME` | `--node-name` | host name | This node's name in a cluster |
+| `ZEE3_CLUSTER_COPIES` | `--cluster-copies` | `3` | Copies of each chunk in a cluster, capped at the member count |
+| `ZEE3_CLUSTER_READS` | `--cluster-reads` | `consistent` | `consistent` (followers catch up with the leader before reads) or `local` |
+| `ZEE3_CLUSTER_SWEEP_INTERVAL` | `--cluster-sweep-interval` | `600` | Seconds between placement sweeps in a cluster |
+| `ZEE3_SITE_NAME` | `--site-name` | empty | This node's site name for residency rules and geo erasure coding when site replication isn't configured |
+| `ZEE3_ANTI_ENTROPY_INTERVAL` | `--anti-entropy-interval` | `300` | Seconds between Merkle anti-entropy runs on each replication link (at least 10) |
+| `ZEE3_LOG_RETENTION_DAYS` | | `30` | Days a bucket's change log is kept once every peer applied it; also how far back [point-in-time rollback](/storage/point-in-time) goes. `0` keeps it forever ([pruning](/replication/overview#change-log-pruning)) |
+| `ZEE3_TOMBSTONE_RETENTION_DAYS` | | `30` | Days a removed version's tombstone is kept once every peer applied the removal (at least the log retention) |
+| `ZEE3_PRUNE_INTERVAL` | | `3600` | Seconds between change-log pruning passes |
 
 ### Peer TLS
 
@@ -64,10 +64,10 @@ speaks plain HTTP.
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_PEER_TLS_CERT` | `--peer-tls-cert` | empty | PEM certificate of this node: served on the peer port and presented as client certificate to `https://` peers. Needs `Z3_PEER_TLS_KEY` and `Z3_PEER_TLS_CA` |
-| `Z3_PEER_TLS_KEY` | `--peer-tls-key` | empty | PEM private key of that certificate |
-| `Z3_PEER_TLS_CA` | `--peer-tls-ca` | empty | PEM certificate of the CA that signs every node; the only CA trusted for peers. Alone, it verifies `https://` peers while the peer port stays plain |
-| `Z3_PEER_TLS_MODE` | `--peer-tls-mode` | `mtls` | `mtls`: TLS only, client certificate required. `tls`: TLS only, client certificate optional but checked when presented. `mixed`: TLS and plain HTTP on the same port, while rolling TLS out. Changing it needs a restart |
+| `ZEE3_PEER_TLS_CERT` | `--peer-tls-cert` | empty | PEM certificate of this node: served on the peer port and presented as client certificate to `https://` peers. Needs `ZEE3_PEER_TLS_KEY` and `ZEE3_PEER_TLS_CA` |
+| `ZEE3_PEER_TLS_KEY` | `--peer-tls-key` | empty | PEM private key of that certificate |
+| `ZEE3_PEER_TLS_CA` | `--peer-tls-ca` | empty | PEM certificate of the CA that signs every node; the only CA trusted for peers. Alone, it verifies `https://` peers while the peer port stays plain |
+| `ZEE3_PEER_TLS_MODE` | `--peer-tls-mode` | `mtls` | `mtls`: TLS only, client certificate required. `tls`: TLS only, client certificate optional but checked when presented. `mixed`: TLS and plain HTTP on the same port, while rolling TLS out. Changing it needs a restart |
 
 Certificates are read again on `SIGHUP` and when the files change, without a restart.
 
@@ -75,21 +75,21 @@ Certificates are read again on `SIGHUP` and when the files change, without a res
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_HEAL_INTERVAL` | `--heal-interval` | `604800` (7 days) | Seconds between full passes that verify and repair every chunk, then sweep [orphaned chunk files](/durability/healing#orphaned-chunks). `0` turns them off; chunks that reads find damaged are still repaired within seconds |
-| `Z3_GC_INTERVAL` | `--gc-interval` | `600` | Seconds between garbage collection runs. `0` turns off the background loop |
-| `Z3_HEAL_DUTY` | | `25` | Percent of the time a full heal pass may use; it pauses between batches for the rest, so the disk and CPU stay with requests and other programs |
-| `Z3_META_CACHE_MB` | | `128` | Memory for caching metadata pages, in MiB. Beyond it the operating system still caches the file |
-| `Z3_METRICS_CACHE_MB`, `Z3_RAFT_CACHE_MB` | | `16`, `32` | The same for `metrics.redb` and `raft.redb` |
-| `Z3_GC_GRACE` | `--gc-grace` | `3600` | Seconds an unreferenced chunk is kept before garbage collection may delete it |
-| `Z3_UPLOAD_TTL` | `--upload-ttl` | `604800` (7 days) | Multipart uploads older than this many seconds are aborted by garbage collection |
-| `Z3_LIFECYCLE_INTERVAL` | `--lifecycle-interval` | `3600` | Seconds between lifecycle runs. `0`: only when run on demand |
+| `ZEE3_HEAL_INTERVAL` | `--heal-interval` | `604800` (7 days) | Seconds between full passes that verify and repair every chunk, then sweep [orphaned chunk files](/durability/healing#orphaned-chunks). `0` turns them off; chunks that reads find damaged are still repaired within seconds |
+| `ZEE3_GC_INTERVAL` | `--gc-interval` | `600` | Seconds between garbage collection runs. `0` turns off the background loop |
+| `ZEE3_HEAL_DUTY` | | `25` | Percent of the time a full heal pass may use; it pauses between batches for the rest, so the disk and CPU stay with requests and other programs |
+| `ZEE3_META_CACHE_MB` | | `128` | Memory for caching metadata pages, in MiB. Beyond it the operating system still caches the file |
+| `ZEE3_METRICS_CACHE_MB`, `ZEE3_RAFT_CACHE_MB` | | `16`, `32` | The same for `metrics.redb` and `raft.redb` |
+| `ZEE3_GC_GRACE` | `--gc-grace` | `3600` | Seconds an unreferenced chunk is kept before garbage collection may delete it |
+| `ZEE3_UPLOAD_TTL` | `--upload-ttl` | `604800` (7 days) | Multipart uploads older than this many seconds are aborted by garbage collection |
+| `ZEE3_LIFECYCLE_INTERVAL` | `--lifecycle-interval` | `3600` | Seconds between lifecycle runs. `0`: only when run on demand |
 
 ### Logging
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `RUST_LOG` | `info` | What the server writes to standard output: a level (`warn`) or a filter (`warn,z3_server=debug`) |
-| `Z3_LOG_BUFFER` | `info` | What the console's **Logs** page keeps, in memory and on disk, separately from `RUST_LOG` |
+| `RUST_LOG` | `info` | What the server writes to standard output: a level (`warn`) or a filter (`warn,zee3_server=debug`) |
+| `ZEE3_LOG_BUFFER` | `info` | What the console's **Logs** page keeps, in memory and on disk, separately from `RUST_LOG` |
 
 Log lines the Logs page keeps are also written to `<data dir>/logs/`, up to 64 MiB or 7 days per
 node by default. The limits are the cluster settings `logger.history_max_mb` and
@@ -102,59 +102,59 @@ These shorten time for automated tests. Leave them alone in production.
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_LIFECYCLE_DAY` | `--lifecycle-day` | `86400` | Length of a lifecycle "day" in seconds |
-| `Z3_METRICS_MINUTE_SECS` | `--metrics-minute-secs` | `60` | Length of a metrics "minute" in seconds (hidden from `--help`) |
+| `ZEE3_LIFECYCLE_DAY` | `--lifecycle-day` | `86400` | Length of a lifecycle "day" in seconds |
+| `ZEE3_METRICS_MINUTE_SECS` | `--metrics-minute-secs` | `60` | Length of a metrics "minute" in seconds (hidden from `--help`) |
 
 ## Runtime settings override some defaults
 
-Some startup options are only **defaults** for cluster settings that you can change while z3
-runs, from the console's **Settings** page, the admin API or `z3 admin settings`. A value set there
+Some startup options are only **defaults** for cluster settings that you can change while Zee3
+runs, from the console's **Settings** page, the admin API or `zee3 admin settings`. A value set there
 wins over the variable, takes effect without a restart, and follows site replication to every site.
 **Use default** on the Settings page goes back to the variable's value.
 
 | Startup variable | Runtime setting |
 | --- | --- |
-| `Z3_ENABLE_SIGV2` | `api.sigv2` |
-| `Z3_LIFECYCLE_INTERVAL` | `scanner.lifecycle_interval_secs` |
-| `Z3_HEAL_INTERVAL` | `scanner.heal_interval_secs` |
-| `Z3_GC_INTERVAL` | `scanner.gc_interval_secs` |
-| `Z3_GC_GRACE` | `scanner.gc_grace_secs` |
-| `Z3_UPLOAD_TTL` | `scanner.upload_ttl_secs` |
+| `ZEE3_ENABLE_SIGV2` | `api.sigv2` |
+| `ZEE3_LIFECYCLE_INTERVAL` | `scanner.lifecycle_interval_secs` |
+| `ZEE3_HEAL_INTERVAL` | `scanner.heal_interval_secs` |
+| `ZEE3_GC_INTERVAL` | `scanner.gc_interval_secs` |
+| `ZEE3_GC_GRACE` | `scanner.gc_grace_secs` |
+| `ZEE3_UPLOAD_TTL` | `scanner.upload_ttl_secs` |
 | `RUST_LOG` | `logger.level` |
-| `Z3_LOG_BUFFER` | `logger.console_level` |
+| `ZEE3_LOG_BUFFER` | `logger.console_level` |
 
 Other runtime settings have no startup variable: the region (`region.name`), concurrent request
 limits, CORS origins, the largest upload, presigned URL lifetime, trusted proxies, compression and
-the file protocols. See [Settings](/operations/settings) and [`z3 admin settings`](/cli/settings).
+the file protocols. See [Settings](/operations/settings) and [`zee3 admin settings`](/cli/settings).
 
 ## Root credentials
 
-`Z3_ACCESS_KEY` and `Z3_SECRET_KEY` define the **root** account: it has every right and can't be
+`ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` define the **root** account: it has every right and can't be
 restricted or deleted. It signs S3 requests and signs in to the console like any other identity.
-While either one is still the default, z3 logs a warning at startup and the
+While either one is still the default, Zee3 logs a warning at startup and the
 [health check](/operations/support) reports it.
 
 <Warning>
-  Choose the root secret key **before the first start** and keep it. z3 encrypts user and access
+  Choose the root secret key **before the first start** and keep it. Zee3 encrypts user and access
   key secrets, and the keys of its internal KMS, with a key derived from the root secret. If you
-  change `Z3_SECRET_KEY` later, existing user and access key secrets can no longer be opened (users
+  change `ZEE3_SECRET_KEY` later, existing user and access key secrets can no longer be opened (users
   need new secrets), and the internal KMS keys can't be opened, so objects encrypted with them can't
-  be read. You can change `Z3_ACCESS_KEY` on its own.
+  be read. You can change `ZEE3_ACCESS_KEY` on its own.
 </Warning>
 
 For applications, create [users and access keys](/access/users-groups-keys) instead of using root.
 
 ## The admin CLI
 
-`z3 admin ...` runs on any machine that can reach the admin API. It reads its own variables:
+`zee3 admin ...` runs on any machine that can reach the admin API. It reads its own variables:
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_ADMIN_URL` | `--url` | `http://127.0.0.1:9001` | Admin API of the node to manage |
-| `Z3_ACCESS_KEY` | `--access-key` | `z3admin` | Identity to sign in with: root, a user or an access key |
-| `Z3_SECRET_KEY` | `--secret-key` | `z3admin-secret` | Its secret |
+| `ZEE3_ADMIN_URL` | `--url` | `http://127.0.0.1:9001` | Admin API of the node to manage |
+| `ZEE3_ACCESS_KEY` | `--access-key` | `zee3admin` | Identity to sign in with: root, a user or an access key |
+| `ZEE3_SECRET_KEY` | `--secret-key` | `zee3admin-secret` | Its secret |
 
 See the [CLI](/cli/overview).
 
-`z3 healthcheck` exits with 0 when the node on `Z3_ADMIN_ADDR` answers its health check (the Docker
+`zee3 healthcheck` exits with 0 when the node on `ZEE3_ADMIN_ADDR` answers its health check (the Docker
 image uses it); see [Troubleshooting](/deploy/troubleshooting#health-check).

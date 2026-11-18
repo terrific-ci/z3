@@ -14,7 +14,7 @@ like any other write.
 
 <Note>
   The bucket needs [versioning](/storage/versioning) turned on. A bucket that never had versioning
-  has no history to roll back to, and z3 refuses it. A bucket with versioning suspended is refused
+  has no history to roll back to, and Zee3 refuses it. A bucket with versioning suspended is refused
   too until you enable versioning again.
 </Note>
 
@@ -23,9 +23,9 @@ like any other write.
   <img src="/images/bucket-rollback.png" alt="The Roll back dialog: a time, a prefix, the preview counts and the planned changes" />
 </Frame>
 
-## How z3 decides
+## How Zee3 decides
 
-z3 does not scan every object. It reads the bucket's change log from the point where the log
+Zee3 does not scan every object. It reads the bucket's change log from the point where the log
 passes your time, and collects the keys written or deleted after it. For each of those keys:
 
 | At that time | Now | What the rollback does |
@@ -57,17 +57,17 @@ reported as **missing** and left alone.
     4. Click **Start rollback**, then **View job** to follow it on the Batch page.
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="zee3 admin">
 
     ```bash
     # What would change, without changing anything
-    z3 admin batch rollback records --at 2026-11-18T09:30:00Z --prefix patients/ --dry-run
+    zee3 admin batch rollback records --at 2026-11-18T09:30:00Z --prefix patients/ --dry-run
 
     # Run it and follow its progress
-    z3 admin batch rollback records --at 2026-11-18T09:30:00Z --prefix patients/ --wait
+    zee3 admin batch rollback records --at 2026-11-18T09:30:00Z --prefix patients/ --wait
 
     # One key only
-    z3 admin batch rollback records --at 2026-11-18T09:30:00Z --key patients/001.json
+    zee3 admin batch rollback records --at 2026-11-18T09:30:00Z --key patients/001.json
     ```
 
     `--at` takes any RFC 3339 time, such as `2026-11-18T17:30:00+08:00`.
@@ -76,10 +76,10 @@ reported as **missing** and left alone.
   <Tab title="Admin API">
 
     ```bash
-    curl -X POST "$Z3_ADMIN_URL/api/batch/rollback/preview" -H "Authorization: Bearer $TOKEN" \
+    curl -X POST "$ZEE3_ADMIN_URL/api/batch/rollback/preview" -H "Authorization: Bearer $TOKEN" \
       -d '{"source": {"bucket": "records", "prefix": "patients/"}, "at": "2026-11-18T09:30:00Z", "limit": 20}'
 
-    curl -X POST "$Z3_ADMIN_URL/api/batch" -H "Authorization: Bearer $TOKEN" \
+    curl -X POST "$ZEE3_ADMIN_URL/api/batch" -H "Authorization: Bearer $TOKEN" \
       -d '{"type": "rollback", "source": {"bucket": "records", "prefix": "patients/"}, "at": "2026-11-18T09:30:00Z"}'
     ```
 
@@ -103,5 +103,5 @@ remove it like any other job, and it continues where it stopped if the node rest
 - A delete marker that was permanently removed since is also reported as missing.
 - Bucket quotas are not checked for restored versions.
 - A rollback can only go back as far as the change log that is left. Entries older than
-  `Z3_LOG_RETENTION_DAYS` (30 days by default) are [pruned](/replication/overview#change-log-pruning)
+  `ZEE3_LOG_RETENTION_DAYS` (30 days by default) are [pruned](/replication/overview#change-log-pruning)
   once every peer has applied them; earlier times are refused. Set it to `0` to keep the whole log.

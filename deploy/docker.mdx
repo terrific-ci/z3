@@ -1,6 +1,6 @@
 ---
 title: "Docker"
-description: "Run z3 with Docker or Docker Compose: ports, the data volume, environment settings and the health check."
+description: "Run Zee3 with Docker or Docker Compose: ports, the data volume, environment settings and the health check."
 ---
 
 The image `terrificci/z3` is distroless (no shell, no package manager) and runs as a non-root user.
@@ -8,28 +8,28 @@ It sets these defaults:
 
 | Variable | Value in the image | Outside Docker |
 | --- | --- | --- |
-| `Z3_DATA_DIR` | `/data` (a volume) | `./data` |
-| `Z3_S3_ADDR` | `0.0.0.0:9000` | `0.0.0.0:9000` |
-| `Z3_ADMIN_ADDR` | `0.0.0.0:9001` | `127.0.0.1:9001` |
-| `Z3_PEER_ADDR` | `0.0.0.0:9002` | `0.0.0.0:9002` |
+| `ZEE3_DATA_DIR` | `/data` (a volume) | `./data` |
+| `ZEE3_S3_ADDR` | `0.0.0.0:9000` | `0.0.0.0:9000` |
+| `ZEE3_ADMIN_ADDR` | `0.0.0.0:9001` | `127.0.0.1:9001` |
+| `ZEE3_PEER_ADDR` | `0.0.0.0:9002` | `0.0.0.0:9002` |
 
 So inside the container the S3 API is on **9000**, the console and admin API on **9001**, and the
-replication API on **9002** (only when `Z3_PEER_TOKEN` is set).
+replication API on **9002** (only when `ZEE3_PEER_TOKEN` is set).
 
 ## docker run
 
 ```bash
-docker run -d --name z3 --restart unless-stopped \
+docker run -d --name zee3 --restart unless-stopped \
   -p 9000:9000 -p 9001:9001 \
-  -v z3-data:/data \
-  -e Z3_ACCESS_KEY=admin \
-  -e Z3_SECRET_KEY=change-me-please \
+  -v zee3-data:/data \
+  -e ZEE3_ACCESS_KEY=admin \
+  -e ZEE3_SECRET_KEY=change-me-please \
   terrificci/z3:latest
 ```
 
 <Warning>
-  The default root credentials are `z3admin` / `z3admin-secret`. Always set `Z3_ACCESS_KEY` and
-  `Z3_SECRET_KEY`, and set them **before the first start**: user secrets and internal KMS keys are
+  The default root credentials are `zee3admin` / `zee3admin-secret`. Always set `ZEE3_ACCESS_KEY` and
+  `ZEE3_SECRET_KEY`, and set them **before the first start**: user secrets and internal KMS keys are
   sealed with a key derived from the root secret, so changing it later makes them unreadable. See
   [Root credentials](/deploy/configuration#root-credentials).
 </Warning>
@@ -40,7 +40,7 @@ Save this as `docker-compose.yml`, next to a `.env` file that holds the secret:
 
 ```yaml docker-compose.yml
 services:
-  z3:
+  zee3:
     image: terrificci/z3:latest
     restart: unless-stopped
     ports:
@@ -48,35 +48,35 @@ services:
       # The console and admin API. Put a TLS reverse proxy in front for
       # remote access, then publish this on 127.0.0.1 only.
       - "127.0.0.1:9001:9001"
-      # Replication API, for other z3 nodes (needs Z3_PEER_TOKEN):
+      # Replication API, for other zee3 nodes (needs ZEE3_PEER_TOKEN):
       # - "9002:9002"
     volumes:
-      - z3-data:/data
+      - zee3-data:/data
     environment:
-      Z3_ACCESS_KEY: admin
-      Z3_SECRET_KEY: ${Z3_SECRET_KEY:?set Z3_SECRET_KEY in .env}
+      ZEE3_ACCESS_KEY: admin
+      ZEE3_SECRET_KEY: ${ZEE3_SECRET_KEY:?set ZEE3_SECRET_KEY in .env}
       # Let other nodes pull from this one (replication):
-      # Z3_PEER_TOKEN: ${Z3_PEER_TOKEN}
+      # ZEE3_PEER_TOKEN: ${ZEE3_PEER_TOKEN}
       # This node's site name, for residency rules and geo erasure coding
       # without site replication:
-      # Z3_SITE_NAME: dc1
+      # ZEE3_SITE_NAME: dc1
       # Server log level on standard output:
       # RUST_LOG: info
     stop_grace_period: 30s
 
 volumes:
-  z3-data:
+  zee3-data:
 ```
 
 ```bash .env
-Z3_SECRET_KEY=a-long-random-secret
+ZEE3_SECRET_KEY=a-long-random-secret
 ```
 
 Then start it:
 
 ```bash
 docker compose up -d
-docker compose logs -f z3
+docker compose logs -f zee3
 ```
 
 Open `http://localhost:9001` and sign in with `admin` and the secret.
@@ -84,38 +84,38 @@ Open `http://localhost:9001` and sign in with `admin` and the secret.
 ## Several disks
 
 To use [erasure coding](/durability/erasure-coding), mount each disk into the container and list
-the mount points in `Z3_DISKS`. Metadata stays in `/data`.
+the mount points in `ZEE3_DISKS`. Metadata stays in `/data`.
 
 ```yaml docker-compose.yml
 services:
-  z3:
+  zee3:
     image: terrificci/z3:latest
     restart: unless-stopped
     ports:
       - "9000:9000"
       - "127.0.0.1:9001:9001"
     volumes:
-      - z3-data:/data
-      - /mnt/disk1/z3:/disks/d1
-      - /mnt/disk2/z3:/disks/d2
-      - /mnt/disk3/z3:/disks/d3
-      - /mnt/disk4/z3:/disks/d4
+      - zee3-data:/data
+      - /mnt/disk1/zee3:/disks/d1
+      - /mnt/disk2/zee3:/disks/d2
+      - /mnt/disk3/zee3:/disks/d3
+      - /mnt/disk4/zee3:/disks/d4
     environment:
-      Z3_ACCESS_KEY: admin
-      Z3_SECRET_KEY: ${Z3_SECRET_KEY:?set Z3_SECRET_KEY in .env}
-      Z3_DISKS: /disks/d1,/disks/d2,/disks/d3,/disks/d4
+      ZEE3_ACCESS_KEY: admin
+      ZEE3_SECRET_KEY: ${ZEE3_SECRET_KEY:?set ZEE3_SECRET_KEY in .env}
+      ZEE3_DISKS: /disks/d1,/disks/d2,/disks/d3,/disks/d4
 
 volumes:
-  z3-data:
+  zee3-data:
 ```
 
-The order of `Z3_DISKS` matters and the number of disks can't change later; see
+The order of `ZEE3_DISKS` matters and the number of disks can't change later; see
 [Disks](/deploy/disks).
 
 <Note>
   The container runs as the distroless `nonroot` user (uid and gid 65532). Host directories you
   bind-mount (instead of named volumes) must be writable by that user:
-  `sudo chown -R 65532:65532 /mnt/disk1/z3 /mnt/disk2/z3 ...`.
+  `sudo chown -R 65532:65532 /mnt/disk1/zee3 /mnt/disk2/zee3 ...`.
 </Note>
 
 ## Settings
@@ -124,15 +124,15 @@ Settings go in the `environment` block. The ones you'll usually want:
 
 | Variable | Purpose |
 | --- | --- |
-| `Z3_ACCESS_KEY` / `Z3_SECRET_KEY` | The root account. Change both from the defaults |
-| `Z3_DISKS` | Disk directories for an erasure-coded chunk store, comma-separated |
-| `Z3_PARITY` | Parity shards per chunk on the disk set (default 2 from four disks up, otherwise 1) |
-| `Z3_POOLS` | Several pools instead of `Z3_DISKS`; see [Pools](/durability/pools) |
-| `Z3_PEER_TOKEN` | Turns on the replication API on 9002; other nodes need this token to pull |
-| `Z3_SITE_NAME` | This node's site name for residency rules and geo erasure coding |
-| `Z3_ENABLE_SIGV2` | Accept legacy Signature V2 requests (`true`) |
+| `ZEE3_ACCESS_KEY` / `ZEE3_SECRET_KEY` | The root account. Change both from the defaults |
+| `ZEE3_DISKS` | Disk directories for an erasure-coded chunk store, comma-separated |
+| `ZEE3_PARITY` | Parity shards per chunk on the disk set (default 2 from four disks up, otherwise 1) |
+| `ZEE3_POOLS` | Several pools instead of `ZEE3_DISKS`; see [Pools](/durability/pools) |
+| `ZEE3_PEER_TOKEN` | Turns on the replication API on 9002; other nodes need this token to pull |
+| `ZEE3_SITE_NAME` | This node's site name for residency rules and geo erasure coding |
+| `ZEE3_ENABLE_SIGV2` | Accept legacy Signature V2 requests (`true`) |
 | `RUST_LOG` | What the server logs to standard output (`info` by default) |
-| `Z3_LOG_BUFFER` | What the console's Logs page keeps (`info` by default) |
+| `ZEE3_LOG_BUFFER` | What the console's Logs page keeps (`info` by default) |
 
 Every variable and its default is listed in [Configuration](/deploy/configuration). Many of the
 background intervals are only defaults: the console's **Settings** page changes them at runtime
@@ -140,7 +140,7 @@ without a restart (see [Settings](/operations/settings)).
 
 ## Replication between containers
 
-A node that other nodes pull from needs `Z3_PEER_TOKEN` and its port 9002 published (or reachable on
+A node that other nodes pull from needs `ZEE3_PEER_TOKEN` and its port 9002 published (or reachable on
 a shared network). Each node gets its own token; peers present it when they pull.
 
 ```yaml
@@ -149,36 +149,36 @@ a shared network). Each node gets its own token; peers present it when they pull
       - "127.0.0.1:9001:9001"
       - "9002:9002"
     environment:
-      Z3_PEER_TOKEN: ${Z3_PEER_TOKEN:?set Z3_PEER_TOKEN in .env}
+      ZEE3_PEER_TOKEN: ${ZEE3_PEER_TOKEN:?set ZEE3_PEER_TOKEN in .env}
 ```
 
 Then connect the nodes; see [Bucket replication](/replication/bucket-replication) or
 [Site replication](/replication/site-replication).
 
-For [mutual TLS between nodes](/deploy/peer-tls), mount the certificates read-only and point z3 at
+For [mutual TLS between nodes](/deploy/peer-tls), mount the certificates read-only and point Zee3 at
 them. The container runs as uid 65532, which must be able to read the key:
 
 ```yaml
     volumes:
-      - ./peer-tls:/etc/z3/peer:ro
+      - ./peer-tls:/etc/zee3/peer:ro
     environment:
-      Z3_PEER_TOKEN: ${Z3_PEER_TOKEN:?set Z3_PEER_TOKEN in .env}
-      Z3_PEER_TLS_CERT: /etc/z3/peer/node.pem
-      Z3_PEER_TLS_KEY: /etc/z3/peer/node.key
-      Z3_PEER_TLS_CA: /etc/z3/peer/ca.pem
+      ZEE3_PEER_TOKEN: ${ZEE3_PEER_TOKEN:?set ZEE3_PEER_TOKEN in .env}
+      ZEE3_PEER_TLS_CERT: /etc/zee3/peer/node.pem
+      ZEE3_PEER_TLS_KEY: /etc/zee3/peer/node.key
+      ZEE3_PEER_TLS_CA: /etc/zee3/peer/ca.pem
 ```
 
 ## Health
 
-The image has a `HEALTHCHECK` that runs `z3 healthcheck` every 30 seconds. It asks the node's own
-admin API (`GET /api/health` on `Z3_ADMIN_ADDR`), so `docker ps` shows `healthy` once z3 has started
-and `unhealthy` if it stops answering. If it shows `unhealthy`, check `docker compose logs z3`:
+The image has a `HEALTHCHECK` that runs `zee3 healthcheck` every 30 seconds. It asks the node's own
+admin API (`GET /api/health` on `ZEE3_ADMIN_ADDR`), so `docker ps` shows `healthy` once Zee3 has started
+and `unhealthy` if it stops answering. If it shows `unhealthy`, check `docker compose logs zee3`:
 usually a port that couldn't be bound, a data directory that isn't writable, or a disk
 configuration error. See [Troubleshooting](/deploy/troubleshooting).
 
 ## Stopping
 
-`docker stop` sends `SIGTERM`. z3 stops accepting requests, finishes the ones in flight, keeps audit
+`docker stop` sends `SIGTERM`. Zee3 stops accepting requests, finishes the ones in flight, keeps audit
 entries that weren't sent yet for after the restart, and exits. Give it a few seconds
 (`stop_grace_period` in Compose) rather than killing it.
 
@@ -188,6 +188,6 @@ entries that weren't sent yet for after the restart, and exits. Give it a few se
 docker compose pull && docker compose up -d
 ```
 
-z3 upgrades its metadata format automatically when it opens the data directory, and an older
+Zee3 upgrades its metadata format automatically when it opens the data directory, and an older
 version refuses to open a newer format. Back up the volume first and read
 [Upgrading](/deploy/upgrading).

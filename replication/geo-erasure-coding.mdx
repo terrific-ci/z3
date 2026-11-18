@@ -13,15 +13,15 @@ the data instead of 3 times, and objects stay readable when any one site is down
 ## Requirements
 
 - Every site has a **name**: from [site replication](/replication/site-replication), or from
-  `Z3_SITE_NAME` on each node. Without a name, z3 refuses with `geo erasure coding needs a site name`.
+  `ZEE3_SITE_NAME` on each node. Without a name, Zee3 refuses with `geo erasure coding needs a site name`.
 - Every site of the bucket pulls **directly** from every other site: a mesh. Hub-and-spoke and chain
   topologies don't work here.
 - At least two sites, and no site may hold more shards than the parity, so that losing one site
-  always leaves enough shards. z3 refuses a layout that breaks this, with
+  always leaves enough shards. Zee3 refuses a layout that breaks this, with
   `a site would keep N shards but only P may be lost; raise parity or add sites`.
 - At most 32 shards (`data + parity`), and at least as many shards as sites.
 
-Without site replication, name each node with `Z3_SITE_NAME` and give each peer the same name as
+Without site replication, name each node with `ZEE3_SITE_NAME` and give each peer the same name as
 that node's site, since the bucket's peers stand for its sites.
 
 ## Turn it on
@@ -76,7 +76,7 @@ In tests with three sites, each site stored exactly 3 MiB for a 6 MiB object.
 
 ## Watching it
 
-`z3_replication_geo_chunks_total` on `/metrics` counts geo-coded chunks. The [Support](/operations/support)
+`zee3_replication_geo_chunks_total` on `/metrics` counts geo-coded chunks. The [Support](/operations/support)
 page's **Inspect** shows how an object's chunks are stored on this node.
 
 ## When not to use it

@@ -1,36 +1,36 @@
 ---
 title: "Disks"
-description: "Store chunks in one directory or erasure-coded over several disks with Z3_DISKS and Z3_PARITY, and grow with Z3_POOLS."
+description: "Store chunks in one directory or erasure-coded over several disks with ZEE3_DISKS and ZEE3_PARITY, and grow with ZEE3_POOLS."
 ---
 
-z3 keeps two kinds of data: **metadata** (buckets, versions, IAM, the change log) in
-`Z3_DATA_DIR`, and **chunks** (the object data). Where chunks go depends on three variables.
+Zee3 keeps two kinds of data: **metadata** (buckets, versions, IAM, the change log) in
+`ZEE3_DATA_DIR`, and **chunks** (the object data). Where chunks go depends on three variables.
 
 | Setup | Variables | Chunks go to |
 | --- | --- | --- |
-| One directory | `Z3_DATA_DIR` only | `Z3_DATA_DIR/chunks` |
-| One disk set | `Z3_DISKS` (and optionally `Z3_PARITY`) | Erasure-coded over the listed disks |
-| Several pools | `Z3_POOLS` | Spread over pools, each a disk set or a directory |
+| One directory | `ZEE3_DATA_DIR` only | `ZEE3_DATA_DIR/chunks` |
+| One disk set | `ZEE3_DISKS` (and optionally `ZEE3_PARITY`) | Erasure-coded over the listed disks |
+| Several pools | `ZEE3_POOLS` | Spread over pools, each a disk set or a directory |
 
 ## One directory
 
 The default. Chunks live next to the metadata, and durability is whatever the underlying disk
-provides (a RAID array, a cloud volume). Good for trying z3, small installs, and nodes whose
+provides (a RAID array, a cloud volume). Good for trying Zee3, small installs, and nodes whose
 durability comes from [replication](/replication/overview) to other sites.
 
 ```bash
-Z3_DATA_DIR=/var/lib/z3 z3
+ZEE3_DATA_DIR=/var/lib/zee3 zee3
 ```
 
 ## Several disks with erasure coding
 
-List one directory per physical disk in `Z3_DISKS`, separated by commas:
+List one directory per physical disk in `ZEE3_DISKS`, separated by commas:
 
 ```bash
-Z3_DATA_DIR=/var/lib/z3 \
-Z3_DISKS=/mnt/d1,/mnt/d2,/mnt/d3,/mnt/d4,/mnt/d5,/mnt/d6 \
-Z3_PARITY=2 \
-z3
+ZEE3_DATA_DIR=/var/lib/zee3 \
+ZEE3_DISKS=/mnt/d1,/mnt/d2,/mnt/d3,/mnt/d4,/mnt/d5,/mnt/d6 \
+ZEE3_PARITY=2 \
+zee3
 ```
 
 Each chunk is split into data shards and parity shards, one per disk. With six disks and parity 2
@@ -50,17 +50,17 @@ A write needs as many disks as there are data shards, or one more when parity is
 set (as in 1+1 and 2+2), so a set with that much parity keeps reading through more failures than it
 keeps writing through. Shards that couldn't be written are queued for healing.
 
-`Z3_PARITY` can be anything from 1 to one less than the number of disks; more parity survives more
+`ZEE3_PARITY` can be anything from 1 to one less than the number of disks; more parity survives more
 failures and costs more space. See [Erasure coding](/durability/erasure-coding) for how reads,
 writes and small chunks work.
 
 <Warning>
-  The first start **formats** the disks: each gets a `z3-disk.json` with the set's id, its position,
+  The first start **formats** the disks: each gets a `zee3-disk.json` with the set's id, its position,
   the number of disks and the parity. After that:
 
-  - the **number of disks** and the **parity** can't change. z3 refuses to start with
+  - the **number of disks** and the **parity** can't change. Zee3 refuses to start with
     `the number of disks cannot change` or `parity cannot change`,
-  - the **order** of `Z3_DISKS` matters. A disk listed in another position is marked `foreign` and
+  - the **order** of `ZEE3_DISKS` matters. A disk listed in another position is marked `foreign` and
     never written to.
 
   To add capacity, add a pool (below).
@@ -69,24 +69,24 @@ writes and small chunks work.
 ### Guidelines
 
 - Use one directory per **physical disk**. Two directories on the same disk give no protection.
-- Use a dedicated directory on each disk (such as `/mnt/d1/z3`) rather than the mount point
+- Use a dedicated directory on each disk (such as `/mnt/d1/zee3`) rather than the mount point
   itself, and mount disks by UUID or label in `/etc/fstab` so a reboot doesn't swap them.
-- Keep `Z3_DATA_DIR` on a reliable disk (a RAID 1 mirror or similar). The metadata database lives
+- Keep `ZEE3_DATA_DIR` on a reliable disk (a RAID 1 mirror or similar). The metadata database lives
   there, not on the erasure-coded disks.
 - Disks of similar size work best: chunks are spread evenly over the disks of a set.
 
 ## What happens when a disk fails
 
-| Event | What z3 does |
+| Event | What Zee3 does |
 | --- | --- |
 | A disk disappears or returns I/O errors | Marked `offline`. Reads rebuild from parity; writes continue while enough disks are online (see the table above) |
 | The disk comes back | Checked every 5 seconds. If its format matches, it's `online` again and a full heal runs |
 | An **empty** disk is mounted at the same path | Formatted into the same position, then a full heal fills it |
-| A disk from another set, or the order of `Z3_DISKS` changed | Marked `foreign` and never written to |
+| A disk from another set, or the order of `ZEE3_DISKS` changed | Marked `foreign` and never written to |
 | The directory holds other files | Marked `foreign`; its contents are left alone |
 
 To replace a failed disk, mount a new empty disk at the same path, create the same directory on it
-(owned by the user z3 runs as) and wait: within seconds z3 formats it and heals every chunk back.
+(owned by the user Zee3 runs as) and wait: within seconds Zee3 formats it and heals every chunk back.
 No restart is needed. See [Healing](/durability/healing).
 
 The console's **Disks** page shows each disk's state, capacity and free space, the layout, the
@@ -99,33 +99,33 @@ healing totals, and the **Orphaned chunks** panel with a **Sweep now** button (s
 
 ## Growing with pools
 
-`Z3_POOLS` lists several pools separated by `;`. Each pool is a comma-separated disk set or one
-plain directory, with its own layout and parity. It replaces `Z3_DISKS`, so list the existing disk
+`ZEE3_POOLS` lists several pools separated by `;`. Each pool is a comma-separated disk set or one
+plain directory, with its own layout and parity. It replaces `ZEE3_DISKS`, so list the existing disk
 set as the **first** pool:
 
 ```bash
 # Before: one set of four disks
-Z3_DISKS=/mnt/a1,/mnt/a2,/mnt/a3,/mnt/a4 z3
+ZEE3_DISKS=/mnt/a1,/mnt/a2,/mnt/a3,/mnt/a4 zee3
 
 # After: the old set plus a new set of six disks
-Z3_POOLS="/mnt/a1,/mnt/a2,/mnt/a3,/mnt/a4;/mnt/b1,/mnt/b2,/mnt/b3,/mnt/b4,/mnt/b5,/mnt/b6" z3
+ZEE3_POOLS="/mnt/a1,/mnt/a2,/mnt/a3,/mnt/a4;/mnt/b1,/mnt/b2,/mnt/b3,/mnt/b4,/mnt/b5,/mnt/b6" zee3
 ```
 
-A node that kept chunks in `Z3_DATA_DIR` lists that directory as its first pool:
+A node that kept chunks in `ZEE3_DATA_DIR` lists that directory as its first pool:
 
 ```bash
-Z3_DATA_DIR=/var/lib/z3 \
-Z3_POOLS="/var/lib/z3;/mnt/b1,/mnt/b2,/mnt/b3,/mnt/b4" z3
+ZEE3_DATA_DIR=/var/lib/zee3 \
+ZEE3_POOLS="/var/lib/zee3;/mnt/b1,/mnt/b2,/mnt/b3,/mnt/b4" zee3
 ```
 
-- Setting both `Z3_DISKS` and `Z3_POOLS` is an error.
+- Setting both `ZEE3_DISKS` and `ZEE3_POOLS` is an error.
 - A path may appear only once.
-- `Z3_PARITY` applies to every disk-set pool. Existing pools keep the parity they were formatted
-  with, and a configured parity that differs is refused, so leave `Z3_PARITY` unset when pools have
+- `ZEE3_PARITY` applies to every disk-set pool. Existing pools keep the parity they were formatted
+  with, and a configured parity that differs is refused, so leave `ZEE3_PARITY` unset when pools have
   different parity; a new set then gets the default for its number of disks.
 
 New chunks go to the pool with the most free space. Rebalance moves existing data, and decommission
-empties a pool before you remove it from `Z3_POOLS`. See [Pools](/durability/pools).
+empties a pool before you remove it from `ZEE3_POOLS`. See [Pools](/durability/pools).
 
 ## In Docker
 

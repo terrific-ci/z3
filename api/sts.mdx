@@ -63,7 +63,7 @@ A request is a form `POST /` (`Content-Type: application/x-www-form-urlencoded`)
 </ParamField>
 
 <ParamField body="PolicyArns.member.N.arn" type="string">
-  Up to 10 z3 policies as session policies, named as `arn:aws:iam::<any>:policy/<name>`. See
+  Up to 10 Zee3 policies as session policies, named as `arn:aws:iam::<any>:policy/<name>`. See
   [Session policies](#session-policies).
 </ParamField>
 
@@ -72,7 +72,7 @@ A request is a form `POST /` (`Content-Type: application/x-www-form-urlencoded`)
 </ParamField>
 
 <ParamField body="RoleArn" type="string">
-  Accepted and ignored, as in MinIO: z3 has no roles. AWS SDKs require a value; any value works.
+  Accepted and ignored, as in MinIO: Zee3 has no roles. AWS SDKs require a value; any value works.
 </ParamField>
 
 `AssumeRole` also ignores `ExternalId` and `SourceIdentity`. MFA (`SerialNumber`, `TokenCode`) and
@@ -112,7 +112,7 @@ again brings back its sessions that have not expired.
   long as none denies.
 - `Policy` is an identity policy (no `Principal`) of at most 2048 bytes. Larger answers
   `PackedPolicyTooLarge`; invalid JSON or an invalid policy answers `MalformedPolicyDocument`.
-- `PolicyArns` names up to 10 z3 policies by the last part of the ARN, with any account:
+- `PolicyArns` names up to 10 Zee3 policies by the last part of the ARN, with any account:
   `arn:aws:iam::aws:policy/readonly` is the built-in `readonly`. A policy that does not exist answers
   `InvalidParameterValue`.
 - Policies named in `PolicyArns` are read again on every request. A policy deleted later
@@ -130,15 +130,15 @@ again brings back its sessions that have not expired.
     <Credentials>
       <AccessKeyId>ZSTS7Q2M9XK4D1VB8NPA</AccessKeyId>
       <SecretAccessKey>...</SecretAccessKey>
-      <SessionToken>z3sts1....</SessionToken>
+      <SessionToken>zee3sts1....</SessionToken>
       <Expiration>2026-11-17T10:30:00Z</Expiration>
     </Credentials>
     <AssumedRoleUser>
-      <Arn>arn:aws:sts:::assumed-role/z3/app</Arn>
+      <Arn>arn:aws:sts:::assumed-role/zee3/app</Arn>
       <AssumedRoleId>ZSTS7Q2M9XK4D1VB8NPA:app</AssumedRoleId>
     </AssumedRoleUser>
     <SubjectFromWebIdentityToken>4f1c2e9a-...</SubjectFromWebIdentityToken>
-    <Audience>z3-console</Audience>
+    <Audience>zee3-console</Audience>
     <Provider>https://sso.example.com/realms/main</Provider>
   </AssumeRoleWithWebIdentityResult>
   <ResponseMetadata><RequestId>8C3F1A2B4D5E6F70</RequestId></ResponseMetadata>
@@ -170,7 +170,7 @@ again brings back its sessions that have not expired.
 | 400 | `InvalidAction` | Another action |
 | 403 | `SignatureDoesNotMatch` | `AssumeRole`: the signature does not match |
 | 403 | `InvalidAccessKeyId` | `AssumeRole`: the access key is unknown |
-| 403 | `AccessDenied` | Wrong LDAP password, no z3 policy for the user, STS is turned off; for `AssumeRole`: unsigned or not signed for `sts`, root credentials, or temporary credentials |
+| 403 | `AccessDenied` | Wrong LDAP password, no Zee3 policy for the user, STS is turned off; for `AssumeRole`: unsigned or not signed for `sts`, root credentials, or temporary credentials |
 
 ## Using the credentials
 
@@ -189,7 +189,7 @@ import json
 import boto3
 
 # Signed with the user's (or access key's) own credentials.
-sts = boto3.client("sts", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+sts = boto3.client("sts", endpoint_url="http://zee3.example.com:9000", region_name="us-east-1",
                    aws_access_key_id="report-job", aws_secret_access_key=secret)
 session_policy = {
     "Version": "2012-10-17",
@@ -197,10 +197,10 @@ session_policy = {
                    "Resource": ["arn:aws:s3:::reports", "arn:aws:s3:::reports/*"]}],
 }
 c = sts.assume_role(
-    RoleArn="arn:aws:iam::000000000000:role/z3", RoleSessionName="nightly",
+    RoleArn="arn:aws:iam::000000000000:role/zee3", RoleSessionName="nightly",
     DurationSeconds=900, Policy=json.dumps(session_policy))["Credentials"]
 
-s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+s3 = boto3.client("s3", endpoint_url="http://zee3.example.com:9000", region_name="us-east-1",
                   aws_access_key_id=c["AccessKeyId"],
                   aws_secret_access_key=c["SecretAccessKey"],
                   aws_session_token=c["SessionToken"])
@@ -214,14 +214,14 @@ import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
 
-sts = boto3.client("sts", endpoint_url="http://z3.example.com:9000", region_name="us-east-1",
+sts = boto3.client("sts", endpoint_url="http://zee3.example.com:9000", region_name="us-east-1",
                    config=Config(signature_version=UNSIGNED))
 c = sts.assume_role_with_web_identity(
-    RoleArn="arn:aws:iam::000000000000:role/z3", RoleSessionName="app",
+    RoleArn="arn:aws:iam::000000000000:role/zee3", RoleSessionName="app",
     WebIdentityToken=id_token, DurationSeconds=3600,
     PolicyArns=[{"arn": "arn:aws:iam::aws:policy/readonly"}])["Credentials"]
 
-s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000",
+s3 = boto3.client("s3", endpoint_url="http://zee3.example.com:9000",
                   aws_access_key_id=c["AccessKeyId"],
                   aws_secret_access_key=c["SecretAccessKey"],
                   aws_session_token=c["SessionToken"])
@@ -231,7 +231,7 @@ s3 = boto3.client("s3", endpoint_url="http://z3.example.com:9000",
   <Tab title="LDAP (curl)">
 
 ```bash
-curl -X POST http://z3.example.com:9000/ \
+curl -X POST http://zee3.example.com:9000/ \
   -d Action=AssumeRoleWithLDAPIdentity -d Version=2011-06-15 \
   -d LDAPUsername=radiographer -d LDAPPassword='...' -d DurationSeconds=3600
 ```
@@ -243,7 +243,7 @@ curl -X POST http://z3.example.com:9000/ \
 
 Nothing is stored per session:
 
-- The secret key is derived from the access key with the STS signing key, so z3 can check SigV4
+- The secret key is derived from the access key with the STS signing key, so Zee3 can check SigV4
   signatures from the access key alone.
 - The session token carries the access key, expiry, provider, user, where the policies come from
   (the OIDC policy claim, the LDAP DN and groups, or the IAM user and access key) and the session
@@ -262,11 +262,11 @@ policy, the user or access key, or by turning STS off.
 
 | Prefix | Used for |
 | --- | --- |
-| `z3sts1.` | Federated sessions without session policies (as before) |
-| `z3sts2.` | `AssumeRole` sessions, and any session with a session policy |
+| `zee3sts1.` | Federated sessions without session policies (as before) |
+| `zee3sts2.` | `AssumeRole` sessions, and any session with a session policy |
 
-Older z3 servers refuse `z3sts2.` tokens with `InvalidToken`, rather than ignoring the session
-policy. Upgrade every site of a replication group before relying on them. Existing `z3sts1.`
+Older Zee3 servers refuse `zee3sts2.` tokens with `InvalidToken`, rather than ignoring the session
+policy. Upgrade every site of a replication group before relying on them. Existing `zee3sts1.`
 sessions keep working after the upgrade.
 
 ## Settings

@@ -22,14 +22,14 @@ SFTP serves buckets over SSH, so transfers are encrypted without extra setup. It
 
     Open **Protocols** and turn on **SFTP**. The gear icon sets the **Address** and **Host key**.
     When it's running, the panel shows a **Connect** command such as
-    `sftp -P 8022 AKEXAMPLE@z3.example.com` and the **Host key** fingerprint (SHA256).
+    `sftp -P 8022 AKEXAMPLE@zee3.example.com` and the **Host key** fingerprint (SHA256).
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="zee3 admin">
 
     ```bash
-    z3 admin protocols enable sftp --address 0.0.0.0:8022
-    z3 admin protocols
+    zee3 admin protocols enable sftp --address 0.0.0.0:8022
+    zee3 admin protocols
     # sftp     running  0.0.0.0:8022  host key SHA256:...
     ```
 
@@ -38,8 +38,8 @@ SFTP serves buckets over SSH, so transfers are encrypted without extra setup. It
 
 ## Host key
 
-The first time SFTP starts, z3 creates an Ed25519 host key in the data directory and reuses it from
-then on. Its fingerprint is shown in the console and by `z3 admin protocols`. Compare it with what
+The first time SFTP starts, Zee3 creates an Ed25519 host key in the data directory and reuses it from
+then on. Its fingerprint is shown in the console and by `zee3 admin protocols`. Compare it with what
 your client shows on the first connection.
 
 To use your own key, or the same key on every node of a site group (so clients see one host key
@@ -47,8 +47,8 @@ whichever node they reach), point `sftp.host_key` at an OpenSSH private key file
 node:
 
 ```bash
-ssh-keygen -t ed25519 -N '' -f /etc/z3/sftp_host_ed25519
-z3 admin settings set sftp host_key=/etc/z3/sftp_host_ed25519
+ssh-keygen -t ed25519 -N '' -f /etc/zee3/sftp_host_ed25519
+zee3 admin settings set sftp host_key=/etc/zee3/sftp_host_ed25519
 ```
 
 ## Sign in
@@ -62,7 +62,7 @@ password sign-in is supported; SSH public keys aren't. Failed sign-ins are slowe
   <Tab title="sftp">
 
     ```bash
-    sftp -P 8022 AKEXAMPLE@z3.example.com
+    sftp -P 8022 AKEXAMPLE@zee3.example.com
     # password: the secret key
     sftp> ls
     sftp> cd backups
@@ -73,7 +73,7 @@ password sign-in is supported; SSH public keys aren't. Failed sign-ins are slowe
   </Tab>
   <Tab title="WinSCP">
 
-    Create a site with **File protocol** SFTP, **Host name** `z3.example.com`, **Port number**
+    Create a site with **File protocol** SFTP, **Host name** `zee3.example.com`, **Port number**
     `8022`, and the access key and secret key as **User name** and **Password**. Accept the host
     key after checking its fingerprint against the console.
 
@@ -81,17 +81,17 @@ password sign-in is supported; SSH public keys aren't. Failed sign-ins are slowe
   <Tab title="FileZilla">
 
     Create a site with **Protocol** "SFTP - SSH File Transfer Protocol", **Host**
-    `z3.example.com`, **Port** `8022`, **Logon type** Normal, and the access key and secret key.
+    `zee3.example.com`, **Port** `8022`, **Logon type** Normal, and the access key and secret key.
 
   </Tab>
   <Tab title="rclone">
 
     ```bash
-    rclone config create z3sftp sftp \
-      host=z3.example.com port=8022 user=AKEXAMPLE pass=$(rclone obscure SECRETEXAMPLE)
+    rclone config create zee3sftp sftp \
+      host=zee3.example.com port=8022 user=AKEXAMPLE pass=$(rclone obscure SECRETEXAMPLE)
 
-    rclone ls z3sftp:backups
-    rclone sync ./backups z3sftp:backups/server-01
+    rclone ls zee3sftp:backups
+    rclone sync ./backups zee3sftp:backups/server-01
     ```
 
   </Tab>
@@ -105,7 +105,7 @@ password sign-in is supported; SSH public keys aren't. Failed sign-ins are slowe
 - `setstat` (times, permissions) is accepted but has no effect.
 - Idle connections are closed after 30 minutes.
 - [Conditions](/access/conditions) see `aws:SecureTransport` = `true`, the client address, and
-  `aws:UserAgent` = `z3-sftp`.
+  `aws:UserAgent` = `zee3-sftp`.
 
 ## Not supported yet
 

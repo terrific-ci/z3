@@ -1,7 +1,7 @@
-# z3 documentation
+# Zee3 documentation
 
-The user documentation of z3, an S3-compatible object store in one binary, as a
-[Mintlify](https://mintlify.com) site: guides, the `z3 admin` command line and the HTTP APIs.
+The user documentation of Zee3, an S3-compatible object store in one binary, as a
+[Mintlify](https://mintlify.com) site: guides, the `zee3 admin` command line and the HTTP APIs.
 
 Binaries are published on this repository's [releases](https://github.com/terrific-ci/z3/releases)
 and the image on Docker Hub as [`terrificci/z3`](https://hub.docker.com/r/terrificci/z3).

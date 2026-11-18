@@ -3,7 +3,7 @@ title: "Compression"
 description: "Store new objects compressed with LZ4 when their name or content type matches, without changing deduplication, replication or range reads."
 ---
 
-z3 can store new objects compressed with **LZ4**, a fast compressor that costs little CPU. It's
+Zee3 can store new objects compressed with **LZ4**, a fast compressor that costs little CPU. It's
 off by default. When it's on, an object is compressed if its **name** ends in one of the listed
 extensions **or** its **content type** is one of the listed types. Clients see no difference:
 reads return the original bytes, and sizes and ETags are those of the original data.
@@ -28,13 +28,13 @@ Changes apply right away, without a restart.
     **Content types** if needed. Each key shows its default, and **Use default** puts it back.
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="zee3 admin">
 
     ```bash
-    z3 admin settings set compression enabled=true
-    z3 admin settings set compression 'extensions=[".log",".csv",".json",".parquet"]'
-    z3 admin settings get compression
-    z3 admin settings reset compression
+    zee3 admin settings set compression enabled=true
+    zee3 admin settings set compression 'extensions=[".log",".csv",".json",".parquet"]'
+    zee3 admin settings get compression
+    zee3 admin settings reset compression
     ```
 
     See [CLI: settings](/cli/settings).

@@ -1,6 +1,6 @@
 ---
 title: "Site replication"
-description: "Join several z3 sites with one call: every bucket replicates, and bucket settings, IAM, keys and cluster settings follow, in a mesh, hub-and-spoke or chain topology."
+description: "Join several Zee3 sites with one call: every bucket replicates, and bucket settings, IAM, keys and cluster settings follow, in a mesh, hub-and-spoke or chain topology."
 ---
 
 Site replication joins several nodes (sites) into one group. Instead of configuring each bucket,
@@ -26,11 +26,11 @@ bucket-level and configuration changes.
 
 ## Set it up
 
-Every site needs a name, a reachable replication API and its own `Z3_PEER_TOKEN`:
+Every site needs a name, a reachable replication API and its own `ZEE3_PEER_TOKEN`:
 
 ```bash
 # on each site, with its own token
-Z3_PEER_TOKEN=token-of-dc1 z3
+ZEE3_PEER_TOKEN=token-of-dc1 zee3
 ```
 
 Then one call to **one** node configures the whole group. That node stores the configuration and
@@ -67,7 +67,7 @@ sends it to every other site, using each site's token:
 | Field | Meaning |
 | --- | --- |
 | `name` | This node's own site; must be one of `sites` |
-| `sites` | At least two sites, by name. Each has `endpoint` (`http://` or `https://`, the site's replication API) and `token` (that site's `Z3_PEER_TOKEN`) |
+| `sites` | At least two sites, by name. Each has `endpoint` (`http://` or `https://`, the site's replication API) and `token` (that site's `ZEE3_PEER_TOKEN`) |
 | `sites.*.max_bytes_per_sec`, `sites.*.windows` | Optional bandwidth limit and UTC time windows for pulling from that site; see [Bandwidth limits](/replication/bucket-replication#bandwidth-limits-and-time-windows) |
 | `topology` | Who pulls from whom (below); `"mesh"` by default |
 
@@ -76,11 +76,11 @@ Setting it up needs the `admin:ConfigUpdate` right.
 ## Mutual TLS between sites
 
 Sites can talk over [mutual TLS](/deploy/peer-tls) instead of plain HTTP: start every site with
-`Z3_PEER_TLS_CERT`, `Z3_PEER_TLS_KEY` and `Z3_PEER_TLS_CA` (certificates from one CA), and use
+`ZEE3_PEER_TLS_CERT`, `ZEE3_PEER_TLS_KEY` and `ZEE3_PEER_TLS_CA` (certificates from one CA), and use
 `https://` endpoints in `sites`. The site configuration is sent to the other sites over the same
 connection, so it is protected too.
 
-To switch a running group, set the certificates with `Z3_PEER_TLS_MODE=mixed` on every site, run
+To switch a running group, set the certificates with `ZEE3_PEER_TLS_MODE=mixed` on every site, run
 `PUT /api/site` once more with `https://` endpoints (or edit the group in the console), then remove
 the mode variable. See [Turn it on in a running group](/deploy/peer-tls#turn-it-on-in-a-running-group).
 
@@ -126,4 +126,4 @@ bucket configuration. Other sites aren't changed.
 - `api.requests_max` is a shared setting but limits each node on its own.
 - The site configuration is part of the [configuration export](/operations/config-export) but isn't
   applied by an import; set it up again on the new node.
-- Run the same z3 version on every site. See [Upgrading](/deploy/upgrading#replication-groups).
+- Run the same Zee3 version on every site. See [Upgrading](/deploy/upgrading#replication-groups).

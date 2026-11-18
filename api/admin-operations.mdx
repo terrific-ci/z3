@@ -125,11 +125,11 @@ See [Support tools](/operations/support) for what each tool does.
 {
   "generated_ms": 1794921056000, "version": "0.1.0", "node_id": "01a1e9a0-be79-7462-83e2-8685ea015598",
   "uptime_secs": 86400, "level": "warn",
-  "host": { "hostname": "z3-jkt-1", "cpus": 16, "...": "..." },
+  "host": { "hostname": "zee3-jkt-1", "cpus": 16, "...": "..." },
   "checks": [
     { "id": "disks", "title": "Disks", "level": "ok", "summary": "6 disks online", "details": { "...": "..." } },
     { "id": "credentials", "title": "Root credentials", "level": "warn",
-      "summary": "Root still uses the default access and secret key; set Z3_ACCESS_KEY and Z3_SECRET_KEY", "details": {} }
+      "summary": "Root still uses the default access and secret key; set ZEE3_ACCESS_KEY and ZEE3_SECRET_KEY", "details": {} }
   ]
 }
 ```
@@ -161,7 +161,7 @@ peer that fails has `error` instead.
 ### Profile
 
 `POST /api/support/profile?seconds=15` (1 to 120) samples for that long, then answers a zip
-(`application/zip`, named `z3-profile-<time>.zip`) with `flamegraph.svg`, `cpu.pb`, `runtime.json`
+(`application/zip`, named `zee3-profile-<time>.zip`) with `flamegraph.svg`, `cpu.pb`, `runtime.json`
 and `README.txt`. Needs a Unix host.
 
 ```bash
@@ -198,7 +198,7 @@ With data, the files may total at most 1 GiB; above that the answer is `413`.
   "usage_measured_ms": 1794921000000,
   "op": {
     "kind": "rebalance", "state": "running", "started_ms": 1794920000000, "finished_ms": null,
-    "created_by": "z3admin", "pool_id": null, "pool_index": null,
+    "created_by": "zee3admin", "pool_id": null, "pool_index": null,
     "dirs_done": 25, "dirs_total": 256, "passes": 1, "moved_chunks": 2412, "moved_bytes": 8912003311,
     "gone": 0, "failed": 0, "errors": [], "message": null, "...": "..."
   }
@@ -275,7 +275,7 @@ It is checked first: the bucket exists, a remote target answers, the KMS key exi
   "id": "expire-146d75b7b7a2775c",
   "spec": { "type": "expire", "source": { "bucket": "logs", "prefix": "tmp/" }, "filter": { "older_than": "30d" },
             "versions": "all", "dry_run": true },
-  "state": "done", "created_ms": 1794921010000, "finished_ms": 1794921011000, "created_by": "z3admin",
+  "state": "done", "created_ms": 1794921010000, "finished_ms": 1794921011000, "created_by": "zee3admin",
   "progress": { "scanned": 3, "matched": 2, "done": 2, "skipped": 0, "failed": 0, "bytes": 400000 },
   "cursor": "tmp/b.log", "errors": [], "samples": ["tmp/a.log", "tmp/b.log"], "message": null
 }
@@ -371,14 +371,14 @@ references, plus temp files of interrupted writes. It answers when it is done. S
 </ParamField>
 
 <ParamField query="min_age_secs" type="integer">
-  Delete only files last modified longer ago than this. The default is `Z3_GC_GRACE`
-  (`scanner.gc_grace_secs`); in cluster mode, the larger of `Z3_GC_GRACE` and `Z3_UPLOAD_TTL`.
+  Delete only files last modified longer ago than this. The default is `ZEE3_GC_GRACE`
+  (`scanner.gc_grace_secs`); in cluster mode, the larger of `ZEE3_GC_GRACE` and `ZEE3_UPLOAD_TTL`.
   `0` is allowed, but then only the holds of writes in this process protect new chunks: don't use it
   on a node that serves traffic.
 </ParamField>
 
 ```bash
-curl -X POST "$Z3_ADMIN_URL/api/gc/sweep?dry_run=true" -H "Authorization: Bearer $TOKEN"
+curl -X POST "$ZEE3_ADMIN_URL/api/gc/sweep?dry_run=true" -H "Authorization: Bearer $TOKEN"
 ```
 
 ```json
@@ -396,7 +396,7 @@ curl -X POST "$Z3_ADMIN_URL/api/gc/sweep?dry_run=true" -H "Authorization: Bearer
 | `tmp_files`, `tmp_bytes` | Temp files of interrupted writes deleted (in a dry run: that would be) |
 | `duration_ms` | How long the sweep took |
 
-The sweep keeps to `Z3_HEAL_DUTY`, so on a large node it takes a while. One sweep runs at a time.
+The sweep keeps to `ZEE3_HEAL_DUTY`, so on a large node it takes a while. One sweep runs at a time.
 
 ## Config export and import
 
@@ -405,7 +405,7 @@ every secret and needs `admin:UserAdmin` and `admin:ConfigUpdate`. The IAM part 
 callers with `admin:UserAdmin`.
 
 `POST /api/config/import` takes that document and answers `{"applied": [...], "skipped": [...]}`. A
-document whose `z3_config` is not `1` answers `400`. See [Config export and import](/operations/config-export).
+document whose `zee3_config` is not `1` answers `400`. See [Config export and import](/operations/config-export).
 
 ## Imports
 

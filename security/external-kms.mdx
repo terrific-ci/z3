@@ -3,13 +3,13 @@ title: "External KMS"
 description: "Seal data keys with HashiCorp Vault (Transit, token or AppRole, namespaces, private CA) or MinIO KES (mutual TLS), check its health, and move objects over from the internal KMS."
 ---
 
-By default, data keys of [encrypted objects](/security/encryption) are sealed by z3's **internal
+By default, data keys of [encrypted objects](/security/encryption) are sealed by Zee3's **internal
 KMS**. You can hand that job to an external key manager instead:
 
 | | HashiCorp Vault (Transit secrets engine) | MinIO KES |
 | --- | --- | --- |
 | Endpoint | `https://vault.example.com:8200` | `https://kes.example.com:7373` |
-| Authentication | A token, or AppRole (role id and secret id; z3 logs in again before the lease runs out or when a request is refused) | Mutual TLS: a client certificate and private key (PEM) |
+| Authentication | A token, or AppRole (role id and secret id; Zee3 logs in again before the lease runs out or when a request is refused) | Mutual TLS: a client certificate and private key (PEM) |
 | Options | Transit mount (default `transit`), AppRole mount (default `approle`), namespace (Vault Enterprise, sent as `X-Vault-Namespace`) | |
 | API used | `transit/encrypt`, `transit/decrypt`, `transit/keys` (check, create, list), `sys/health` | `/v1/key/generate`, `/v1/key/encrypt`, `/v1/key/decrypt`, `/v1/key/create`, `/v1/key/describe`, `/v1/key/list`, `/v1/status` |
 
@@ -23,12 +23,12 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
 <Tabs>
   <Tab title="Vault">
 
-    Turn on the Transit engine and give z3 a policy for it:
+    Turn on the Transit engine and give Zee3 a policy for it:
 
     ```bash
     vault secrets enable transit
 
-    vault policy write z3 - <<'EOF'
+    vault policy write zee3 - <<'EOF'
     path "transit/encrypt/*" { capabilities = ["update"] }
     path "transit/decrypt/*" { capabilities = ["update"] }
     path "transit/keys/*"    { capabilities = ["create", "read", "update"] }
@@ -40,9 +40,9 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
 
     ```bash
     vault auth enable approle
-    vault write auth/approle/role/z3 token_policies=z3 token_ttl=1h token_max_ttl=24h
-    vault read auth/approle/role/z3/role-id
-    vault write -f auth/approle/role/z3/secret-id
+    vault write auth/approle/role/zee3 token_policies=zee3 token_ttl=1h token_max_ttl=24h
+    vault read auth/approle/role/zee3/role-id
+    vault write -f auth/approle/role/zee3/secret-id
     ```
 
     Adjust the paths if Transit is mounted somewhere other than `transit`.
@@ -50,12 +50,12 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
   </Tab>
   <Tab title="KES">
 
-    Create a client certificate for z3 and allow its identity the key APIs in the KES
+    Create a client certificate for Zee3 and allow its identity the key APIs in the KES
     configuration:
 
     ```yaml
     policy:
-      z3:
+      zee3:
         allow:
           - /v1/key/create/*
           - /v1/key/generate/*
@@ -65,7 +65,7 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
           - /v1/key/list/*
           - /v1/status
         identities:
-          - <identity of z3's client certificate>
+          - <identity of zee3's client certificate>
     ```
 
     `kes identity of client.crt` prints the identity.
@@ -99,7 +99,7 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
       -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
       -d '{"kind": "vault", "endpoint": "https://vault.example.com:8200",
            "auth": "approle", "role_id": "...", "secret_id": "...",
-           "namespace": "", "mount": "transit", "ca_pem": "", "default_key": "z3-default"}'
+           "namespace": "", "mount": "transit", "ca_pem": "", "default_key": "zee3-default"}'
 
     # KES with mutual TLS
     curl -X PUT http://127.0.0.1:9001/api/kms/external \
@@ -118,12 +118,12 @@ doesn't change: the client keeps its own key. Connecting needs `admin:ConfigUpda
 
 ## Keys
 
-- The **default key** (default `z3-default`) seals SSE-S3 data keys. z3 creates it in the KMS
+- The **default key** (default `zee3-default`) seals SSE-S3 data keys. Zee3 creates it in the KMS
   when it's missing.
-- Named keys for SSE-KMS must **already exist** in the KMS. z3 checks first, because Transit would
+- Named keys for SSE-KMS must **already exist** in the KMS. Zee3 checks first, because Transit would
   otherwise quietly create a mistyped key on `encrypt`.
 - **Create key** on the Encryption page creates the key in Vault or KES.
-- External keys aren't deleted from z3. Delete them in the KMS itself, and only once no object
+- External keys aren't deleted from Zee3. Delete them in the KMS itself, and only once no object
   needs them.
 - Opened data keys are cached in memory for 5 minutes (at most 10,000), so repeated GETs don't
   always call the KMS.
@@ -168,11 +168,11 @@ rewritten. Objects already on the target key and KMS are skipped.
 ```
 
 ```bash
-z3 admin batch start rotate.json --wait
+zee3 admin batch start rotate.json --wait
 ```
 
 Run one job per bucket. Once every object has moved, old internal keys may be deleted (the internal
-`z3-default` stays). A `CopyObject` with the same encryption but a different KMS also reseals with
+`zee3-default` stays). A `CopyObject` with the same encryption but a different KMS also reseals with
 the active KMS.
 
 ## Disconnect
@@ -206,5 +206,5 @@ group's key. Every site must be able to reach the same Vault or KES.
 - AWS KMS, Azure Key Vault and GCP KMS.
 - Setting the external KMS with environment variables at startup (only the console and the admin
   API), and including it in a configuration export.
-- Vault authentication other than token and AppRole (Kubernetes, TLS certificates). z3 makes its
+- Vault authentication other than token and AppRole (Kubernetes, TLS certificates). Zee3 makes its
   own data keys and Transit wraps them; Transit `datakey` isn't used.

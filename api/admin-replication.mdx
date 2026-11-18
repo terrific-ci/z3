@@ -6,7 +6,7 @@ description: "Admin API endpoints for peers, per-bucket replication, conflicts, 
 These endpoints set up and watch [replication](/replication/overview). Reading needs
 `admin:ServerInfo`; changing needs `admin:ConfigUpdate`.
 
-Replication itself runs between nodes on the **peer API** (port 9002), which needs `Z3_PEER_TOKEN`
+Replication itself runs between nodes on the **peer API** (port 9002), which needs `ZEE3_PEER_TOKEN`
 on the node being pulled from. The endpoints below are on the admin API.
 
 ## Endpoints
@@ -34,7 +34,7 @@ on the node being pulled from. The endpoints below are on the admin API.
 
 ## Peers
 
-A peer is another z3 node this node pulls changes from.
+A peer is another Zee3 node this node pulls changes from.
 
 `PUT /api/peers/{name}`:
 
@@ -45,7 +45,7 @@ A peer is another z3 node this node pulls changes from.
 </ParamField>
 
 <ParamField body="token" type="string" required>
-  The peer's `Z3_PEER_TOKEN`. When changing an existing peer, an empty token keeps the saved one.
+  The peer's `ZEE3_PEER_TOKEN`. When changing an existing peer, an empty token keeps the saved one.
 </ParamField>
 
 <ParamField body="max_bytes_per_sec" type="integer">
@@ -165,7 +165,7 @@ from different nodes. Both versions are kept; the one with the higher HLC is cur
 | `last_contact_ms`, `offline`, `offline_since_ms` | When the peer last answered, and whether it counts as offline (no answer for 10 s on any link) |
 | `outgoing_entries` | Changes made here that the peer has not pulled yet |
 
-The same figures feed the `z3_replication_*` [Prometheus metrics](/operations/prometheus#replication).
+The same figures feed the `zee3_replication_*` [Prometheus metrics](/operations/prometheus#replication).
 
 ## Site replication
 
@@ -191,7 +191,7 @@ authenticating with that site's token, so **one call sets up the whole group**:
 | Field | Meaning |
 | --- | --- |
 | `name` | This node's own site, one of the keys of `sites` |
-| `sites` | Every site (at least two): its replication API `endpoint`, its `Z3_PEER_TOKEN`, and optionally `max_bytes_per_sec` and `windows` for pulling from it |
+| `sites` | Every site (at least two): its replication API `endpoint`, its `ZEE3_PEER_TOKEN`, and optionally `max_bytes_per_sec` and `windows` for pulling from it |
 | `topology` | `"mesh"` (every site pulls from every other), `{"hub_spoke": {"hub": "jkt"}}`, or `{"chain": {"order": ["jkt", "sby", "bdg"]}}` (each site pulls from its neighbours). Changes are relayed, so every topology reaches every site |
 
 The answer says how the push to each other site went:

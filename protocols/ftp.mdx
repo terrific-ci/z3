@@ -4,7 +4,7 @@ description: "Serve buckets over FTP for scanners and legacy software, or FTPS (
 ---
 
 FTP is for devices and software that only speak FTP, such as document scanners and older
-applications. With a certificate, z3 also serves **FTPS** (explicit TLS, `AUTH TLS`). Read the
+applications. With a certificate, Zee3 also serves **FTPS** (explicit TLS, `AUTH TLS`). Read the
 [overview](/protocols/overview) first for how buckets look as files and how permissions work.
 
 <Frame>
@@ -35,14 +35,14 @@ Use an X.509 v3 certificate.
     shows `ftp://host:8021`, or `ftpes://host:8021` with a certificate.
 
   </Tab>
-  <Tab title="z3 admin">
+  <Tab title="zee3 admin">
 
     ```bash
-    z3 admin protocols enable ftp --set passive_ports=30000-30100
+    zee3 admin protocols enable ftp --set passive_ports=30000-30100
 
     # FTPS, and refuse plain FTP
-    z3 admin settings set ftp tls_cert=/etc/z3/ftp.pem tls_key=/etc/z3/ftp.key tls_required=true
-    z3 admin settings get ftp
+    zee3 admin settings set ftp tls_cert=/etc/zee3/ftp.pem tls_key=/etc/zee3/ftp.key tls_required=true
+    zee3 admin settings get ftp
     ```
 
   </Tab>
@@ -64,10 +64,10 @@ The user name is an access key (or an IAM user name) and the password is its sec
 
     ```bash
     # FTPS
-    lftp -u AKEXAMPLE -e "set ftp:ssl-force true" -p 8021 z3.example.com
-    lftp AKEXAMPLE@z3.example.com:/> ls
-    lftp AKEXAMPLE@z3.example.com:/> cd scans
-    lftp AKEXAMPLE@z3.example.com:/scans> put 2026-11-17-001.pdf
+    lftp -u AKEXAMPLE -e "set ftp:ssl-force true" -p 8021 zee3.example.com
+    lftp AKEXAMPLE@zee3.example.com:/> ls
+    lftp AKEXAMPLE@zee3.example.com:/> cd scans
+    lftp AKEXAMPLE@zee3.example.com:/scans> put 2026-11-17-001.pdf
     ```
 
   </Tab>
@@ -75,9 +75,9 @@ The user name is an access key (or an IAM user name) and the password is its sec
 
     ```bash
     # list the buckets, upload, download (FTPS)
-    curl --ssl-reqd -u AKEXAMPLE:SECRETEXAMPLE ftp://z3.example.com:8021/
-    curl --ssl-reqd -u AKEXAMPLE:SECRETEXAMPLE -T scan.pdf ftp://z3.example.com:8021/scans/
-    curl --ssl-reqd -u AKEXAMPLE:SECRETEXAMPLE -O ftp://z3.example.com:8021/scans/scan.pdf
+    curl --ssl-reqd -u AKEXAMPLE:SECRETEXAMPLE ftp://zee3.example.com:8021/
+    curl --ssl-reqd -u AKEXAMPLE:SECRETEXAMPLE -T scan.pdf ftp://zee3.example.com:8021/scans/
+    curl --ssl-reqd -u AKEXAMPLE:SECRETEXAMPLE -O ftp://zee3.example.com:8021/scans/scan.pdf
     ```
 
     Leave out `--ssl-reqd` for plain FTP.
@@ -85,14 +85,14 @@ The user name is an access key (or an IAM user name) and the password is its sec
   </Tab>
   <Tab title="FileZilla">
 
-    Create a site with **Protocol** FTP, **Host** `z3.example.com`, **Port** `8021`,
+    Create a site with **Protocol** FTP, **Host** `zee3.example.com`, **Port** `8021`,
     **Encryption** "Require explicit FTP over TLS" (or "Only use plain FTP" without a
     certificate), **Logon type** Normal, and the access key and secret key as user and password.
 
   </Tab>
   <Tab title="Scanners">
 
-    Most network scanners have a "scan to FTP" destination. Enter the z3 host, port `8021`, the
+    Most network scanners have a "scan to FTP" destination. Enter the Zee3 host, port `8021`, the
     target folder as `/<bucket>/<folder>`, and a dedicated access key restricted to that bucket
     with `s3:PutObject` (and `s3:ListBucket` if the scanner checks the folder first).
 
@@ -106,7 +106,7 @@ The user name is an access key (or an IAM user name) and the password is its sec
 - Files can't be appended to.
 - Idle sessions are closed after 10 minutes.
 - [Conditions](/access/conditions) see `aws:SecureTransport` = `true` for FTPS sessions and
-  `aws:UserAgent` = `z3-ftp`, so a policy can refuse plain FTP for a key.
+  `aws:UserAgent` = `zee3-ftp`, so a policy can refuse plain FTP for a key.
 
 ## Not supported yet
 

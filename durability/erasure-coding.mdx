@@ -1,17 +1,17 @@
 ---
 title: "Erasure coding"
-description: "How z3 splits chunks into Reed-Solomon shards over a disk set, survives failed disks and detects bit rot."
+description: "How Zee3 splits chunks into Reed-Solomon shards over a disk set, survives failed disks and detects bit rot."
 ---
 
-With `Z3_DISKS`, one node stores every chunk across a set of disks with Reed-Solomon erasure
+With `ZEE3_DISKS`, one node stores every chunk across a set of disks with Reed-Solomon erasure
 coding, so a number of disks equal to the parity can fail without losing data. This page explains
 how it works; to set it up, see [Disks](/deploy/disks).
 
 ```bash
-Z3_DATA_DIR=/var/lib/z3 \
-Z3_DISKS=/mnt/d1,/mnt/d2,/mnt/d3,/mnt/d4,/mnt/d5,/mnt/d6 \
-Z3_PARITY=2 \
-z3
+ZEE3_DATA_DIR=/var/lib/zee3 \
+ZEE3_DISKS=/mnt/d1,/mnt/d2,/mnt/d3,/mnt/d4,/mnt/d5,/mnt/d6 \
+ZEE3_PARITY=2 \
+zee3
 ```
 
 ## Shards
@@ -26,7 +26,7 @@ On a set of `n` disks with parity `m`, each chunk is split into `k = n - m` **da
 - The code is **systematic**: the data shards put together are the chunk itself. While every data
   shard is intact, a read just concatenates them, with no decoding.
 
-Parity defaults to 2 from four disks up and 1 below. Choose it with `Z3_PARITY` before the first
+Parity defaults to 2 from four disks up and 1 below. Choose it with `ZEE3_PARITY` before the first
 start; it can't change afterwards.
 
 ## Placement
@@ -51,7 +51,7 @@ written as soon as their disk is back. If too few disks are online, the write fa
 
 Every shard file starts with a header holding the BLAKE3 hash of its contents.
 
-1. z3 reads the data shards and checks each one against its header.
+1. Zee3 reads the data shards and checks each one against its header.
 2. A missing or damaged shard is rebuilt from the others, so the read still succeeds.
 3. The assembled chunk is checked once more against its content address (the chunk's own hash).
 4. The damaged chunk is queued, and the healer repairs it within seconds.
@@ -64,14 +64,14 @@ the heal pass; if the bucket is replicated, anti-entropy can bring the object ba
 
 ## The disk set is fixed
 
-Each disk holds a `z3-disk.json` with the set's id, the disk's position, the number of disks and the
+Each disk holds a `zee3-disk.json` with the set's id, the disk's position, the number of disks and the
 parity, written when the set is formatted on first start. Because placement depends on the number of
 disks, a set **can't grow or shrink**, and its parity can't change. To add capacity, add another
 disk set as a new [pool](/durability/pools); each pool has its own layout.
 
 ## Metadata
 
-Erasure coding protects chunks. The metadata database (`meta.redb`) stays in `Z3_DATA_DIR`, so put
+Erasure coding protects chunks. The metadata database (`meta.redb`) stays in `ZEE3_DATA_DIR`, so put
 that directory on a reliable disk, such as a RAID 1 mirror.
 
 ## Erasure coding and other features
@@ -93,7 +93,7 @@ Prometheus metrics on `/metrics`:
 
 | Metric | Meaning |
 | --- | --- |
-| `z3_disk_online{disk,path}` | 1 while the disk is online |
-| `z3_heal_shards_repaired_total` | Shards rebuilt by healing |
-| `z3_heal_chunks_lost_total` | Chunks with fewer than `k` readable shards |
-| `z3_orphan_chunks_deleted_total` | Chunk files a crash left unreferenced, deleted by the orphan sweep |
+| `zee3_disk_online{disk,path}` | 1 while the disk is online |
+| `zee3_heal_shards_repaired_total` | Shards rebuilt by healing |
+| `zee3_heal_chunks_lost_total` | Chunks with fewer than `k` readable shards |
+| `zee3_orphan_chunks_deleted_total` | Chunk files a crash left unreferenced, deleted by the orphan sweep |

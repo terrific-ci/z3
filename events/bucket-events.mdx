@@ -3,7 +3,7 @@ title: "Bucket events"
 description: "Tell other systems when objects are created, read, tagged, moved to a tier or deleted, with per-bucket rules."
 ---
 
-z3 can tell other systems when something happens to an object: it was written, read, tagged,
+Zee3 can tell other systems when something happens to an object: it was written, read, tagged,
 moved to a tier or deleted. Two things work together:
 
 - **Event destinations** receive the events: a webhook, Redis, NATS, Elasticsearch, Kafka, RabbitMQ
@@ -59,13 +59,13 @@ The body is MinIO's webhook body: the event name, `bucket/key`, and one S3 event
   "Records": [
     {
       "eventVersion": "2.0",
-      "eventSource": "z3:s3",
+      "eventSource": "zee3:s3",
       "awsRegion": "",
       "eventTime": "2026-11-17T08:30:00.123Z",
       "eventName": "s3:ObjectCreated:Put",
       "userIdentity": { "principalId": "uploader" },
       "requestParameters": { "principalId": "uploader", "region": "", "sourceIPAddress": "10.0.0.9" },
-      "responseElements": { "x-z3-origin-node": "01a1e327-..." },
+      "responseElements": { "x-zee3-origin-node": "01a1e327-..." },
       "s3": {
         "s3SchemaVersion": "1.0",
         "configurationId": "jpegs",
@@ -87,10 +87,10 @@ The body is MinIO's webhook body: the event name, `bucket/key`, and one S3 event
 ```
 
 - `principalId` is the access key that sent the request, `anonymous` for a public request, and
-  `z3:lifecycle` for lifecycle actions.
+  `zee3:lifecycle` for lifecycle actions.
 - `configurationId` is the id of the rule that matched.
 - `awsRegion` is the `region.name` [setting](/operations/settings#region), empty when it is not set.
-- `x-z3-origin-node` is the node that sent the event.
+- `x-zee3-origin-node` is the node that sent the event.
 - The object key in the record is URL-encoded, as in S3. `size`, `eTag`, `contentType` and
   `userMetadata` are left out for removals.
 - `userMetadata` holds only the `x-amz-meta-*` metadata. Stored
@@ -118,14 +118,14 @@ bucket.
   <Tab title="S3 API">
 
 Use `PutBucketNotificationConfiguration` with a `QueueConfiguration`. The queue ARN names the
-destination: `arn:z3:sqs::<name>:<kind>`, for example `arn:z3:sqs::audit-hook:webhook`. MinIO's form
+destination: `arn:zee3:sqs::<name>:<kind>`, for example `arn:zee3:sqs::audit-hook:webhook`. MinIO's form
 `arn:minio:sqs::<name>:<kind>` is accepted too.
 
 ```bash
 aws --endpoint-url http://127.0.0.1:9000 s3api put-bucket-notification-configuration \
   --bucket media --notification-configuration '{
     "QueueConfigurations": [
-      {"Id": "jpegs", "QueueArn": "arn:z3:sqs::audit-hook:webhook",
+      {"Id": "jpegs", "QueueArn": "arn:zee3:sqs::audit-hook:webhook",
        "Events": ["s3:ObjectCreated:*"],
        "Filter": {"Key": {"FilterRules": [{"Name": "prefix", "Value": "photos/"},
                                           {"Name": "suffix", "Value": ".jpg"}]}}}]}'
@@ -188,7 +188,7 @@ included (sealed again with the site group's key).
 Each node sends events only for the requests it served itself, and for its own lifecycle actions.
 Writes that arrive through replication do not send events again. So one change produces exactly
 one event, even when every site has the same rule. Every site must be able to reach the
-destination. `x-z3-origin-node` in the record says which node sent it.
+destination. `x-zee3-origin-node` in the record says which node sent it.
 
 With bucket replication only (no site replication), set up the destinations and rules on each
 node.

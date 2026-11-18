@@ -1,15 +1,15 @@
 ---
 title: "Running alongside other services"
-description: "Run z3 on a machine it shares with a database and applications: what it uses while idle and busy, how to cap its memory and background work, and Docker limits."
+description: "Run Zee3 on a machine it shares with a database and applications: what it uses while idle and busy, how to cap its memory and background work, and Docker limits."
 ---
 
-z3 is built to be a quiet neighbour. On a machine that also runs PostgreSQL and a few applications
+Zee3 is built to be a quiet neighbour. On a machine that also runs PostgreSQL and a few applications
 (for example 4 CPUs and 16 GiB), it uses almost nothing while idle and its memory stays bounded as
 data grows. Measured on the [benchmark machine](/deploy/benchmarks#footprint-on-a-shared-machine):
 
 - **Idle:** about 0.3% of one CPU core, with 200,000 objects stored. There is no continuous
   background scan.
-- **Memory:** a few MiB at start, then up to the metadata cache (`Z3_META_CACHE_MB`, 128 MiB by
+- **Memory:** a few MiB at start, then up to the metadata cache (`ZEE3_META_CACHE_MB`, 128 MiB by
   default) plus request buffers: about 160 MiB on a busy node. The rest of the metadata and the chunk
   files sit in the operating system's page cache, which the kernel hands back to other programs when
   they need it.
@@ -19,28 +19,28 @@ data grows. Measured on the [benchmark machine](/deploy/benchmarks#footprint-on-
 
 | Setting | Suggested value | Why |
 |---|---|---|
-| `Z3_META_CACHE_MB` | `64` to `128` | Caps z3's own memory; writes are as fast at 64 MiB |
-| `Z3_HEAL_DUTY` | `25` (default) or lower | The weekly full verification uses at most this percent of the time, pausing between batches |
-| `Z3_HEAL_INTERVAL` | `604800` (default) or longer | How often every chunk is read and verified |
-| `Z3_GC_INTERVAL` | `600` (default) | Garbage collection only touches unreferenced chunks |
-| `Z3_LIFECYCLE_INTERVAL` | `3600` (default) | Only buckets with lifecycle rules are scanned |
+| `ZEE3_META_CACHE_MB` | `64` to `128` | Caps Zee3's own memory; writes are as fast at 64 MiB |
+| `ZEE3_HEAL_DUTY` | `25` (default) or lower | The weekly full verification uses at most this percent of the time, pausing between batches |
+| `ZEE3_HEAL_INTERVAL` | `604800` (default) or longer | How often every chunk is read and verified |
+| `ZEE3_GC_INTERVAL` | `600` (default) | Garbage collection only touches unreferenced chunks |
+| `ZEE3_LIFECYCLE_INTERVAL` | `3600` (default) | Only buckets with lifecycle rules are scanned |
 
-Put z3's data on a different disk from the database when you can: both do synchronous writes.
+Put Zee3's data on a different disk from the database when you can: both do synchronous writes.
 
 ## Docker limits
 
-Limits make sure z3 never takes more than its share, even under a burst of uploads:
+Limits make sure Zee3 never takes more than its share, even under a burst of uploads:
 
 ```yaml
 services:
-  z3:
+  zee3:
     image: terrificci/z3:1.0.1
     environment:
-      Z3_ACCESS_KEY: change-me
-      Z3_SECRET_KEY: change-me-too
-      Z3_META_CACHE_MB: "96"
+      ZEE3_ACCESS_KEY: change-me
+      ZEE3_SECRET_KEY: change-me-too
+      ZEE3_META_CACHE_MB: "96"
     volumes:
-      - /srv/z3:/data
+      - /srv/zee3:/data
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -48,11 +48,11 @@ services:
     mem_limit: 768m
 ```
 
-With these limits z3 serves hundreds of uploads per second of small objects and over 1 GiB/s of
+With these limits Zee3 serves hundreds of uploads per second of small objects and over 1 GiB/s of
 reads of large ones on two cores; give it more CPU if uploads are what your applications wait on.
 
 ## Replacing MinIO
 
-Point your application at z3's S3 port (9000) with path-style addressing, then copy the data over
+Point your application at Zee3's S3 port (9000) with path-style addressing, then copy the data over
 with an [import](/deploy/migrate-from-minio): it keeps buckets, versions, version ids, ETags and
 metadata, can run continuously until you switch, and resumes after a restart.
