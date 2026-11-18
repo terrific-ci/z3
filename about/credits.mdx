@@ -1,0 +1,85 @@
+---
+title: "Credits"
+description: "Who builds z3, and the open-source projects and fonts it is built on."
+---
+
+## Author
+
+z3 is built and maintained by **Alfian Lensun**. For questions, feedback or anything else, get in
+touch at [alfianlensundev@gmail.com](mailto:alfianlensundev@gmail.com).
+
+## Open-source projects
+
+z3 stands on the work of many open-source projects. Thank you to everyone who builds and maintains
+them. Each one keeps its own license, listed next to it.
+
+## S3 and storage
+
+| Project | What z3 uses it for | License |
+| --- | --- | --- |
+| [s3s](https://github.com/Nugine/s3s) | The S3 protocol: requests, responses and SigV4 signatures | Apache-2.0 |
+| [redb](https://github.com/cberner/redb) | The metadata database, the cluster log and historical metrics | MIT or Apache-2.0 |
+| [openraft](https://github.com/datafuselabs/openraft) | Consensus in [cluster mode](/deploy/cluster) | MIT or Apache-2.0 |
+| [reed-solomon-erasure](https://github.com/darrenldl/reed-solomon-erasure) | [Erasure coding](/durability/erasure-coding) across disks and sites | MIT |
+| [FastCDC](https://github.com/nlfiedler/fastcdc-rs) | Splitting objects into content-defined chunks | MIT |
+| [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) | Chunk hashes and integrity checks | CC0-1.0 or Apache-2.0 |
+| [lz4_flex](https://github.com/pseitz/lz4_flex) | [Compression](/storage/compression) of chunks | MIT |
+| [zstd](https://github.com/gyscos/zstd-rs) | Compressing replication traffic | BSD-3-Clause |
+| [postcard](https://github.com/jamesmunns/postcard) and [Serde](https://github.com/serde-rs/serde) | Metadata records, the change log and JSON for the API | MIT or Apache-2.0 |
+| [quick-xml](https://github.com/tafia/quick-xml) | Reading other S3 stores when [importing](/deploy/migrate-from-minio) | MIT |
+
+## Network, security and API
+
+| Project | What z3 uses it for | License |
+| --- | --- | --- |
+| [Tokio](https://github.com/tokio-rs/tokio) | The async runtime under every server and client | MIT |
+| [axum](https://github.com/tokio-rs/axum), [hyper](https://github.com/hyperium/hyper) and [Tower](https://github.com/tower-rs/tower) | The console, the admin API and the replication API | MIT |
+| [reqwest](https://github.com/seanmonstar/reqwest) | Replication pulls, tiers, webhooks, KMS and other outgoing HTTP | MIT or Apache-2.0 |
+| [rustls](https://github.com/rustls/rustls) and [tokio-rustls](https://github.com/rustls/tokio-rustls) | TLS for every listener and outgoing connection | Apache-2.0, ISC or MIT |
+| [ring](https://github.com/briansmith/ring) | Cryptography for TLS and keys | Apache-2.0 and ISC |
+| [webpki-roots](https://github.com/rustls/webpki-roots) | The trusted root certificates | CDLA-Permissive-2.0 |
+| [RustCrypto](https://github.com/RustCrypto) (`aes-gcm`, `sha2`, `hmac`, `md-5`) | [Encryption](/security/encryption) at rest, signatures and checksums | MIT or Apache-2.0 |
+| [ldap3](https://github.com/inejge/ldap3) | [LDAP](/access/openid-connect-ldap) sign-in | MIT or Apache-2.0 |
+| [clap](https://github.com/clap-rs/clap) | The command line | MIT or Apache-2.0 |
+| [tracing](https://github.com/tokio-rs/tracing) | Logs | MIT |
+| [sysinfo](https://github.com/GuillaumeGomez/sysinfo) | Host name, load and process memory on the running status page | MIT |
+| [rust-embed](https://github.com/pyrossh/rust-embed) | The console built into the binary | MIT |
+| [zip](https://github.com/zip-rs/zip2) | [Support](/operations/support) bundles | MIT |
+| [chrono](https://github.com/chronotope/chrono), [time](https://github.com/time-rs/time) and [uuid](https://github.com/uuid-rs/uuid) | Dates, times and ids | MIT or Apache-2.0 |
+
+## File protocols
+
+| Project | What z3 uses it for | License |
+| --- | --- | --- |
+| [dav-server](https://github.com/messense/dav-server-rs) | [WebDAV](/protocols/webdav) | Apache-2.0 |
+| [libunftp](https://github.com/bolcom/libunftp) | [FTP and FTPS](/protocols/ftp) | Apache-2.0 |
+| [russh](https://github.com/warp-tech/russh) and [russh-sftp](https://github.com/AspectUnk/russh-sftp) | [SFTP](/protocols/sftp) | Apache-2.0 |
+| [nfsserve](https://github.com/huggingface/nfsserve) | [NFS](/protocols/nfs) | BSD-3-Clause |
+
+## Event destinations
+
+| Project | What z3 uses it for | License |
+| --- | --- | --- |
+| [RSKafka](https://github.com/influxdata/rskafka) | Kafka [destinations](/events/destinations) and the Kafka audit target | MIT or Apache-2.0 |
+| [rust-postgres](https://github.com/rust-postgres/rust-postgres) | PostgreSQL destinations | MIT or Apache-2.0 |
+| [mysql_async](https://github.com/blackbeam/mysql_async) | MySQL destinations | MIT or Apache-2.0 |
+
+## Console
+
+| Project | What z3 uses it for | License |
+| --- | --- | --- |
+| [Nuxt](https://nuxt.com/) and [Vue](https://vuejs.org/) | The [console](/operations/console) app | MIT |
+| [shadcn-vue](https://www.shadcn-vue.com/) and [Reka UI](https://reka-ui.com/) | Components | MIT |
+| [Tailwind CSS](https://tailwindcss.com/) | Styling | MIT |
+| [Vue Flow](https://vueflow.dev/) | The [replication map](/replication/map) | MIT |
+| [VueUse](https://vueuse.org/) | Composition utilities | MIT |
+| [vue-sonner](https://github.com/xiaoluoboding/vue-sonner) | Toasts | MIT |
+| [html-to-image](https://github.com/bubkoo/html-to-image) | Exporting the replication map as an image | MIT |
+| [Phosphor Icons](https://phosphoricons.com/) | Icons | MIT |
+| [Inter](https://github.com/rsms/inter) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) | Fonts | SIL OFL 1.1 |
+
+<Note>
+  This page lists the projects z3 uses directly. Each of them pulls in more crates and packages,
+  and their licenses come with them. `cargo tree` in the source and `console/package.json` show the
+  full list.
+</Note>

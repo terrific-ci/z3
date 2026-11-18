@@ -30,6 +30,10 @@
       {
         "label": "GitHub",
         "href": "https://github.com/terrific-ci/z3"
+      },
+      {
+        "label": "Support z3",
+        "href": "https://www.paypal.com/paypalme/alfianlensun"
       }
     ],
     "primary": {
@@ -154,6 +158,12 @@
               "protocols/sftp",
               "protocols/nfs"
             ]
+          },
+          {
+            "group": "About",
+            "pages": [
+              "about/credits"
+            ]
           }
         ]
       },
@@ -221,6 +231,17 @@
   "footer": {
     "socials": {
       "github": "https://github.com/terrific-ci/z3"
-    }
+    },
+    "links": [
+      {
+        "header": "Community",
+        "items": [
+          {
+            "label": "Support z3",
+            "href": "https://www.paypal.com/paypalme/alfianlensun"
+          }
+        ]
+      }
+    ]
   }
 }
