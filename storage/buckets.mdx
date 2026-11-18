@@ -83,6 +83,8 @@ S3 works the same way: it returns only buckets the caller has some access to.
 Click a bucket to open its **Objects** tab:
 
 - Folders come from `/` in keys. Click one to go into it.
+- **Search** finds folders and objects in the current folder whose name starts with what you type
+  (case-sensitive). It asks the server, so it also finds objects past the first page.
 - **Upload** (or drag and drop files onto the page) uploads into the current folder, with progress.
 - Click an object to see its details: size, content type, ETag, metadata, tags, encryption,
   [tier](/storage/tiers), retention and its versions. From there you can download it, preview
