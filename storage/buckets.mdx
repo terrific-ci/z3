@@ -88,7 +88,9 @@ Click a bucket to open its **Objects** tab:
 - **Upload** (or drag and drop files onto the page) uploads into the current folder, with progress.
 - Click an object to see its details: size, content type, ETag, metadata, tags, encryption,
   [tier](/storage/tiers), retention and its versions. From there you can download it, preview
-  images, video and text, and delete it.
+  images, video, audio, PDF and text, and delete it. **Preview** opens a large view; the arrow
+  buttons (or the arrow keys) step through the folder's other previewable files. Files stored
+  as `application/octet-stream` are previewed by their extension.
 
 <Frame>
   <img src="/images/object-preview.png" alt="Object details with a preview" />
@@ -97,6 +99,8 @@ Click a bucket to open its **Objects** tab:
 <Note>
   Previews are served with `Content-Security-Policy: sandbox` and `nosniff`. HTML, SVG and
   JavaScript are shown as text, so a file in a bucket can never run as part of the console.
+  PDFs are the exception, since browsers refuse to show a PDF in a sandboxed document: they rely
+  on the browser's own PDF viewer and can only be embedded by the console (`frame-ancestors 'self'`).
 </Note>
 
 ## Bucket settings
