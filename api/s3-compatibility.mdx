@@ -34,10 +34,10 @@ aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 
 | Operation | Notes |
 | --- | --- |
-| `PutObject` | With metadata, tags, content type, SSE headers, Object Lock headers, conditional writes |
-| `GetObject`, `HeadObject` | Ranges, conditional requests, versions, SSE-C keys, `partNumber` (one part of a multipart object, with `x-amz-mp-parts-count`) |
+| `PutObject` | With metadata, tags, content type, [object headers](#object-headers), SSE headers, Object Lock headers, conditional writes |
+| `GetObject`, `HeadObject` | Ranges, conditional requests, versions, SSE-C keys, `partNumber` (one part of a multipart object, with `x-amz-mp-parts-count`). Return the stored [object headers](#object-headers); `response-*` query parameters on `GetObject` override them |
 | `DeleteObject`, `DeleteObjects` | Versions, delete markers, `x-amz-bypass-governance-retention` |
-| `CopyObject` | No data is copied: the new version points at the same chunks. `x-amz-copy-source-if-*` conditions |
+| `CopyObject` | No data is copied: the new version points at the same chunks. `x-amz-copy-source-if-*` conditions. `MetadataDirective` applies to the object headers as to user metadata |
 | `ListObjects`, `ListObjectsV2` | Prefix, delimiter, up to 1000 keys a page |
 | `ListObjectVersions` | Versions and delete markers |
 | `PutObjectTagging`, `GetObjectTagging`, `DeleteObjectTagging` | |
@@ -48,7 +48,7 @@ aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 
 | Operation | Notes |
 | --- | --- |
-| `CreateMultipartUpload`, `UploadPart`, `CompleteMultipartUpload` | Completing an upload copies no data |
+| `CreateMultipartUpload`, `UploadPart`, `CompleteMultipartUpload` | Completing an upload copies no data. Object headers sent with `CreateMultipartUpload` apply when the upload completes |
 | `UploadPartCopy` | A part from an existing object, all of it or `x-amz-copy-source-range`, with `x-amz-copy-source-if-*` conditions and SSE-C keys for the source |
 | `AbortMultipartUpload`, `ListParts`, `ListMultipartUploads` | Uploads older than `scanner.upload_ttl_secs` (7 days by default) are aborted by garbage collection |
 
@@ -60,6 +60,39 @@ aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 | `AssumeRoleWithWebIdentity`, `AssumeRoleWithLDAPIdentity` | Temporary credentials for OpenID Connect and LDAP users ([STS](/api/sts)) |
 
 Operations not listed here answer `NotImplemented`.
+
+## Object headers
+
+z3 stores these headers with an object and returns them on `GetObject` and `HeadObject`:
+
+| Header | Example |
+| --- | --- |
+| `Cache-Control` | `max-age=3600` |
+| `Content-Disposition` | `attachment; filename="report.pdf"` |
+| `Content-Encoding` | `gzip` |
+| `Content-Language` | `en` |
+| `Expires` | `Wed, 21 Oct 2026 07:28:00 GMT` |
+
+- They are set by `PutObject`, presigned PUT, `CreateMultipartUpload` (applied when the upload
+  completes) and `CopyObject`.
+- `CopyObject` with `MetadataDirective: COPY` (the default) keeps the source's headers. `REPLACE`
+  takes only the ones in the request, the same as user metadata.
+- On `GetObject`, the query parameters `response-cache-control`, `response-content-disposition`,
+  `response-content-encoding`, `response-content-language`, `response-content-type` and
+  `response-expires` override the stored values for that response.
+- z3 never compresses or decompresses an object body because of these headers. An object uploaded
+  with `Content-Encoding: gzip` comes back byte for byte. `aws-chunked` (a detail of signed
+  streaming uploads) is not stored.
+- Bucket and site replication, cluster mode, [batch replicate](/storage/batch) and
+  [import](/deploy/migrate-from-minio) carry them.
+- They are not user metadata: they are never returned as `x-amz-meta-*`, and they are not in the
+  `userMetadata` of [bucket events](/events/bucket-events). The names `x-amz-meta-z3-sys-*` are
+  reserved: z3 drops client metadata keys that start with `z3-sys-`.
+
+<Note>
+  During a rolling upgrade, nodes still on an older release return these headers as
+  `x-amz-meta-z3-sys-*`. Upgrade every node of a replication group or cluster.
+</Note>
 
 ## Requests and signatures
 
@@ -110,8 +143,6 @@ on disk, in replication and in tiers. See [Encryption](/security/encryption).
   releases after 1.0.2. A multipart object completed before that answers `partNumber` with
   `NotImplemented` (part 1 of a one-part upload still works); ranged reads work for every object.
   A replica asks its peers for the part sizes, so upgrade every node of a replication group.
-- **Not stored:** the `Content-Disposition`, `Cache-Control` and `Content-Encoding` headers of an
-  object.
 - **CORS** is set for the whole cluster with `api.cors_allow_origins`; per-bucket CORS
   (`PutBucketCors`, `GetBucketCors`) is not supported.
 - **Replication** is configured in the console or the [admin API](/api/admin-replication), not with

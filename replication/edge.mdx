@@ -186,8 +186,9 @@ from both sides on both, and the conflict recorded on both.
 
 ## Limitations
 
-- The offline state and the counters in `/api/replication` live in memory and reset on restart.
-  After a restart, a peer that is still unreachable counts as offline again after 10 seconds.
+- The offline state lives in memory and resets on restart. After a restart, a peer that is still
+  unreachable counts as offline again after 10 seconds. The link totals in `/api/replication`
+  survive restarts (see [Monitoring](/replication/overview#monitoring)).
   The outgoing backlog is computed from data on disk, so it stays correct across restarts.
 - The 10-second offline threshold is not configurable yet.
 - Offline status comes from the links this node pulls. A peer that can still pull from this node

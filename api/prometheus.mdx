@@ -22,6 +22,7 @@ Each node reports only itself. Scrape every node of a group.
 | --- | --- | --- |
 | `z3_buckets`, `z3_objects`, `z3_logical_bytes`, `z3_physical_bytes`, `z3_chunks`, `z3_multipart_uploads` | none | node |
 | `z3_heal_shards_repaired_total`, `z3_heal_chunks_lost_total` | none | node |
+| `z3_orphan_chunks_deleted_total`, `z3_orphan_bytes_freed_total` | none | node ([orphan sweep](/durability/healing#orphaned-chunks)) |
 | `z3_disk_online` | `disk` (index), `path` | disk |
 | `z3_s3_requests_total`, `z3_s3_client_errors_total`, `z3_s3_server_errors_total`, `z3_s3_received_bytes_total`, `z3_s3_sent_bytes_total` | none | node |
 | `z3_bucket_objects`, `z3_bucket_size_bytes`, `z3_bucket_requests_total`, `z3_bucket_errors_total`, `z3_bucket_received_bytes_total`, `z3_bucket_sent_bytes_total` | `bucket` | bucket |
@@ -33,7 +34,8 @@ Each node reports only itself. Scrape every node of a group.
 | `z3_lean_readthrough_requests_total` | `result` | outcome |
 | `z3_lean_readthrough_bytes_total` | `peer` | peer |
 
-Names ending in `_total` are counters since the node started; the rest are gauges.
+Names ending in `_total` are counters since the node started, except the `z3_replication_*_total`
+counters, which carry over restarts until the link is removed. The rest are gauges.
 
 ## Sample
 

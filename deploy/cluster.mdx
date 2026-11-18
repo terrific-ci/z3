@@ -97,6 +97,12 @@ seconds:
 The console shows the last sweep's counts. `z3 admin cluster sweep`, or **Repair copies** in the
 console, runs a sweep on every member now.
 
+The [orphan sweep](/durability/healing#orphaned-chunks), which deletes chunk files a crash left
+unreferenced, is separate: every member runs it on its own disks only. Copies a member holds for an
+owner that is down are still referenced, so they are kept. Because other members may place chunks
+before the commit that references them arrives, its minimum age in a cluster is the larger of
+`Z3_GC_GRACE` and `Z3_UPLOAD_TTL`.
+
 ## Remove a member
 
 ```bash

@@ -100,7 +100,7 @@ See [Compression](/storage/compression).
 | Key | Default | Range | Meaning |
 | --- | --- | --- | --- |
 | `scanner.lifecycle_interval_secs` | `Z3_LIFECYCLE_INTERVAL` (`3600`) | 0 to 30 days | How often [lifecycle](/storage/lifecycle) rules run. `0`: only on demand (**Run now**) |
-| `scanner.heal_interval_secs` | `Z3_HEAL_INTERVAL` (`604800`) | 0 to 365 days | How often every chunk is verified and repaired. `0`: never; damaged chunks found by reads are still repaired |
+| `scanner.heal_interval_secs` | `Z3_HEAL_INTERVAL` (`604800`) | 0 to 365 days | How often every chunk is verified and repaired, then [orphaned chunk files](/durability/healing#orphaned-chunks) are swept. `0`: never (the sweep then runs only on demand); damaged chunks found by reads are still repaired |
 | `scanner.gc_interval_secs` | `Z3_GC_INTERVAL` (`600`) | 0 to 30 days | How often unreferenced chunks are deleted. `0`: never in the background |
 | `scanner.gc_grace_secs` | `Z3_GC_GRACE` (`3600`) | 60 s to 30 days | How long an unreferenced chunk stays before garbage collection may delete it |
 | `scanner.upload_ttl_secs` | `Z3_UPLOAD_TTL` (`604800`) | 1 hour to 365 days | Multipart uploads older than this are aborted by garbage collection |

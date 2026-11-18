@@ -19,6 +19,7 @@ timestamps and ETags.
 | Last-Modified | Kept, to the millisecond |
 | ETag | Kept, including multipart ETags (`...-N`) |
 | Content-Type, `x-amz-meta-*` metadata, tags | Kept |
+| Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Expires | Kept. Bodies are copied as they are, never decompressed |
 
 Old version ids keep working in `GET ?versionId=` on any version. z3 shows UUIDs without dashes but
 accepts them with dashes too.

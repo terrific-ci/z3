@@ -8,7 +8,7 @@ you start it.
 
 | Job | What it does |
 | --- | --- |
-| **replicate** | Copies matching objects (current versions) to another bucket in this cluster or to any S3-compatible store (AWS S3, MinIO, another z3). Metadata, content type and tags come along. Objects already in the target with the same content are skipped, so you can run the job again at any time. |
+| **replicate** | Copies matching objects (current versions) to another bucket in this cluster or to any S3-compatible store (AWS S3, MinIO, another z3). Metadata, content type, [object headers](/api/s3-compatibility#object-headers) and tags come along. Objects already in the target with the same content are skipped, so you can run the job again at any time. |
 | **expire** | Deletes matching objects: current versions (a delete marker in a versioned bucket), older versions, or all versions including delete markers. Versions held by [Object Lock](/storage/object-lock) are skipped. |
 | **rotate** | Moves SSE-S3 and SSE-KMS objects to another KMS key. Each version's data key is sealed again **in place**, without rewriting data, older versions included. SSE-C objects are skipped: their key only exists at the client. |
 | **rollback** | Brings a versioned bucket, a prefix or one key back to how it looked at a point in time, by adding versions and delete markers. See [Point-in-time rollback](/storage/point-in-time). |
@@ -150,8 +150,9 @@ A job is `running`, `done`, `failed` or `cancelled`. Job ids start with the job 
 - **Replicate** into this cluster uses the normal write path: the target bucket's default
   encryption, compression, replication and bucket events all apply. To a remote store, large
   objects go as multipart (64 MiB parts), and the source ETag is stored in the metadata
-  `z3-source-etag` to recognise objects already copied. The target secret key is stored sealed and
-  never shown again.
+  `z3-source-etag` to recognise objects already copied. `Cache-Control`, `Content-Disposition`,
+  `Content-Encoding`, `Content-Language` and `Expires` are sent as real headers, not as
+  `x-amz-meta-*`. The target secret key is stored sealed and never shown again.
 - **Expire** triggers `s3:ObjectRemoved:Delete` or `s3:ObjectRemoved:DeleteMarkerCreated`
   [events](/events/bucket-events). Objects on a [tier](/storage/tiers) are deleted from the tier too.
 - **Rotate** writes a `Rewrap` record to the change log, so with bucket or site replication the

@@ -37,6 +37,8 @@ z3 admin metrics --range 7d
 | [`z3 admin pools`](/cli/pools) | Pools: usage, rebalance, decommission |
 | [`z3 admin metrics`](/cli/metrics) | Traffic and storage over a past range, node-wide or per bucket |
 | [`z3 admin lean`](/replication/lean-replica#command-line) | Lean Replica: state, keep window, evict now, turn off |
+| [`z3 admin gc`](#garbage-collection-and-the-orphan-sweep) | Run garbage collection now |
+| [`z3 admin sweep`](#garbage-collection-and-the-orphan-sweep) | Delete chunk files a crash left unreferenced on this node |
 
 Everything else (buckets, IAM, replication, events) is managed in the [console](/operations/console),
 through the [admin API](/api/overview), or with any S3 client.
@@ -128,6 +130,26 @@ z3 admin settings set api requests_max=abc
 
 For machine-readable output, call the [admin API](/api/overview) directly; it answers JSON.
 `z3 admin support health --json` prints the whole health report as JSON.
+
+## Garbage collection and the orphan sweep
+
+| Command | What it does | Right |
+| --- | --- | --- |
+| `z3 admin gc [--grace-secs N]` | Delete unreferenced chunks and abort abandoned multipart uploads now. `--grace-secs` replaces the configured grace period (`0`: collect now) | `admin:ConfigUpdate` |
+| `z3 admin sweep [--dry-run] [--min-age-secs N]` | Walk this node's chunk directories and delete orphaned chunk files (written by uploads that crashed before their commit). `--dry-run` only counts; `--min-age-secs` replaces the minimum file age | `admin:ConfigUpdate` |
+
+```bash
+z3 admin gc
+# 120 chunks deleted (402331221 bytes freed), 1 uploads aborted
+
+z3 admin sweep --dry-run
+# 2203128 chunk files checked in 4096 directories: 14 orphaned, 2 too recent to delete; would delete 12 (50331648 bytes) and 1 temp files (4194304 bytes) in 41200 ms
+```
+
+They call [`POST /api/gc`](/api/admin-operations#disks-healing-and-garbage-collection) and
+[`POST /api/gc/sweep`](/api/admin-operations#orphan-sweep). The sweep's default minimum age is the
+GC grace period (in cluster mode, at least `Z3_UPLOAD_TTL`); keep it on a node that serves traffic.
+See [Orphaned chunks](/durability/healing#orphaned-chunks).
 
 ## Container health checks
 

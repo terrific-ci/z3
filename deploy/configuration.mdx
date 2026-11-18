@@ -61,7 +61,7 @@ Each address is `IP:port`. z3 serves plain HTTP on all three; see
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `Z3_HEAL_INTERVAL` | `--heal-interval` | `604800` (7 days) | Seconds between full passes that verify and repair every chunk. `0` turns them off; chunks that reads find damaged are still repaired within seconds |
+| `Z3_HEAL_INTERVAL` | `--heal-interval` | `604800` (7 days) | Seconds between full passes that verify and repair every chunk, then sweep [orphaned chunk files](/durability/healing#orphaned-chunks). `0` turns them off; chunks that reads find damaged are still repaired within seconds |
 | `Z3_GC_INTERVAL` | `--gc-interval` | `600` | Seconds between garbage collection runs. `0` turns off the background loop |
 | `Z3_HEAL_DUTY` | | `25` | Percent of the time a full heal pass may use; it pauses between batches for the rest, so the disk and CPU stay with requests and other programs |
 | `Z3_META_CACHE_MB` | | `128` | Memory for caching metadata pages, in MiB. Beyond it the operating system still caches the file |

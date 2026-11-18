@@ -1,6 +1,6 @@
 ---
 title: "Operations"
-description: "Admin API endpoints for node info, running status, metrics, support tools, pools, settings, protocols, batch jobs, disks, healing, garbage collection, config export and imports."
+description: "Admin API endpoints for node info, running status, metrics, support tools, pools, settings, protocols, batch jobs, disks, healing, garbage collection, the orphan sweep, config export and imports."
 ---
 
 These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing needs
@@ -38,9 +38,10 @@ These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing
 | `POST` | `/api/batch/{id}/cancel` | `admin:ConfigUpdate` | Stop a running job |
 | `DELETE` | `/api/batch/{id}` | `admin:ConfigUpdate` | Forget a finished job |
 | `POST` | `/api/batch/rollback/preview` | `admin:ConfigUpdate` | Plan a point-in-time rollback, changing nothing |
-| `GET` | `/api/disks` | `admin:ServerInfo` | Disks, erasure layout, healing totals |
+| `GET` | `/api/disks` | `admin:ServerInfo` | Disks, erasure layout, healing and orphan sweep totals |
 | `POST` | `/api/heal` | `admin:ConfigUpdate` | Verify and repair every chunk now |
 | `POST` | `/api/gc` | `admin:ConfigUpdate` | Run garbage collection now |
+| `POST` | `/api/gc/sweep` | `admin:ConfigUpdate` | Delete orphaned chunk files on this node now |
 | `GET` | `/api/config/export` | `admin:ServerInfo` (+ more for IAM and secrets) | Configuration as JSON |
 | `POST` | `/api/config/import` | `admin:ConfigUpdate` (+ `admin:UserAdmin` for IAM) | Apply a configuration |
 | `GET` | `/api/imports` | `admin:ServerInfo` | Import jobs from MinIO or S3 |
@@ -330,12 +331,17 @@ time in the future answers `400`. A rollback job carries `rollback` with the sam
       "total_bytes": null, "free_bytes": null }
   ],
   "healing": { "chunks_checked": 2203114, "shards_repaired": 12, "chunks_lost": 0, "full_scans": 3,
-               "last_full_scan_ms": 1794834588308, "last_full_scan": { "checked": 2203114, "damaged": 4, "repaired": 12, "lost": 0, "lost_chunks": [] } }
+               "last_full_scan_ms": 1794834588308, "last_full_scan": { "checked": 2203114, "damaged": 4, "repaired": 12, "lost": 0, "lost_chunks": [] } },
+  "orphan_sweep": { "runs": 3, "chunks_deleted": 14, "bytes_freed": 58720256, "last_run_ms": 1794834601120,
+                    "last": { "dry_run": false, "dirs": 4096, "chunks_checked": 2203128, "orphans": 14, "young": 0,
+                              "deleted": 14, "bytes_freed": 58720256, "tmp_files": 1, "tmp_bytes": 4194304, "duration_ms": 41200 } }
 }
 ```
 
 `erasure` is `null` for a single data directory. A disk's `state` is `online`, `offline` or `foreign`
 (it holds another set's data and is never written), with a `reason` for the last two.
+`orphan_sweep` holds the [orphan sweep](/durability/healing#orphaned-chunks) totals since the node
+started and the result of the last run (`null` before the first).
 
 `POST /api/heal` verifies every chunk and repairs damaged shards now, and answers when it is done:
 
@@ -352,6 +358,44 @@ unreferenced chunks at once:
 ```json
 { "chunks_deleted": 120, "bytes_freed": 402331221, "uploads_aborted": 1 }
 ```
+
+### Orphan sweep
+
+`POST /api/gc/sweep` walks every chunk directory of this node and deletes chunk files no metadata
+references, plus temp files of interrupted writes. It answers when it is done. See
+[Orphaned chunks](/durability/healing#orphaned-chunks).
+
+<ParamField query="dry_run" type="boolean" default="false">
+  Only count what would be deleted.
+</ParamField>
+
+<ParamField query="min_age_secs" type="integer">
+  Delete only files last modified longer ago than this. The default is `Z3_GC_GRACE`
+  (`scanner.gc_grace_secs`); in cluster mode, the larger of `Z3_GC_GRACE` and `Z3_UPLOAD_TTL`.
+  `0` is allowed, but then only the holds of writes in this process protect new chunks: don't use it
+  on a node that serves traffic.
+</ParamField>
+
+```bash
+curl -X POST "$Z3_ADMIN_URL/api/gc/sweep?dry_run=true" -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{ "dry_run": true, "dirs": 4096, "chunks_checked": 2203128, "orphans": 14, "young": 2, "deleted": 12,
+  "bytes_freed": 50331648, "tmp_files": 1, "tmp_bytes": 4194304, "duration_ms": 41200 }
+```
+
+| Field | Meaning |
+| --- | --- |
+| `dirs` | Chunk directories walked, over every disk and pool |
+| `chunks_checked` | Chunk files looked at |
+| `orphans` | Chunk files nothing references |
+| `young` | Of those, too recent to delete; kept for now |
+| `deleted`, `bytes_freed` | Orphaned chunk files deleted (in a dry run: that would be) and their bytes |
+| `tmp_files`, `tmp_bytes` | Temp files of interrupted writes deleted (in a dry run: that would be) |
+| `duration_ms` | How long the sweep took |
+
+The sweep keeps to `Z3_HEAL_DUTY`, so on a large node it takes a while. One sweep runs at a time.
 
 ## Config export and import
 

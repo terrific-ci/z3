@@ -21,7 +21,8 @@ scrape_configs:
 </Warning>
 
 Counters count since the node started, as Prometheus expects; use `rate()` or `increase()` on
-them. The values are computed when Prometheus scrapes.
+them. The replication link counters are the exception: they carry over restarts (see
+[Replication](#replication)). The values are computed when Prometheus scrapes.
 
 ## Storage
 
@@ -43,6 +44,8 @@ them. The values are computed when Prometheus scrapes.
 | `z3_disk_online` | gauge | `disk`, `path` | `1` when the disk is usable, `0` when it is offline or foreign |
 | `z3_heal_shards_repaired_total` | counter | | Shards or copies rewritten by [healing](/durability/healing) |
 | `z3_heal_chunks_lost_total` | counter | | Chunks found with too few good shards to rebuild |
+| `z3_orphan_chunks_deleted_total` | counter | | Unreferenced chunk files deleted by the [orphan sweep](/durability/healing#orphaned-chunks) |
+| `z3_orphan_bytes_freed_total` | counter | | Bytes freed by the orphan sweep |
 
 ## S3 traffic
 
@@ -74,7 +77,9 @@ Requests count for a bucket by their path (path-style addressing).
 ## Replication
 
 One series per replication link, with `peer` and `bucket` labels. See
-[Replication](/replication/overview).
+[Replication](/replication/overview). The counters of a link carry over restarts: each node saves
+them every 30 seconds and at a graceful shutdown, so a crash loses at most the last 30 seconds.
+They reset only when the link is removed.
 
 | Metric | Type | Meaning |
 | --- | --- | --- |

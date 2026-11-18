@@ -148,7 +148,12 @@ runs a pass now.
 | `GET /metrics` | `z3_changelog_unacked_entries`, `z3_changelog_floor_seq`, `z3_changelog_pruned_entries_total`, `z3_replication_up`, `z3_replication_lag_seconds`, `z3_replication_lag_entries`, `z3_replication_conflicts_total`, `z3_replication_bytes_*_total`, `z3_replication_throttled_seconds_total`, `z3_replication_paused`, `z3_replication_geo_chunks_total` |
 | **Support** page | The **Replication** check warns on a link in error or more than 5 minutes behind; **Peers and clocks** checks each peer's reachability, version and clock difference |
 
-The counters in `/api/replication` reset when the node restarts.
+The totals of each link (changes applied and skipped, conflicts, chunks and bytes fetched, errors,
+anti-entropy runs, resyncs, throttled time, geo chunks) survive restarts, in `/api/replication`, on the
+**Replication** page and in the `z3_replication_*_total` metrics. Each node saves them every 30 seconds
+and at a graceful shutdown, so a crash loses at most the last 30 seconds. A link restarted because
+the peer's endpoint, token or windows changed keeps its totals; they reset only when the link is
+removed. Live values (state, lag, last delay) are not saved.
 
 On objects, GET and HEAD return `x-amz-replication-status`:
 

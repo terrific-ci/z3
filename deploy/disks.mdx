@@ -89,8 +89,9 @@ To replace a failed disk, mount a new empty disk at the same path, create the sa
 (owned by the user z3 runs as) and wait: within seconds z3 formats it and heals every chunk back.
 No restart is needed. See [Healing](/durability/healing).
 
-The console's **Disks** page shows each disk's state, capacity and free space, the layout, and the
-healing totals.
+The console's **Disks** page shows each disk's state, capacity and free space, the layout, the
+healing totals, and the **Orphaned chunks** panel with a **Sweep now** button (see
+[Orphaned chunks](/durability/healing#orphaned-chunks)).
 
 <Frame>
   <img src="/images/disks.png" alt="The Disks page: disk states, capacity, erasure layout and healing" />

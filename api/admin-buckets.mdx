@@ -151,7 +151,8 @@ Suspending is refused with `409` on a bucket with Object Lock.
       "key": "2026/scans/index.json", "size": 2048, "etag": "9b2cf535f27731c974343645a3985328",
       "last_modified_ms": 1794921008881, "content_type": "application/json",
       "version_id": "01a1e9a10ef174898fd760050032d518", "delete_marker": false, "is_latest": true,
-      "origin": "01a1e9a0-be79-7462-83e2-8685ea015598", "tags": {}, "user_metadata": {}, "geo": false,
+      "origin": "01a1e9a0-be79-7462-83e2-8685ea015598", "tags": {}, "user_metadata": {},
+      "headers": { "cache_control": "max-age=3600" }, "geo": false,
       "lock": { "mode": null, "retain_until_ms": null, "legal_hold": false },
       "encryption": { "kind": "sse-kms", "key_id": "records-key", "kms": "internal" },
       "tier": null
@@ -164,6 +165,8 @@ Suspending is refused with `409` on a bucket with Object Lock.
 | Field | Meaning |
 | --- | --- |
 | `origin` | The node the version was written on |
+| `user_metadata` | The `x-amz-meta-*` metadata, without the prefix |
+| `headers` | The stored [object headers](/api/s3-compatibility#object-headers): `cache_control`, `content_disposition`, `content_encoding`, `content_language` and `expires`, only those that are set |
 | `lock` | Retention mode (`governance`, `compliance` or `null`), retain-until time, legal hold |
 | `encryption` | `kind` is `sse-s3`, `sse-kms` or `sse-c`; `key_id` for SSE-KMS; `kms` is the KMS that sealed the data key (`internal`, `vault` or `kes`; none for SSE-C) |
 | `tier` | The tier holding the data once lifecycle moved it |
@@ -201,7 +204,8 @@ token as `?token=`.
 `PUT /api/buckets/{bucket}/objects/content?key=...` with the file as the raw body and its type in
 `Content-Type`. The write takes the same path as an S3 `PutObject`: default encryption, compression,
 quota, replication and an `s3:ObjectCreated:Put` event. The answer is the new version, as in the
-object list.
+object list. `Cache-Control`, `Content-Disposition`, `Content-Encoding`, `Content-Language` and
+`Expires` request headers are stored with the object, as on `PutObject`.
 
 ```bash
 curl -X PUT "http://127.0.0.1:9001/api/buckets/radiology/objects/content?key=2026/report.pdf" \

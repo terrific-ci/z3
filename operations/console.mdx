@@ -57,7 +57,7 @@ only the buckets their policies let them use. See [Admin rights](/api/overview#r
 | | Encryption | KMS keys, the default SSE-S3 key, an external KMS, buckets encrypted by default | `admin:ServerInfo` |
 | | Replication | Live state of each link; peers; site replication | `admin:ServerInfo` |
 | | Protocols | S3 and the file protocols: on or off, settings, state, sessions, connect commands | `admin:ServerInfo` |
-| | Disks | Disk state and capacity, erasure layout, healing, **Verify and repair** | `admin:ServerInfo` |
+| | Disks | Disk state and capacity, erasure layout, healing, **Verify and repair**, the **Orphaned chunks** panel with **Sweep now** | `admin:ServerInfo` |
 | | Pools | Pools, rebalance and decommission ([Pools](/durability/pools)) | `admin:ServerInfo` |
 | | Batch | [Batch jobs](/storage/batch): replicate, expire, rotate keys, [roll back](/storage/point-in-time) | `admin:ServerInfo` |
 | | Import/Export | Import jobs from MinIO or S3, and [config export and import](/operations/config-export) | `admin:ServerInfo` |
@@ -86,7 +86,8 @@ Opening a bucket shows its objects and folders. You can:
 - search the open folder by a word in the name (subfolders too, any case) or by the start of a name;
 - browse folders, upload files (button or drag and drop, with progress), download, and preview
   images, video and text;
-- see an object's version history, tags, metadata, encryption, lock and tier;
+- see an object's version history, tags, metadata, object headers (`Cache-Control` and friends,
+  shown apart from metadata), encryption, lock and tier;
 - open **Flow**: the bucket as a diagram of what writes into it and where its data goes (other
   sites, tiers from lifecycle rules, event destinations, expiry), with its versions below. Drag
   nodes, zoom, and click one for its details and a link to it; the versions node offers

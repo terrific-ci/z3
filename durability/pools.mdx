@@ -34,7 +34,8 @@ After a restart with the new list:
   already exists in a writable pool isn't written again (deduplication still works across pools).
 - **Reads** look for a chunk in every pool. No index has to change when chunks move, and the
   metadata format stays the same.
-- **Healing, garbage collection, inspect and replication** work across all pools.
+- **Healing, garbage collection, the [orphan sweep](/durability/healing#orphaned-chunks), inspect and
+  replication** work across all pools.
 
 The **Disks** page labels each disk with its pool number (`pool.disk`).
 

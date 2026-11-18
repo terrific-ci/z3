@@ -94,8 +94,8 @@ Inspect downloads a zip that shows how one object version is stored on this node
 
 | File | Contents |
 | --- | --- |
-| `object.json` | The version record: size, ETag, chunk list, encryption and tier |
-| `layout.json` | For each chunk, the files that hold it on this node's disks (position, disk, path, size), and whether the chunk reads back intact |
+| `object.json` | The raw version record: size, ETag, chunk list, encryption and tier. Stored [object headers](/api/s3-compatibility#object-headers) (`Cache-Control` and friends) show as `z3-sys-*` keys in its `user_metadata` |
+| `layout.json` | User metadata and object headers as S3 clients see them (`user_metadata`, `headers`); for each chunk, the files that hold it on this node's disks (position, disk, path, size), and whether the chunk reads back intact |
 | `chunks/` | The files as they are on disk: `<chunk number>-<hash>/<position>-disk<index>` |
 | `README.txt` | What the files are |
 

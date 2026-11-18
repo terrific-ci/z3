@@ -93,6 +93,8 @@ The body is MinIO's webhook body: the event name, `bucket/key`, and one S3 event
 - `x-z3-origin-node` is the node that sent the event.
 - The object key in the record is URL-encoded, as in S3. `size`, `eTag`, `contentType` and
   `userMetadata` are left out for removals.
+- `userMetadata` holds only the `x-amz-meta-*` metadata. Stored
+  [object headers](/api/s3-compatibility#object-headers) such as `Cache-Control` are not in it.
 
 ## Set up rules
 

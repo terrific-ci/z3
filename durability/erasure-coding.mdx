@@ -88,10 +88,12 @@ that directory on a reliable disk, such as a RAID 1 mirror.
 ## Watching it
 
 The console's **Disks** page and `GET /api/disks` show the layout, every disk's state, capacity and
-free space, and the healing totals. Prometheus metrics on `/metrics`:
+free space, the healing totals and the [orphan sweep](/durability/healing#orphaned-chunks) totals.
+Prometheus metrics on `/metrics`:
 
 | Metric | Meaning |
 | --- | --- |
 | `z3_disk_online{disk,path}` | 1 while the disk is online |
 | `z3_heal_shards_repaired_total` | Shards rebuilt by healing |
 | `z3_heal_chunks_lost_total` | Chunks with fewer than `k` readable shards |
+| `z3_orphan_chunks_deleted_total` | Chunk files a crash left unreferenced, deleted by the orphan sweep |
