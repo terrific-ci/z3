@@ -102,3 +102,6 @@ remove it like any other job, and it continues where it stopped if the node rest
   keep their source's time.
 - A delete marker that was permanently removed since is also reported as missing.
 - Bucket quotas are not checked for restored versions.
+- A rollback can only go back as far as the change log that is left. Entries older than
+  `Z3_LOG_RETENTION_DAYS` (30 days by default) are [pruned](/replication/overview#change-log-pruning)
+  once every peer has applied them; earlier times are refused. Set it to `0` to keep the whole log.

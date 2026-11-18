@@ -26,6 +26,8 @@ Each node reports only itself. Scrape every node of a group.
 | `z3_s3_requests_total`, `z3_s3_client_errors_total`, `z3_s3_server_errors_total`, `z3_s3_received_bytes_total`, `z3_s3_sent_bytes_total` | none | node |
 | `z3_bucket_objects`, `z3_bucket_size_bytes`, `z3_bucket_requests_total`, `z3_bucket_errors_total`, `z3_bucket_received_bytes_total`, `z3_bucket_sent_bytes_total` | `bucket` | bucket |
 | `z3_replication_up`, `z3_replication_paused`, `z3_replication_lag_entries`, `z3_replication_lag_seconds`, `z3_replication_last_delay_seconds`, `z3_replication_applied_total`, `z3_replication_conflicts_total`, `z3_replication_errors_total`, `z3_replication_bytes_wire_total`, `z3_replication_bytes_raw_total`, `z3_replication_bytes_deduplicated_total`, `z3_replication_throttled_seconds_total`, `z3_replication_geo_chunks_total` | `peer`, `bucket` | replication link |
+| `z3_changelog_retention_days`, `z3_changelog_pruned_entries_total`, `z3_changelog_pruned_tombstones_total`, `z3_changelog_pruned_markers_total` | none | node ([pruning](/replication/overview#change-log-pruning)) |
+| `z3_changelog_floor_seq`, `z3_changelog_unacked_entries` | `bucket` | bucket |
 | `z3_lean_enabled`, `z3_lean_local_bytes`, `z3_lean_max_bytes`, `z3_lean_evicted_versions_total`, `z3_lean_evicted_bytes_total`, `z3_lean_evict_blocked`, `z3_lean_disk_floor` | none | node ([Lean Replica](/replication/lean-replica#monitoring)) |
 | `z3_lean_stub_versions`, `z3_lean_stub_bytes` | `bucket` | bucket |
 | `z3_lean_readthrough_requests_total` | `result` | outcome |

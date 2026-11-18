@@ -107,6 +107,33 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   http://127.0.0.1:9001/api/buckets/photos/replication/resync
 ```
 
+## Change-log pruning
+
+Every node trims its own bucket change logs, tombstones and internal delete markers, so metadata
+stops growing forever. Nothing is replicated: each node decides for its own log.
+
+| What | When it goes |
+| --- | --- |
+| Change-log entries | Every peer in the bucket's replication has applied them, **and** they are older than `Z3_LOG_RETENTION_DAYS` (30 by default). The newest entry always stays |
+| Tombstones (removed versions) | Older than `Z3_TOMBSTONE_RETENTION_DAYS` (30 by default, never shorter than the log retention), every peer has applied the removal, and the version is not in the [trash](/storage/deletion-protection) |
+| Internal delete markers (unversioned buckets) | The only version of their key, applied by every peer, older than the log retention |
+
+- A peer that is down, or has never answered, holds pruning of its buckets back until it has
+  caught up. Remove a peer from a bucket's replication to stop it holding pruning back.
+- A peer that needs entries that were already pruned (a new peer, or one added back) is told so
+  and resyncs by anti-entropy: every live version with its current tags, retention and tier, and
+  every removal that still has a tombstone. Then it follows the log as usual. Its link counts the
+  resync in `resyncs`.
+- [Point-in-time rollback](/storage/point-in-time) can only go back as far as the log that is
+  left: 30 days by default.
+- The site log (bucket and IAM changes of [site replication](/replication/site-replication)) is
+  never pruned. Nothing is pruned in [cluster mode](/deploy/cluster).
+
+`Z3_LOG_RETENTION_DAYS=0` keeps the log forever. The job runs every `Z3_PRUNE_INTERVAL` seconds
+(3600 by default). `GET /api/changelog/pruning` shows the settings and the last pass per bucket
+(floor, head, what every peer applied, which peers it waits for); `POST /api/changelog/prune`
+runs a pass now.
+
 ## Monitoring
 
 <Frame>
@@ -118,7 +145,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 | **Replication** page | Each link live: state, lag, delay, bytes, conflicts and the last error |
 | `GET /api/replication` | Each link: `streaming` or `error`, cursor, lag in entries and seconds, last delay, bytes on the wire, raw and saved by deduplication, conflicts, last error, last anti-entropy result. The site log's link shows as bucket `<site>` |
 | `GET /api/buckets/{bucket}/conflicts` | Concurrent writes and their winners |
-| `GET /metrics` | `z3_replication_up`, `z3_replication_lag_seconds`, `z3_replication_lag_entries`, `z3_replication_conflicts_total`, `z3_replication_bytes_*_total`, `z3_replication_throttled_seconds_total`, `z3_replication_paused`, `z3_replication_geo_chunks_total` |
+| `GET /metrics` | `z3_changelog_unacked_entries`, `z3_changelog_floor_seq`, `z3_changelog_pruned_entries_total`, `z3_replication_up`, `z3_replication_lag_seconds`, `z3_replication_lag_entries`, `z3_replication_conflicts_total`, `z3_replication_bytes_*_total`, `z3_replication_throttled_seconds_total`, `z3_replication_paused`, `z3_replication_geo_chunks_total` |
 | **Support** page | The **Replication** check warns on a link in error or more than 5 minutes behind; **Peers and clocks** checks each peer's reachability, version and clock difference |
 
 The counters in `/api/replication` reset when the node restarts.
@@ -138,7 +165,8 @@ Objects that a rule keeps local have no such header.
 - No mutual TLS between nodes. Use a private network or VPN, or put a TLS proxy in front of the
   replication API (peer endpoints accept `https://`). See
   [TLS and reverse proxies](/deploy/tls-and-proxies#the-replication-api).
-- The change log, tombstones and internal delete markers aren't trimmed yet.
+- Changes of tags, retention or tier on versions that already exist on both sides are not
+  carried by anti-entropy: a peer added back after its entries were pruned keeps its older values.
 - A `quorum` or `all` write that times out stays stored locally; it isn't rolled back.
 - Session tokens can only be verified by a node that pulls directly from the writing node.
 - All nodes of a replication group should run the same z3 version. See

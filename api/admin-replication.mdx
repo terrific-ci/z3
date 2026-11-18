@@ -23,6 +23,8 @@ on the node being pulled from. The endpoints below are on the admin API.
 | `GET` | `/api/replication` | Live state of every link |
 | `GET` | `/api/replication?view=peers` | Per peer: online or offline, last contact, changes waiting to send and to receive ([Edge](/replication/edge#monitoring)) |
 | `GET` | `/api/replication/topology` | Every node's links, peers, site and bucket settings, gathered from the whole group ([Replication map](/replication/map#api)) |
+| `GET` | `/api/changelog/pruning` | [Change-log pruning](/replication/overview#change-log-pruning): retention and the last pass per bucket |
+| `POST` | `/api/changelog/prune` | Run a pruning pass now |
 | `GET` | `/api/lean` | [Lean Replica](/replication/lean-replica) settings, state, usage and buckets |
 | `PUT` | `/api/lean` | Lean Replica settings (turning it off fetches evicted data back) |
 | `POST` | `/api/lean/run` | Run the Lean Replica evictor now and return the state |

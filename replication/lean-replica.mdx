@@ -181,5 +181,5 @@ z3 admin lean disable              # turn off and fetch everything back
 - Not available in [cluster mode](/deploy/cluster).
 - Every node of the replication group should run the same z3 version: a node without Lean
   Replica support cannot confirm, so nothing is evicted.
-- The change log and tombstones are not pruned yet, so metadata keeps growing slowly even with a
-  keep window.
+- Metadata of every version stays on the lean node. The change log and tombstones are
+  [pruned](/replication/overview#change-log-pruning) after 30 days by default.
