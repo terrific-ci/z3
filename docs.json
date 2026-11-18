@@ -199,6 +199,7 @@
             "pages": [
               "api/overview",
               "api/s3-compatibility",
+              "api/s3-conformance",
               "api/sts"
             ]
           },

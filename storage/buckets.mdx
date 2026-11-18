@@ -141,8 +141,9 @@ A tab you have no right to read is hidden.
 
 ## Delete a bucket
 
-Only an **empty** bucket can be deleted: no objects, no older versions or delete markers, and no
-unfinished multipart uploads. Otherwise the request fails with `BucketNotEmpty`.
+Only an **empty** bucket can be deleted: no objects, no older versions or delete markers.
+Otherwise the request fails with `BucketNotEmpty`. Unfinished multipart uploads don't keep a bucket
+busy: they are aborted with it, as on S3.
 
 <Tabs>
   <Tab title="Console">

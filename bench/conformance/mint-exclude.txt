@@ -1,0 +1,31 @@
+# MinIO Mint failures z3 leaves out on purpose: suite<TAB>pattern<TAB>reason.
+# The first column is a prefix of the entry name, the pattern is matched
+# against "name :: function" of a failed entry
+# (`*` = every failure of the suite; NO-RESULTS = the suite may log nothing).
+# Reasons are explained in docs/conformance.md.
+aws-sdk-java-v2	NO-RESULTS	the suite logs JSON only for failures; a clean run prints nothing
+s3select	*	S3 Select is not implemented (AWS closed it to new customers in 2024)
+minio-js	selectObjectContent	S3 Select is not implemented
+minio-js	"after all" hook for "Remove Object post select of content	cleanup after the S3 Select test that cannot pass
+minio-go: testListMultipartUpload	*	MinIO ignores key-marker when it names the listed object; z3 lists only keys after key-marker, as S3 does
+aws-sdk-php	abortMultipartupload	aborting an unknown upload id is 404 NoSuchUpload on S3 (and in ceph/s3-tests), MinIO answers 204
+minio-go: testBucketVersioningExcludedPrefixes	*	MinIO extension (ExcludedPrefixes/ExcludeFolders in the versioning configuration)
+minio-py:test_set_get_bucket_versioning	*	MinIO extension (ExcludeFolders in the versioning configuration)
+minio-java	uploadSnowballObjects	MinIO extension (snowball: tar archives extracted on upload)
+minio-java	putObjectFanOut	MinIO extension (fan-out POST uploads)
+minio-java	removeBucket()	cleanup of the snowball bucket above
+minio-java	addUser()	MinIO admin API (z3 has its own admin API on the console port)
+minio-java	addCannedPolicy()	MinIO admin API
+minio-java	setPolicy()	MinIO admin API
+minio-java	getUserInfo()	MinIO admin API
+minio-java	listUsers()	MinIO admin API
+minio-java	listCannedPolicies()	MinIO admin API
+minio-java	deleteUser()	MinIO admin API
+minio-java	removeCannedPolicy()	MinIO admin API
+mc	test_admin_users	MinIO admin API (mc admin)
+minio-go: testPutMultipartObjectWithChecksums	*	objects completed from parts keep no checksum (needs a place in the version record)
+minio-go: testTrailingChecksums	*	multipart uploads with a full-object checksum: objects completed from parts keep no checksum
+minio-go: testPresignedPostPolicyWrongFile	*	s3s answers a failed POST policy condition with 400 and its own wording; S3 and MinIO use 403
+aws-sdk-go-v2	testSelectObject	S3 Select is not implemented
+minio-go: testGetObjectAttributes	*	wants part checksums of a multipart object: objects completed from parts keep no checksum
+minio-java	getObjectAttributes()	wants ObjectParts for an object written in one piece; S3 (and ceph/s3-tests) leave it out

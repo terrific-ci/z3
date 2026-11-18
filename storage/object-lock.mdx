@@ -128,9 +128,12 @@ Set them when writing, with the `x-amz-object-lock-*` headers on `PutObject`, `C
 - A retention date must be in the future.
 - **Compliance**: the date can only move later (be extended), and the mode can't change to
   governance.
-- **Governance**: extending, or raising it to compliance, is always allowed. Shortening or
-  removing it needs `s3:BypassGovernanceRetention` **and** the header
-  `x-amz-bypass-governance-retention: true`. In the console, tick **Bypass governance retention**.
+- **Governance**: extending it is always allowed. Shortening it, removing it, or changing it to
+  compliance needs `s3:BypassGovernanceRetention` **and** the header
+  `x-amz-bypass-governance-retention: true`, as on S3. In the console, tick **Bypass governance
+  retention**.
+- A default retention with an unknown mode, or with both `Days` and `Years`, is refused with
+  `MalformedXML`; a period of zero or less with `InvalidRetentionPeriod`.
 - A retention date that has passed protects nothing anymore; the version can be deleted as usual.
 
 ## Deleting locked objects
@@ -158,7 +161,7 @@ Set them when writing, with the `x-amz-object-lock-*` headers on `PutObject`, `C
 | --- | --- |
 | `s3:PutObjectRetention` / `s3:GetObjectRetention` | Set / read a version's retention |
 | `s3:PutObjectLegalHold` / `s3:GetObjectLegalHold` | Place or release / read a legal hold |
-| `s3:BypassGovernanceRetention` | Shorten, remove or delete through governance retention (with the header) |
+| `s3:BypassGovernanceRetention` | Shorten, remove, change to compliance or delete through governance retention (with the header) |
 | `s3:PutBucketObjectLockConfiguration` / `s3:GetBucketObjectLockConfiguration` | Turn Object Lock on and set / read the default retention |
 
 ## With replication

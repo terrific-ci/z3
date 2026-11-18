@@ -61,11 +61,13 @@ Three levels, from quickest to most thorough:
 | Check | What it tells you |
 | --- | --- |
 | `GET /api/health` on the admin port | `{"status": "ok"}` when the node answers. Needs no sign-in; for load balancers and monitoring |
+| `GET /minio/health/live`, `/ready`, `/cluster`, `/cluster/read` on the S3 port | MinIO's health endpoints: `200` or `503`, no sign-in. `cluster` and `cluster/read` check that enough disks are online to write or read and, in cluster mode, that the cluster has a leader. For load balancers and Kubernetes probes that only reach the S3 port ([MinIO compatibility](/api/s3-compatibility#minio-compatibility)) |
 | `z3 healthcheck` | Exits with 0 when `GET /api/health` answers on `Z3_ADMIN_ADDR` of this machine. The Docker image's `HEALTHCHECK` uses it |
 | **Support** page, `z3 admin support health` | Disks, disk writes, healing, peers and clocks, peer TLS, replication, memory and CPU, errors in the last hour, root credentials. Each is `ok`, `warn` or `fail`; the CLI exits with 1 if any check fails |
 
 ```bash
 curl -s http://127.0.0.1:9001/api/health
+curl -fsS -o /dev/null http://127.0.0.1:9000/minio/health/cluster && echo writable
 z3 healthcheck && echo healthy
 z3 admin support health
 z3 admin support health --json

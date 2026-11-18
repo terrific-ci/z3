@@ -1,0 +1,197 @@
+# ceph/s3-tests tests z3 leaves out, beyond the areas in s3tests-markers.txt:
+# test_name<TAB>reason (every parametrization of the test). Grouped by area;
+# docs/conformance.md explains each area.
+
+# ACL: z3 has no ACLs (access is IAM and bucket policies); Get/Put*Acl are NotImplemented
+test_bucket_list_objects_anonymous	ACL
+test_bucket_listv2_objects_anonymous	ACL
+test_expected_bucket_owner	ACL
+test_access_bucket_private_object_private	ACL
+test_access_bucket_private_objectv2_private	ACL
+test_access_bucket_private_object_publicread	ACL
+test_access_bucket_private_objectv2_publicread	ACL
+test_access_bucket_private_object_publicreadwrite	ACL
+test_access_bucket_private_objectv2_publicreadwrite	ACL
+test_access_bucket_publicread_object_private	ACL
+test_access_bucket_publicread_object_publicread	ACL
+test_access_bucket_publicread_object_publicreadwrite	ACL
+test_access_bucket_publicreadwrite_object_private	ACL
+test_access_bucket_publicreadwrite_object_publicread	ACL
+test_access_bucket_publicreadwrite_object_publicreadwrite	ACL
+test_list_multipart_upload_owner	ACL
+test_100_continue	ACL (sets a public-read-write bucket ACL first)
+test_bucket_acl_default	ACL
+test_bucket_acl_canned	ACL
+test_bucket_acl_canned_private_to_private	ACL
+test_bucket_acl_canned_publicreadwrite	ACL
+test_bucket_acl_canned_authenticatedread	ACL
+test_put_bucket_acl_grant_group_read	ACL
+test_object_acl_default	ACL
+test_object_acl_canned	ACL
+test_object_acl_canned_during_create	ACL
+test_object_acl_canned_publicreadwrite	ACL
+test_object_acl_canned_authenticatedread	ACL
+test_object_acl_canned_bucketownerread	ACL
+test_object_acl_canned_bucketownerfullcontrol	ACL
+test_object_acl_full_control_verify_attributes	ACL
+test_object_acl_create_contentlength_none	ACL
+test_object_put_acl_mtime	ACL
+test_bucket_acl_grant_nonexist_user	ACL
+test_bucket_acl_grant_email_not_exist	ACL
+test_bucket_acl_revoke_all	ACL
+test_bucket_put_bad_canned_acl	ACL
+test_bucket_concurrent_set_canned_acl	ACL
+test_bucket_recreate_overwrite_acl	ACL
+test_bucket_recreate_new_acl	ACL
+test_bucket_create_special_key_names	ACL (puts an object ACL)
+test_versioned_object_acl	ACL
+test_versioned_object_acl_no_version_specified	ACL
+test_bucket_list_return_data	ACL (reads owners through GetObjectAcl)
+test_bucket_list_return_data_versioning	ACL (reads owners through GetObjectAcl)
+test_object_copy_not_owned_object_bucket	ACL
+test_bucket_policy_acl	ACL
+test_bucketv2_policy_acl	ACL
+test_bucket_policy_put_obj_acl	ACL (condition key s3:x-amz-acl)
+test_bucket_policy_put_obj_grant	ACL (condition keys s3:x-amz-grant-*)
+test_bucket_policy_get_obj_acl_existing_tag	ACL
+test_object_raw_get	ACL (public-read object)
+test_object_raw_get_bucket_acl	ACL
+test_object_raw_get_bucket_gone	ACL (public-read object)
+test_object_raw_get_object_gone	ACL (public-read object)
+test_object_delete_key_bucket_gone	ACL (public-read object)
+test_object_raw_get_x_amz_expires_not_expired	ACL (public-read object)
+test_object_raw_get_x_amz_expires_not_expired_tenant	ACL (public-read object)
+test_object_raw_get_x_amz_expires_out_max_range	ACL (public-read object)
+test_object_raw_get_x_amz_expires_out_positive_range	ACL (public-read object)
+test_object_anon_put_write_access	ACL (public-read-write bucket)
+test_post_object_anonymous_request	ACL (anonymous POST into a public-read-write bucket)
+test_post_object_tags_anonymous_request	ACL (anonymous POST into a public-read-write bucket)
+test_post_object_set_invalid_success_code	ACL (anonymous POST into a public-read-write bucket)
+test_post_object_set_success_code	ACL (anonymous POST into a public-read-write bucket)
+test_post_object_success_redirect_action	ACL (anonymous POST into a public-read-write bucket)
+test_post_object_upload_checksum	ACL (anonymous POST into a public-read-write bucket)
+test_get_public_acl_bucket_policy_status	ACL
+test_get_authpublic_acl_bucket_policy_status	ACL
+test_ignore_public_acls	ACL
+
+# Public access block and policy status: not implemented
+test_get_bucket_policy_status	GetBucketPolicyStatus is not implemented
+test_get_publicpolicy_acl_bucket_policy_status	GetBucketPolicyStatus is not implemented
+test_get_nonpublicpolicy_acl_bucket_policy_status	GetBucketPolicyStatus is not implemented
+test_get_nonpublicpolicy_principal_bucket_policy_status	GetBucketPolicyStatus is not implemented
+test_get_public_block_deny_bucket_policy	public access block is not implemented
+test_put_public_block	public access block is not implemented
+test_block_public_put_bucket_acls	public access block is not implemented
+test_block_public_object_canned_acls	public access block is not implemented
+test_block_public_policy	public access block is not implemented
+test_block_public_policy_with_principal	public access block is not implemented
+test_put_get_delete_public_block	public access block is not implemented
+test_get_undefined_public_block	public access block is not implemented
+test_block_public_restrict_public_buckets	public access block is not implemented
+
+# CORS: z3 has one CORS setting for the S3 port, no per-bucket CORS configuration
+test_set_cors	per-bucket CORS
+test_cors_origin_response	per-bucket CORS
+test_cors_origin_wildcard	per-bucket CORS
+test_cors_header_option	per-bucket CORS
+test_cors_presigned_get_object	per-bucket CORS
+test_cors_presigned_get_object_tenant	per-bucket CORS
+test_cors_presigned_get_object_v2	per-bucket CORS
+test_cors_presigned_get_object_tenant_v2	per-bucket CORS
+test_cors_presigned_put_object	per-bucket CORS
+test_cors_presigned_put_object_with_acl	per-bucket CORS
+test_cors_presigned_put_object_v2	per-bucket CORS
+test_cors_presigned_put_object_tenant	per-bucket CORS
+test_cors_presigned_put_object_tenant_v2	per-bucket CORS
+test_cors_presigned_put_object_tenant_with_acl	per-bucket CORS
+
+# One account: z3 has no bucket owners, so another user cannot own buckets or be refused one by name
+test_bucket_create_exists_nonowner	one account (BucketAlreadyOwnedByYou for everyone)
+test_object_copy_not_owned_bucket	one account (alt creates its own bucket)
+test_bucket_policy_upload_part_copy	one account (alt creates its own bucket)
+test_object_copy_canned_acl	one account (the tenant user creates its own bucket)
+test_object_presigned_put_object_with_acl_tenant	one account (the tenant user creates its own bucket)
+test_bucket_policy_tenanted_bucket	RGW tenants
+test_bucket_policy_different_tenant	RGW tenants
+test_bucket_recreate_not_overriding	re-creating an own bucket is BucketAlreadyOwnedByYou (as MinIO and every S3 region but us-east-1)
+test_versioning_concurrent_multi_object_delete	re-creates its own bucket (BucketAlreadyOwnedByYou)
+test_bucket_create_exists	the test reads e.status, which botocore errors do not have
+
+# The root account is not subject to bucket policies (as MinIO's root)
+test_bucket_policy_put_obj_s3_noenc	root ignores a Deny in a bucket policy
+test_bucket_policy_put_obj_s3_incorrect_algo_sse_s3	root ignores a Deny in a bucket policy
+test_bucket_policy_put_obj_s3_kms	root ignores a Deny in a bucket policy
+test_bucket_policy_put_obj_kms_noenc	root ignores a Deny in a bucket policy
+test_bucket_policy_put_obj_kms_s3	root ignores a Deny in a bucket policy
+test_bucket_policy_set_condition_operator_end_with_IfExists	root ignores a Deny in a bucket policy
+test_bucket_policy_put_obj_request_obj_tag	alt needs s3:PutObjectTagging too (z3 checks it for x-amz-tagging)
+test_bucket_policy_put_obj_copy_source	the copy source policy is checked for alt on GetObject; the test reads with alt without a grant
+test_bucket_policy_put_obj_copy_source_meta	same as test_bucket_policy_put_obj_copy_source
+test_head_object_404_with_policy_prefix	z3 answers 403 for a missing key unless the caller may read it (S3 answers 404 to callers with s3:ListBucket)
+
+# Bucket policy features z3 does not have
+test_bucket_policy_get_obj_existing_tag	condition key s3:ExistingObjectTag
+test_bucket_policy_get_obj_tagging_existing_tag	condition key s3:ExistingObjectTag
+test_bucket_policy_put_obj_tagging_existing_tag	condition key s3:ExistingObjectTag
+test_encryption_sse_c_enforced_with_bucket_policy	condition key s3:x-amz-server-side-encryption-customer-algorithm
+test_encryption_sse_c_deny_algo_with_bucket_policy	condition key s3:x-amz-server-side-encryption-customer-algorithm
+test_bucket_policy_another_bucket	a bucket policy may only name its own bucket
+test_bucketv2_policy_another_bucket	a bucket policy may only name its own bucket
+test_set_get_del_bucket_policy	z3 returns the policy as normalized JSON, not the submitted text
+
+# Multipart
+test_multipart_get_part	partNumber past the parts: z3 answers 416 InvalidPartNumber (as S3 and MinIO), the test wants 400 InvalidPart
+test_multipart_sse_c_get_part	same as test_multipart_get_part
+test_multipart_single_get_part	same as test_multipart_get_part
+test_non_multipart_get_part	same as test_multipart_get_part
+test_non_multipart_sse_c_get_part	same as test_multipart_get_part
+test_multipart_upload	completes the same upload twice (z3: NoSuchUpload the second time)
+test_multipart_upload_small	completes the same upload twice (z3: NoSuchUpload the second time)
+test_multipart_resend_first_finishes_last	uploads parts to an upload it already completed
+test_multipart_checksum_sha256	objects completed from parts keep no checksum
+test_multipart_reupload_checksum_and_etag	objects completed from parts keep no checksum
+test_multipart_use_cksum_helper_sha256	objects completed from parts keep no checksum
+test_multipart_use_cksum_helper_sha1	objects completed from parts keep no checksum
+test_multipart_use_cksum_helper_crc32	objects completed from parts keep no checksum
+test_multipart_use_cksum_helper_crc32c	objects completed from parts keep no checksum
+test_multipart_use_cksum_helper_crc64nvme	objects completed from parts keep no checksum
+test_get_multipart_checksum_object_attributes	objects completed from parts keep no checksum
+
+# Versioning: suspending a bucket that never had versioning leaves it unversioned (deletes stay permanent)
+test_versioning_bucket_create_suspend	z3 reports no versioning status, S3 reports Suspended
+test_versioning_bucket_atomic_upload_return_version_id	z3 reports no versioning status, S3 reports Suspended
+test_versioning_bucket_multipart_upload_return_version_id	z3 reports no versioning status, S3 reports Suspended
+test_object_lock_put_obj_lock_enable_after_create	z3 reports no versioning status, S3 reports Suspended
+
+# Encryption
+test_encryption_sse_c_other_key	a wrong SSE-C key is 403 AccessDenied in z3 (the test wants 400)
+test_encryption_sse_c_multipart_invalid_chunks_1	a wrong SSE-C key is 403 AccessDenied in z3 (the test wants 400)
+test_encryption_sse_c_multipart_bad_download	a wrong SSE-C key is 403 AccessDenied in z3 (the test wants 400)
+test_copy_part_enc	a wrong SSE-C key is 403 AccessDenied in z3 (the test wants 400)
+test_sse_kms_no_key	aws:kms without a key id uses the default key (as S3), the test wants an error
+test_sse_kms_not_declared	z3 opens SSE-KMS objects without the request naming them (as S3), the test wants an error
+
+# Lifecycle: z3 returns a rule's legacy top-level Prefix as Filter/Prefix
+test_lifecycle_get	lifecycle rules come back as Filter, not the legacy Prefix element
+test_lifecycle_get_no_id	lifecycle rules come back as Filter, not the legacy Prefix element
+
+# HTTP and signature details of s3s (the S3 protocol library)
+test_post_object_missing_policy_condition	s3s answers a failed POST policy check with 400 (S3: 403)
+test_post_object_request_missing_policy_specified_field	s3s answers a failed POST policy check with 400 (S3: 403)
+test_post_object_wrong_bucket	s3s answers a failed POST policy check with 400 (S3: 403)
+test_post_object_invalid_request_field_value	s3s answers a failed POST policy check with 400 (S3: 403)
+test_post_object_invalid_date_format	s3s accepts the policy's expiration date format
+test_object_raw_put_authenticated_expired	s3s answers an expired presigned URL with 400 (S3: 403)
+test_object_create_date_and_amz_date	s3s requires x-amz-date with SigV4 (the test signs with Date only)
+test_object_create_amz_date_and_no_date	s3s requires x-amz-date with SigV4 (the test signs with Date only)
+test_object_write_with_chunked_transfer_encoding	z3 needs Content-Length (or aws-chunked) on PutObject
+test_object_set_get_unicode_metadata	metadata values are returned as sent (RFC 2047 encoded), not decoded
+test_object_read_unreadable	a key that is not valid UTF-8 is 404 NoSuchKey (the test wants 400)
+test_get_object_torrent	BitTorrent is not implemented (501)
+
+# Tests that remove a header before botocore signs: the request still arrives signed
+test_object_create_bad_authorization_empty	header removed before signing
+test_object_create_bad_authorization_none	header removed before signing
+test_bucket_create_bad_authorization_empty	header removed before signing
+test_bucket_create_bad_authorization_none	header removed before signing
+test_object_create_bad_contentlength_none	header removed before signing; botocore sends it again

@@ -46,7 +46,8 @@ Changing versioning needs `s3:PutBucketVersioning`; reading it needs `s3:GetBuck
 
 Once versioning has been on, a bucket can be suspended but not set back to "not versioned", as on
 Amazon S3. A bucket with [Object Lock](/storage/object-lock) can't be suspended at all
-(`InvalidBucketState`).
+(`InvalidBucketState`). Suspending a bucket that never had versioning leaves it unversioned:
+deletes stay permanent, and `GetBucketVersioning` shows no status where S3 shows `Suspended`.
 
 ## List and read versions
 

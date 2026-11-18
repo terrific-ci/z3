@@ -1,0 +1,148 @@
+---
+title: "S3 conformance"
+description: "How z3 does against MinIO Mint and ceph/s3-tests, the areas left out on purpose and why, and how to run both suites yourself."
+---
+
+z3 is tested with two open S3 test suites:
+
+| Suite | What it is |
+| --- | --- |
+| [MinIO Mint](https://github.com/minio/mint) | Real SDKs and tools against one endpoint: aws-sdk Go, Java, PHP and Ruby, the AWS CLI, `mc`, minio-go, minio-java, minio-js, minio-py and s3cmd |
+| [ceph/s3-tests](https://github.com/ceph/s3-tests) | Functional tests written with boto3, also run against AWS S3 |
+
+What z3 doesn't support is left out of the run, with a reason per area. Everything else must pass.
+For the operations themselves, see [S3 compatibility](/api/s3-compatibility).
+
+## Results
+
+Run on 18 November 2026 with Mint `minio/mint:edge` and s3-tests at commit `5b39871`.
+
+### MinIO Mint
+
+| Suite | Pass | Fail | NA | Excluded |
+| --- | --- | --- | --- | --- |
+| aws-sdk-go-v2 | 19 | 0 | 0 | 1 |
+| aws-sdk-java-v2 | – | – | – | – |
+| aws-sdk-php | 11 | 0 | 0 | 1 |
+| aws-sdk-ruby | 12 | 1 | 0 | 0 |
+| awscli | 18 | 0 | 0 | 0 |
+| healthcheck | 6 | 0 | 0 | 0 |
+| mc | 28 | 0 | 0 | 1 |
+| minio-go | 112 | 0 | 5 | 59 |
+| minio-java | 98 | 0 | 18 | 13 |
+| minio-js | 245 | 0 | 0 | 2 |
+| minio-py | 37 | 0 | 0 | 1 |
+| s3cmd | 8 | 0 | 0 | 0 |
+| s3select | 0 | 0 | 0 | 1 |
+| versioning | 18 | 0 | 0 | 0 |
+| **Total** | **612** | **1** | **23** | **79** |
+
+- The one failure (aws-sdk-ruby `presignedPost`: a form upload without a line break after the
+  closing boundary) was fixed right after the run.
+- aws-sdk-java-v2 logs results only for failures, so a clean run prints no row.
+- **NA** are tests Mint skips itself: features it doesn't try in this mode, or answers of
+  `NotImplemented` that the SDK records as ignored.
+- **Excluded** are failures left out on purpose. See [What is left out](#what-is-left-out).
+
+### ceph/s3-tests
+
+| | Tests |
+| --- | --- |
+| Collected from `test_s3.py` and `test_headers.py` | 886 |
+| Left out by area (markers) and by name (170 names) | 457 |
+| Subset that must pass | 429 |
+
+In the last run, 416 tests passed and 1 was skipped by the suite. Of the 12 failures, 11 came from
+the test server's disk filling up halfway (`InternalError` on 1 to 8 MiB uploads), and 1 (the
+request id on a 404 that has headers of its own) was fixed right after. An earlier run with enough
+free disk passed 432 tests.
+
+## What is left out
+
+Each exclusion has a reason in the lists next to the script (see [Run it yourself](#run-it-yourself)).
+In short:
+
+### Features z3 doesn't have
+
+| Area | Why |
+| --- | --- |
+| ACLs | z3 has no ACLs; access is decided by [policies](/access/policies) and [bucket policies](/access/bucket-policies). `GetBucketAcl`, `PutObjectAcl` and the rest answer `NotImplemented`, and `x-amz-acl` is ignored. Tests that use `public-read` or `public-read-write` buckets go too |
+| Public access block, policy status, BitTorrent | Not supported |
+| Per-bucket CORS | z3 has one CORS setting for the S3 port, `api.cors_allow_origins` ([Settings](/operations/settings)) |
+| Website, S3 Select, bucket logging, requester pays, append, S3 Control, SNS notifications | Not in z3. AWS closed S3 Select to new customers in 2024 |
+| AWS-style IAM and STS (users, roles, session policies, web identity tests) | z3 has its own IAM in the console and [admin API](/api/admin-iam), and its own [STS](/api/sts) |
+| Object ownership | z3 has no bucket owners (see below) |
+| MinIO extensions | MinIO's admin API (`mc admin`, the minio-java admin client), snowball uploads, fan-out uploads, `ExcludedPrefixes` in versioning |
+
+### Differences in design
+
+| Area | Why |
+| --- | --- |
+| One account | Every z3 user is in the same account, and buckets have no owner. Another user can't own a bucket or be refused one by name: `BucketAlreadyOwnedByYou` for everyone. There are no RGW tenants. The suite's *alt* and *tenant* users are created without policies, so they reach other buckets only through bucket policies, like another AWS account |
+| The root account and bucket policies | As with MinIO's root, a `Deny` in a bucket policy doesn't apply to the root account |
+| Condition keys | `s3:ExistingObjectTag`, `s3:x-amz-server-side-encryption-customer-algorithm`, `s3:x-amz-acl` and `s3:x-amz-grant-*` aren't supported in `Condition` |
+| Multipart checksums | Each part's `x-amz-checksum-*` is checked, but an object completed from parts keeps no checksum |
+| Suspending a never-versioned bucket | The bucket stays unversioned (deletes stay permanent) and `GetBucketVersioning` shows no status; S3 shows `Suspended` |
+
+### Small differences in answers
+
+| Case | z3 | The test expects |
+| --- | --- | --- |
+| `partNumber` past the last part | `416 InvalidPartNumber`, as S3 and MinIO | `400 InvalidPart` |
+| Completing an upload that is already complete | `NoSuchUpload` | Success |
+| Aborting an unknown upload id | `404 NoSuchUpload`, as S3 | `204` (MinIO) |
+| `key-marker` in `ListMultipartUploads` | Lists only keys after it, as S3 | MinIO ignores it when it names the listed object |
+| A wrong SSE-C key | `403 AccessDenied` | `400` |
+| A lifecycle rule with the legacy top-level `Prefix` | Returned as `Filter` with `Prefix` | `Prefix` |
+| `GetBucketPolicy` | The policy as normalized JSON | The text as submitted |
+| A failed POST policy condition, an expired presigned URL | `400` (the s3s protocol library) | `403` |
+| Malformed Signature V2 headers | Other error codes (s3s) | The codes of S3 |
+
+Signature V4 requests need `x-amz-date`. Some s3-tests remove a header before botocore signs the
+request, so it still arrives signed; those tests are left out too.
+
+## Run it yourself
+
+`bench/conformance.sh` runs both suites against a z3 image and fails when anything in the subset
+fails. It needs Linux with Docker, `git` and Python 3, and at least 6 GiB free: Mint uploads a few
+GiB.
+
+```bash
+mkdir conformance && cd conformance
+base=https://raw.githubusercontent.com/terrific-ci/z3/main/bench
+curl -fsSLO $base/conformance.sh && chmod +x conformance.sh
+mkdir conformance && for f in mint-exclude.txt mint_summary.py s3tests-exclude.txt \
+  s3tests-markers.txt s3tests_subset.py junit_summary.py setup_users.py; do
+  curl -fsSL -o conformance/$f $base/conformance/$f
+done
+
+Z3_IMAGE=terrificci/z3:latest ./conformance.sh        # Mint and s3-tests
+Z3_IMAGE=terrificci/z3:latest ./conformance.sh mint   # only Mint (or: s3tests)
+```
+
+For each suite, the script starts a fresh z3 container with Signature V2 on (both suites test it).
+It runs Mint in full mode with `RUN_ON_FAIL=1`, so minio-go doesn't stop at its first failure. For
+s3-tests, it clones the repository, checks out the pinned commit, creates the users and KMS keys the
+suite needs, and runs the subset with pytest in a container.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `Z3_IMAGE` | `z3bench:conformance` | The z3 image to test |
+| `MINT_IMAGE` | `minio/mint:edge` | The Mint image |
+| `S3TESTS_DIR` | `~/s3-tests` | Where s3-tests is cloned |
+| `S3TESTS_REF` | `5b39871` | The s3-tests commit to run |
+| `OUT` | `conformance-results` next to the script | Where the results go |
+
+It prints a summary per suite, with the excluded failures and their reasons, and ends with
+`conformance: the subset passes` or `conformance: FAILURES in the subset` (exit code 1). The full
+results are in `$OUT`:
+
+| File | What's in it |
+| --- | --- |
+| `mint/log.json`, `mint-summary.txt` | Mint's log and the summary per suite |
+| `s3tests.xml`, `s3tests-summary.txt` | s3-tests as JUnit XML and the summary with the failures |
+| `mint.out`, `s3tests.out` | The raw output of each run |
+
+The lists of what is left out are in `conformance/`, one reason per line:
+`mint-exclude.txt` (Mint), `s3tests-markers.txt` (whole s3-tests areas) and `s3tests-exclude.txt`
+(s3-tests by name).

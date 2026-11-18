@@ -5,7 +5,8 @@ description: "Which S3 operations z3 supports, the extensions it adds, and the d
 
 z3 speaks the S3 API on port 9000. AWS SDKs, the AWS CLI, `mc`, rclone, s3cmd and most S3 tools work
 against it unchanged; point them at the endpoint and use path-style addressing. See
-[Clients](/get-started/clients).
+[Clients](/get-started/clients). How z3 does against the MinIO Mint and ceph/s3-tests suites is on
+[S3 conformance](/api/s3-conformance).
 
 ```bash
 export AWS_ACCESS_KEY_ID=z3admin AWS_SECRET_ACCESS_KEY=z3admin-secret AWS_DEFAULT_REGION=us-east-1
@@ -19,12 +20,12 @@ aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 
 | Operation | Notes |
 | --- | --- |
-| `ListBuckets` | Lists only the buckets the caller may use |
-| `CreateBucket`, `HeadBucket`, `DeleteBucket` | A bucket must be empty to be deleted |
+| `ListBuckets` | Lists only the buckets the caller may use, with `Owner`. Pages with `max-buckets` (1 to 10000), `continuation-token`, `prefix` and `bucket-region` |
+| `CreateBucket`, `HeadBucket`, `DeleteBucket` | A bucket must hold no objects, versions or delete markers to be deleted. Unfinished multipart uploads don't count: they are aborted with the bucket |
 | `GetBucketLocation` | Returns the `region.name` [setting](/operations/settings#region) |
 | `PutBucketVersioning`, `GetBucketVersioning` | `Enabled` or `Suspended`. Suspending is refused on a bucket with Object Lock |
 | `PutBucketPolicy`, `GetBucketPolicy`, `DeleteBucketPolicy` | AWS policy documents, public access included ([Bucket policies](/access/bucket-policies)) |
-| `PutBucketLifecycleConfiguration`, `GetBucketLifecycleConfiguration`, `DeleteBucketLifecycle` | Expiration, noncurrent versions, delete markers, transitions to tiers, aborting uploads ([Lifecycle](/storage/lifecycle)) |
+| `PutBucketLifecycleConfiguration`, `GetBucketLifecycleConfiguration`, `DeleteBucketLifecycle` | Expiration, noncurrent versions, delete markers, transitions to tiers, aborting uploads ([Lifecycle](/storage/lifecycle)). A legacy top-level `Prefix` comes back as `Filter` |
 | `PutBucketNotificationConfiguration`, `GetBucketNotificationConfiguration` | `QueueConfiguration` only ([Bucket events](/events/bucket-events)) |
 | `PutBucketEncryption`, `GetBucketEncryption`, `DeleteBucketEncryption` | Default SSE-S3 or SSE-KMS ([Encryption](/security/encryption)) |
 | `PutBucketTagging`, `GetBucketTagging`, `DeleteBucketTagging` | Up to 50 tags ([Tags and quota](/storage/tags-and-quota)) |
@@ -34,12 +35,14 @@ aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 
 | Operation | Notes |
 | --- | --- |
-| `PutObject` | With metadata, tags, content type, [object headers](#object-headers), SSE headers, Object Lock headers, conditional writes |
+| `PutObject` | With metadata, tags, content type, [object headers](#object-headers), [storage class](#storage-class), [checksums](#checksums), SSE headers, Object Lock headers, [conditional writes](#conditional-writes) |
 | `GetObject`, `HeadObject` | Ranges, conditional requests, versions, SSE-C keys, `partNumber` (one part of a multipart object, with `x-amz-mp-parts-count`). Return the stored [object headers](#object-headers); `response-*` query parameters on `GetObject` override them |
-| `DeleteObject`, `DeleteObjects` | Versions, delete markers, `x-amz-bypass-governance-retention` |
-| `CopyObject` | No data is copied: the new version points at the same chunks. `x-amz-copy-source-if-*` conditions. `MetadataDirective` applies to the object headers as to user metadata |
-| `ListObjects`, `ListObjectsV2` | Prefix, delimiter, up to 1000 keys a page |
+| `GetObjectAttributes` | ETag, size, storage class, checksum, and the parts of a multipart object |
+| `DeleteObject`, `DeleteObjects` | Versions, delete markers, `x-amz-bypass-governance-retention`. `DeleteObject` takes `If-Match`. `DeleteObjects` names at most 1000 keys |
+| `CopyObject` | No data is copied: the new version points at the same chunks. `x-amz-copy-source-if-*` conditions. `MetadataDirective` applies to the object headers as to user metadata. An object can be copied onto itself when the request names a storage class or an encryption |
+| `ListObjects`, `ListObjectsV2` | Prefix, delimiter, up to 1000 keys a page. V1 returns `Marker` and `Owner`; V2 returns `Owner` with `fetch-owner` |
 | `ListObjectVersions` | Versions and delete markers |
+| `PostObject` | Browser form uploads with a POST policy. Answers with `Location`, `ETag` and the checksum. Needs `s3:PutObject` |
 | `PutObjectTagging`, `GetObjectTagging`, `DeleteObjectTagging` | |
 | `PutObjectRetention`, `GetObjectRetention` | Governance and compliance retention |
 | `PutObjectLegalHold`, `GetObjectLegalHold` | |
@@ -50,7 +53,7 @@ aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 | --- | --- |
 | `CreateMultipartUpload`, `UploadPart`, `CompleteMultipartUpload` | Completing an upload copies no data. Object headers sent with `CreateMultipartUpload` apply when the upload completes |
 | `UploadPartCopy` | A part from an existing object, all of it or `x-amz-copy-source-range`, with `x-amz-copy-source-if-*` conditions and SSE-C keys for the source |
-| `AbortMultipartUpload`, `ListParts`, `ListMultipartUploads` | Uploads older than `scanner.upload_ttl_secs` (7 days by default) are aborted by garbage collection |
+| `AbortMultipartUpload`, `ListParts`, `ListMultipartUploads` | `ListMultipartUploads` takes a delimiter. Uploads older than `scanner.upload_ttl_secs` (7 days by default) are aborted by garbage collection |
 
 ### Also on the S3 port
 
@@ -58,8 +61,59 @@ aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 | --- | --- |
 | `ListenBucketNotification`, `ListenNotification` | MinIO's event streaming, for `mc event listen` and `mc watch` ([Watch events live](/events/listen)) |
 | `AssumeRole`, `AssumeRoleWithWebIdentity`, `AssumeRoleWithLDAPIdentity` | Temporary credentials for IAM users and access keys, and for OpenID Connect and LDAP users, with optional session policies (`Policy`, `PolicyArns`) ([STS](/api/sts)) |
+| MinIO health and metrics | `/minio/health/*` and `/minio/v2/metrics/*` ([MinIO compatibility](#minio-compatibility)) |
 
-Operations not listed here answer `NotImplemented`.
+Operations not listed here answer `NotImplemented`. ACL operations (`GetBucketAcl`,
+`PutObjectAcl` and the rest) are among them: access is decided by [policies](/access/policies) and
+[bucket policies](/access/bucket-policies). An `x-amz-acl` header is accepted and ignored, signed or
+not (an unsigned one in a presigned URL too, as MinIO allows).
+
+## Storage class
+
+`x-amz-storage-class` on `PutObject`, `CopyObject` and `CreateMultipartUpload` takes `STANDARD` or
+`REDUCED_REDUNDANCY`. z3 stores it and returns it on `HeadObject`, `GetObject`,
+`GetObjectAttributes` and in listings. It doesn't change how the data is stored.
+
+- Any other value is refused with `InvalidStorageClass`.
+- `CopyObject` gives the copy the class it names, or `STANDARD`, as S3 does; not the source's.
+- Once [lifecycle](/storage/lifecycle#transitions) moved a version to a [tier](/storage/tiers),
+  its storage class is the tier's name.
+
+<Warning>
+  Releases up to 1.0.2 accepted any storage class and ignored it. Clients that send other values,
+  such as `STANDARD_IA` or `GLACIER`, now get `InvalidStorageClass`: drop the header or send
+  `STANDARD`.
+</Warning>
+
+## Checksums
+
+The additional checksums CRC32, CRC32C, CRC64NVME, SHA1 and SHA256 are checked on `PutObject` and
+`UploadPart`, sent as an `x-amz-checksum-*` header or as an `aws-chunked` trailer (as recent AWS
+SDKs do by default). A mismatch fails the request with `BadDigest`, and nothing is stored.
+
+- An object uploaded in one piece keeps its checksum. `GetObject` and `HeadObject` return it with
+  `x-amz-checksum-mode: ENABLED`, and `GetObjectAttributes` returns it.
+- `CopyObject` keeps the checksum, unless the copy changes the object's encryption.
+- An object completed from parts keeps no checksum, though every part was checked.
+- `Content-MD5` is checked too; an empty one is `InvalidDigest`.
+
+## Conditional writes
+
+| Request | Conditions |
+| --- | --- |
+| `PutObject`, `CopyObject`, `CompleteMultipartUpload` | `If-None-Match: *` (the key must not exist), `If-None-Match: <etag>`, `If-Match: <etag>`, `If-Match: *` (the key must exist) |
+| `DeleteObject` | `If-Match`. A different ETag, or a key that doesn't exist, is `412 PreconditionFailed` |
+
+On reads, conditional headers work as on S3, and a `304 Not Modified` carries `ETag` and
+`Last-Modified`. An `If-Modified-Since` or `If-Unmodified-Since` (or its `x-amz-copy-source-`
+variant) that isn't a valid date is ignored, as AWS does.
+
+## Listings
+
+- `max-keys=0` returns an empty page that isn't truncated.
+- A negative `max-keys`, `max-uploads` or `max-parts` is `InvalidArgument`.
+- `ListObjectsV2` with `fetch-owner=true` returns each object's `Owner`. Every bucket has the same
+  owner, since z3 has one account.
 
 ## Object headers
 
@@ -94,6 +148,13 @@ z3 stores these headers with an object and returns them on `GetObject` and `Head
   `x-amz-meta-z3-sys-*`. Upgrade every node of a replication group or cluster.
 </Note>
 
+## Responses
+
+- `Content-Type` is `binary/octet-stream` for an object uploaded without one, objects stored by
+  older releases included.
+- Error documents carry `<RequestId>`, the same id as the `x-amz-request-id` header.
+- A `404` or `405` because of a delete marker carries `x-amz-delete-marker: true`.
+
 ## Requests and signatures
 
 - **Signature V4**, in the `Authorization` header and in presigned URLs. Presigned URLs may ask for
@@ -106,6 +167,20 @@ z3 stores these headers with an object and returns them on `GetObject` and `Head
   addressing (`addressing_style: path` in boto3, `--path-style` or the equivalent elsewhere).
 - When `region.name` is set, requests signed for another region are refused with
   `AuthorizationHeaderMalformed`.
+- `x-amz-server-side-encryption` on a `GetObject` or `HeadObject` is refused with
+  `InvalidArgument`, and so is `x-amz-server-side-encryption-aws-kms-key-id` without
+  `x-amz-server-side-encryption: aws:kms`.
+
+### Validation
+
+| Request | Answer |
+| --- | --- |
+| An Object Lock configuration with an unknown mode, or both `Days` and `Years` | `MalformedXML` |
+| An Object Lock period of zero or less | `InvalidRetentionPeriod` |
+| A lifecycle rule whose `Status` isn't `Enabled` or `Disabled` | `MalformedXML` |
+| `DeleteObjects` with more than 1000 keys | `MalformedXML` |
+| An empty `Content-MD5` | `InvalidDigest` |
+| An unsupported `x-amz-storage-class` | `InvalidStorageClass` |
 
 ## Limits
 
@@ -126,6 +201,28 @@ z3 stores these headers with an object and returns them on `GetObject` and `Head
 | `x-amz-replication-status` | On `GetObject` and `HeadObject` of replicated buckets |
 | `x-amz-storage-class` | The [tier](/storage/tiers) name, once lifecycle moved a version to a tier |
 | `XMinioAdminBucketQuotaExceeded` | A write refused because the bucket's [quota](/storage/tags-and-quota) is full, as in MinIO |
+
+## MinIO compatibility
+
+For tools written against MinIO, the S3 port also serves:
+
+| Path or header | What it does |
+| --- | --- |
+| `GET /minio/health/live` | `200` while the process answers |
+| `GET /minio/health/ready` | `200` once the node has started and enough disks are online to read |
+| `GET /minio/health/cluster` | `200` when writes can succeed: enough disks for a write and, in [cluster mode](/deploy/cluster), a known leader |
+| `GET /minio/health/cluster/read` | `200` when reads can succeed: enough disks for a read and, in cluster mode, a known leader |
+| `GET /minio/v2/metrics/cluster`, `/node`, `/bucket`, `/resource` | The node's [Prometheus metrics](/operations/prometheus), with z3's own metric names |
+| `x-minio-force-delete: true` on `DeleteObject` | Permanently deletes every version of every key under the request's key |
+| `metadata=true` on `ListObjectsV2` | Each entry also carries `UserMetadata` (with the content type) and `UserTags` |
+
+- The health paths need no credentials and answer `503` when the check fails. Use them for load
+  balancers and Kubernetes probes.
+- The metrics paths take the bearer token that `mc admin prometheus generate` writes for an
+  access key. The key's user needs `admin:Prometheus`.
+- `x-minio-force-delete` needs `s3:DeleteObjectVersion` on each key and is refused on a bucket with
+  [Object Lock](/storage/object-lock). [Deletion protection](/storage/deletion-protection) applies
+  to each version as usual.
 
 ## Encryption
 
@@ -151,9 +248,18 @@ encryption. Encrypted data stays encrypted on disk, in replication and in tiers.
 - **Bucket notifications:** `TopicConfiguration` and `LambdaFunctionConfiguration` are refused; the
   queue ARN is `arn:z3:sqs::<name>:<kind>` (or MinIO's `arn:minio:sqs::...`). Bucket-level events
   are not sent.
-- **Policy conditions:** `s3:ExistingObjectTag` is not supported in `Condition`.
-- **Conditional writes:** `If-None-Match` on a write only supports `*`, and `If-Match` on a write
-  needs an ETag.
+- **Policy conditions:** `s3:ExistingObjectTag`,
+  `s3:x-amz-server-side-encryption-customer-algorithm`, `s3:x-amz-acl` and `s3:x-amz-grant-*` are
+  not supported in `Condition`.
+- **ACLs** are not supported. `x-amz-acl` is ignored; use policies and bucket policies.
+- **One account:** buckets have no owner, and a `Deny` in a bucket policy doesn't apply to the
+  root account, as with MinIO.
+- **Multipart checksums:** parts are checked, but an object completed from parts keeps no checksum.
+- **Versioning:** suspending a bucket that never had versioning leaves it unversioned, and
+  `GetBucketVersioning` shows no status.
+- **Answers:** `partNumber` past the last part is `416 InvalidPartNumber`; completing an upload
+  that is already complete is `NoSuchUpload`; a wrong SSE-C key is `403 AccessDenied`. See
+  [S3 conformance](/api/s3-conformance#what-is-left-out) for every difference the test suites find.
 - **Copy sources** that are access points are not supported.
 - **STS:** `AssumeRole`, `AssumeRoleWithWebIdentity` and `AssumeRoleWithLDAPIdentity` only.
   `RoleArn` is ignored (z3 has no roles); MFA and session tags on `AssumeRole` are refused; the root

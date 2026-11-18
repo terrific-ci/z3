@@ -76,8 +76,9 @@ Keys are case-insensitive. An unknown key or operator is refused when the policy
 is a value that doesn't fit the operator (an address that isn't one, a bad date).
 
 <Note>
-  `s3:ExistingObjectTag/<key>` isn't supported yet. A policy that uses it is refused rather than
-  silently ignored.
+  `s3:ExistingObjectTag/<key>`, `s3:x-amz-server-side-encryption-customer-algorithm`,
+  `s3:x-amz-acl` and `s3:x-amz-grant-*` aren't supported yet. A policy that uses them is refused
+  rather than silently ignored.
 </Note>
 
 ## Trusted proxies

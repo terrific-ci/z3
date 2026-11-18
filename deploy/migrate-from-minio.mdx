@@ -189,6 +189,9 @@ The job shows the outcome per bucket and kind under `config` (`imported`, `uncha
 | S3 API on 9000, console on 9001 | The same ports; the replication API is on 9002 |
 | `mc admin ...` | The console, the [admin API](/api/overview) and [`z3 admin`](/cli/overview) |
 | Bucket quota error `XMinioAdminBucketQuotaExceeded` | The same error code (see [Tags and quota](/storage/tags-and-quota)) |
+| `/minio/health/live`, `/ready`, `/cluster`, `/cluster/read` | The same paths on the S3 port, so load balancer and Kubernetes probes keep working |
+| `/minio/v2/metrics/*` with `mc admin prometheus generate` | The same paths and token, with z3's own metric names ([Prometheus metrics](/operations/prometheus#minios-metrics-paths)) |
+| The `x-minio-force-delete` header, `ListObjectsV2` with `metadata=true` | Supported ([MinIO compatibility](/api/s3-compatibility#minio-compatibility)) |
 | Site replication | [Site replication](/replication/site-replication), with HLC conflict resolution and delta chunks |
 
 S3 clients keep working with a new endpoint and credentials. Use path-style addressing.

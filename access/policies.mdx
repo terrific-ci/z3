@@ -107,6 +107,7 @@ resource:
 | `admin:UserAdmin` | Managing users, groups, policies, everyone's access keys, and the identity providers (OIDC, LDAP, STS) |
 | `admin:Profiling` | Running speed tests and recording CPU profiles ([Support](/operations/support)) |
 | `admin:InspectData` | Downloading the raw files of an object through inspect ([Support](/operations/support)) |
+| `admin:Prometheus` | Scraping MinIO's metrics paths on the S3 port with a `mc admin prometheus generate` token ([Prometheus metrics](/operations/prometheus#minios-metrics-paths)) |
 
 `admin:*` grants all of them. A route answers `403` with "this needs the `admin:…` permission"
 when the caller lacks the right.

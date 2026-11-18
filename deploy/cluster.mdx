@@ -373,6 +373,11 @@ console, the **Links** tab and the map details name the member running the links
 
 `POST /api/buckets/{bucket}/replication/resync` on a follower runs on the leader.
 
+For the load balancer in front of the members, `GET /minio/health/cluster` on the S3 port answers
+`200` only while the member has enough disks online and knows the leader, so writes can succeed
+(`/minio/health/cluster/read` for reads). See
+[MinIO compatibility](/api/s3-compatibility#minio-compatibility).
+
 ## Mutual TLS
 
 Raft, forwarded writes and chunk copies all run on the peer API, so a cluster uses the same

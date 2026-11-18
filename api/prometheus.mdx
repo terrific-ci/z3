@@ -16,6 +16,9 @@ each metric means and example queries, see [Prometheus metrics](/operations/prom
 
 Each node reports only itself. Scrape every node of a group.
 
+The same metrics are also served on the S3 port at MinIO's paths (`/minio/v2/metrics/cluster` and
+the rest), with a bearer token: see [MinIO's metrics paths](/operations/prometheus#minios-metrics-paths).
+
 ## Series and labels
 
 | Metrics | Labels | One series per |

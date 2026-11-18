@@ -101,6 +101,24 @@ They reset only when the link is removed.
 | `z3_replication_throttled_seconds_total` | counter | Time spent waiting for the peer's bandwidth limit |
 | `z3_replication_geo_chunks_total` | counter | [Geo-erasure-coded](/replication/geo-erasure-coding) chunks for which only this site's shards were fetched |
 
+## MinIO's metrics paths
+
+Prometheus jobs set up for MinIO can scrape the **S3 port** instead: `/minio/v2/metrics/cluster`,
+`/node`, `/bucket` and `/resource` answer the same metrics as `/metrics`, with z3's own names
+(MinIO's dashboards and alert rules won't match them). They need the bearer token that
+`mc admin prometheus generate` writes, for an access key whose user has `admin:Prometheus`.
+
+```yaml prometheus.yml
+scrape_configs:
+  - job_name: z3-minio-path
+    metrics_path: /minio/v2/metrics/cluster
+    bearer_token: <token from mc admin prometheus generate>
+    static_configs:
+      - targets: ["z3-jkt-1:9000"]
+```
+
+Each node still reports only itself, whichever path you use.
+
 ## Example queries
 
 ```promql
