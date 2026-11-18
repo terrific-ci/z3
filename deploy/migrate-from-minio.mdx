@@ -24,10 +24,10 @@ timestamps and ETags.
 Old version ids keep working in `GET ?versionId=` on any version. z3 shows UUIDs without dashes but
 accepts them with dashes too.
 
-Nothing else comes along: bucket policies, lifecycle rules, event notifications, quotas, Object Lock
-settings, users and policies stay on the source. Set them up again in z3 (see
-[Users, groups and keys](/access/users-groups-keys), [Bucket policies](/access/bucket-policies) and
-[Lifecycle](/storage/lifecycle)).
+With `bucket_config` on, each bucket's lifecycle rules, bucket policy, tags, Object Lock
+configuration and default encryption come along too (see [Bucket configuration](#bucket-configuration)).
+Event notifications, quotas, users and IAM policies stay on the source. Set them up again in z3 (see
+[Users, groups and keys](/access/users-groups-keys)).
 
 **Verification.** A body is checked against the source's ETag when that ETag is a plain MD5, and its
 size is always checked against the listing. Objects that fail are counted in `failed` and listed in
@@ -78,6 +78,9 @@ Starting and managing imports needs the `admin:ConfigUpdate` right (root has it)
 | `concurrency` | `8` | Objects copied in parallel (1 to 64) |
 | `continuous` | `false` | Repeat the import every `interval_secs`, so changes on the source keep arriving until you cut over |
 | `interval_secs` | `300` | Pause between rounds in continuous mode |
+| `bucket_config` | `false` | Also copy each bucket's lifecycle, policy, tags, Object Lock and default encryption (on by default in the console form) |
+| `mirror_deletes` | `false` | Delete in z3 what the job brought over and the source no longer has (see [Mirror deletions](#mirror-deletions)) |
+| `mirror_dry_run` | `false` | With `mirror_deletes`: only count and sample what would be deleted |
 
 ## Manage jobs
 
@@ -87,7 +90,14 @@ Starting and managing imports needs the `admin:ConfigUpdate` right (root has it)
 | `GET /api/imports/{id}` | State (`running`, `waiting`, `paused`, `done`, `failed`), current bucket and position, counts of objects, delete markers, bytes, skipped and failed |
 | `POST /api/imports/{id}/pause` | Stop the job and keep its position |
 | `POST /api/imports/{id}/resume` | Continue, or run another round of a finished job |
-| `DELETE /api/imports/{id}` | Stop and forget the job; imported data stays |
+| `PATCH /api/imports/{id}` | Change `mirror_deletes`, `mirror_dry_run`, `bucket_config`, `continuous` or `interval_secs`; a running job picks them up at its next bucket or round |
+| `DELETE /api/imports/{id}` | Stop and forget the job and its records; imported data stays |
+
+From a shell, `z3 admin import` does the same: `list`, `start <endpoint> --source-access-key K
+--source-secret-key S [--buckets a,b] [--region R] [--continuous] [--interval N] [--concurrency N]
+[--mirror-deletes] [--dry-run] [--bucket-config]`, `status <id>`, `set <id> [--mirror-deletes true|false]
+[--dry-run true|false] [--bucket-config true|false] [--continuous true|false] [--interval N]`, `pause`,
+`resume` and `remove`. `Z3_IMPORT_SECRET` can hold the source secret key.
 
 - **Resumable.** The position (bucket and listing marker) is saved after every page. After a z3
   restart or a network failure the job continues from there.
@@ -110,13 +120,65 @@ Starting and managing imports needs the `admin:ConfigUpdate` right (root has it)
   <Step title="Wait one more round">
     So the last writes that landed on MinIO are copied too.
   </Step>
+  <Step title="Mirror deletions (optional)">
+    Turn on `mirror_dry_run` and `mirror_deletes` with `PATCH /api/imports/{id}` (or **Preview mirrored
+    deletions** in the console), check the count and samples after a round, then turn the dry run off
+    for one more round.
+  </Step>
   <Step title="Pause the job">
     `POST /api/imports/{id}/pause`, or **Pause** in the console. Then retire MinIO.
   </Step>
 </Steps>
 
 <Note>
-  Objects deleted on the source after they were imported are not deleted in z3.
+  Without `mirror_deletes`, objects deleted on the source after they were imported stay in z3.
+</Note>
+
+## Mirror deletions
+
+With `mirror_deletes`, a round that finishes listing a bucket deletes in z3 the versions the job brought
+over that the source no longer lists:
+
+- The job keeps a record of every source version it imported, or found already in z3 exactly as at the
+  source. Only versions with such a record are ever deleted. Objects written directly to z3, by another
+  job, or by imports from before z3 kept these records are never touched, and neither are buckets
+  outside the job or buckets that disappear from the source.
+- Versions with an id are deleted by id. A delete marker on the source arrives as a delete marker, as
+  in any import.
+- A null version (unversioned bucket) is deleted only while z3's null version still has the imported
+  ETag and time; a write in z3 since then is kept.
+- Deletions follow [deletion protection](/storage/deletion-protection) (versions go to the trash, with
+  `import` as the deleter). A delete refused by [Object Lock](/storage/object-lock) is counted in
+  `deletions_refused`, listed in `recent_errors` and tried again next round.
+- With `mirror_dry_run` the round only counts (`deletions_planned`) and keeps up to 20 examples
+  (`deletion_samples`). `deletions_mirrored` counts what was deleted over every round.
+
+Records are written even while mirroring is off, so you can turn it on at cutover.
+
+## Bucket configuration
+
+With `bucket_config`, every round copies each bucket's configuration that z3 supports: Object Lock,
+default encryption, bucket policy, lifecycle rules and tags.
+
+| Situation in z3 | What happens |
+| --- | --- |
+| No configuration of that kind yet | The source's is written |
+| Exactly what this job wrote last time | It follows the source: rewritten when the source changes, removed when the source drops it (Object Lock is never turned off) |
+| Set before the job first looked, or changed or removed in z3 since | Kept, with a message |
+
+Parts z3 cannot represent are skipped and listed with the reason, never dropped silently: lifecycle
+elements z3 doesn't have (such as `DelMarkerExpiration`), more than one transition, a storage class
+with no z3 [tier](/storage/tiers) of that name; policy statements with unknown fields (such as
+`NotPrincipal`). If dropping a statement would remove a `Deny`, the whole policy is left out so access
+never becomes looser than at the source. Encryption with an SSE-KMS key z3 doesn't have, an algorithm
+other than AES256 or aws:kms, or `BucketKeyEnabled` is skipped as well.
+
+The job shows the outcome per bucket and kind under `config` (`imported`, `unchanged`, `removed`,
+`absent`, `kept` or `failed`, with the skipped parts). Failures are tried again next round.
+
+<Note>
+  AWS gives every bucket SSE-S3 default encryption, so with `bucket_config` the imported buckets get
+  SSE-S3 default encryption in z3 too.
 </Note>
 
 ## From MinIO to z3, side by side

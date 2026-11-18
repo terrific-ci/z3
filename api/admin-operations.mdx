@@ -49,6 +49,7 @@ These endpoints run and watch a node. Reading needs `admin:ServerInfo`; changing
 | `GET` | `/api/imports/{id}` | `admin:ServerInfo` | One import |
 | `POST` | `/api/imports/{id}/pause` | `admin:ConfigUpdate` | Pause an import |
 | `POST` | `/api/imports/{id}/resume` | `admin:ConfigUpdate` | Resume an import |
+| `PATCH` | `/api/imports/{id}` | `admin:ConfigUpdate` | Change an import's options |
 | `DELETE` | `/api/imports/{id}` | `admin:ConfigUpdate` | Stop and forget an import (imported data stays) |
 
 ## Info
@@ -445,6 +446,21 @@ An import copies buckets and objects from MinIO or another S3 store into this no
   Objects copied in parallel.
 </ParamField>
 
+<ParamField body="bucket_config" type="boolean" default="false">
+  Also copy each bucket's Object Lock, default encryption, policy, lifecycle and tags.
+</ParamField>
+
+<ParamField body="mirror_deletes" type="boolean" default="false">
+  Delete what the job imported and the source no longer lists.
+</ParamField>
+
+<ParamField body="mirror_dry_run" type="boolean" default="false">
+  With `mirror_deletes`: only count and sample.
+</ParamField>
+
+`PATCH /api/imports/{id}` takes any of `mirror_deletes`, `mirror_dry_run`, `bucket_config`, `continuous`
+and `interval_secs` and answers the job.
+
 A job:
 
 ```json
@@ -458,6 +474,11 @@ A job:
   "created_ms": 1794919000000, "last_error": null
 }
 ```
+
+`progress` also has `deletions_mirrored` (every pass), `deletions_refused`, `deletions_planned` and
+`deletion_samples` (this pass), and the job has `config.<bucket>.<object_lock|encryption|policy|lifecycle|tags>`
+with `state`, `skipped`, `message` and `checked_ms`. See
+[Migrate from MinIO](/deploy/migrate-from-minio#mirror-deletions).
 
 `status` is `running`, `waiting` (continuous mode, between passes), `paused`, `done` or `failed`.
 `pause` and `resume` answer the job. `DELETE` stops the job and forgets it; what was imported stays.
