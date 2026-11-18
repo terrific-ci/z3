@@ -4,9 +4,9 @@
   "name": "z3",
   "description": "S3-compatible object storage in one binary: erasure coding, active-active replication, IAM, encryption and a web console.",
   "colors": {
-    "primary": "#4b55d6",
-    "light": "#a6b0ff",
-    "dark": "#4b55d6"
+    "primary": "#786900",
+    "light": "#fbf74f",
+    "dark": "#786900"
   },
   "favicon": "/favicon.svg",
   "logo": {
@@ -18,8 +18,8 @@
   },
   "background": {
     "color": {
-      "light": "#f2f3f8",
-      "dark": "#0a0c14"
+      "light": "#f7f7f5",
+      "dark": "#100f0e"
     }
   },
   "fonts": {
