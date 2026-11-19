@@ -6,17 +6,25 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.1.0**, released November 19, 2026. To install or upgrade to it:
+The latest release is **v1.1.1**, released November 19, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/zee3:1.1.0
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.0
+docker pull terrificci/zee3:1.1.1
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.1
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.1.0" description="November 19, 2026" tags={["Latest"]}>
+<Update label="v1.1.1" description="November 19, 2026" tags={["Latest"]}>
+
+- **Imports:** an import job's endpoint, access key, secret key, region and parallelism can now be changed in place: Import/Export → the job's menu → **Edit source and schedule**, or `zee3 admin import set <id> --region …`. The new settings are tried against the source before they are saved, and a failed job resumes with **Save and resume**, for example after `AuthorizationHeaderMalformed ... expecting 'id'`. See [Migrate from MinIO](/deploy/migrate-from-minio).
+- **Health check:** `GET /api/health` also answers on the S3 port, so a load balancer in front of S3 can check the node without the console port.
+- **Fix:** confirming a dialog in the console (Remove an import, Delete a bucket, and every other action that asks first) did nothing, because the confirmation was taken as Cancel. It now carries out the action.
+
+</Update>
+
+<Update label="v1.1.0" description="November 19, 2026">
 
 - **Setup:** a new node started without `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` opens a setup page in the console to choose the root account, instead of starting with built-in credentials. Nodes that already have data keep working as before. See [Install](/deploy/install).
 - **Join a Zee3:** from the setup page, a new node finds the Zee3 nodes on its network (or takes a console address) and joins one's site group once root there approves a six-digit code, or right away with a one-time join code made under Replication → Peers and sites. The new node signs in with the same root account and buckets start replicating both ways. See [Site replication](/replication/site-replication).
