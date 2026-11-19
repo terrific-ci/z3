@@ -6,17 +6,24 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.1.2**, released November 19, 2026. To install or upgrade to it:
+The latest release is **v1.1.3**, released November 19, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/zee3:1.1.2
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.2
+docker pull terrificci/zee3:1.1.3
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.3
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.1.2" description="November 19, 2026" tags={["Latest"]}>
+<Update label="v1.1.3" description="November 19, 2026" tags={["Latest"]}>
+
+- **Imports:** a running import shows how far the current round is as a percentage of the source's size, the copy speed, objects checked per second and the time left; between rounds it shows how long the last round took, what it copied and when the next one starts. The first round counts the source in the background, later rounds use the previous round's size and count again when the source has grown. The counters now move with every object instead of every 1,000. See [Migrate from MinIO](/deploy/migrate-from-minio).
+- **Console:** previews of images, PDFs and text show how much has arrived, the speed and the time left while they load. Files above 256 MiB still open directly in the browser.
+
+</Update>
+
+<Update label="v1.1.2" description="November 19, 2026">
 
 - **Imports:** faster: the next listing pages are read while objects are still being copied, so one slow object no longer holds the rest back (2,000 small objects in 3.7 s instead of 4.7 s on a local link), and objects of 32 MiB and more are fetched as several ranges at once (about 29% faster one at a time over a 60 ms link). Over a link with latency, raising the job's objects in parallel helps small objects most. See [Benchmarks](/deploy/benchmarks).
 - **Replication:** Replication → Peers and sites → This node's peer API shows a connection code with this node's name, address and peer token; pasting it into **Add peer** on another node fills in all three. The token field now says it is the other node's peer token and where to find it. See [Bucket replication](/replication/bucket-replication).
