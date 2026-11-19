@@ -90,14 +90,21 @@ Starting and managing imports needs the `admin:ConfigUpdate` right (root has it)
 | `GET /api/imports/{id}` | State (`running`, `waiting`, `paused`, `done`, `failed`), current bucket and position, counts of objects, delete markers, bytes, skipped and failed |
 | `POST /api/imports/{id}/pause` | Stop the job and keep its position |
 | `POST /api/imports/{id}/resume` | Continue, or run another round of a finished job |
-| `PATCH /api/imports/{id}` | Change `mirror_deletes`, `mirror_dry_run`, `bucket_config`, `continuous` or `interval_secs`; a running job picks them up at its next bucket or round |
+| `PATCH /api/imports/{id}` | Change `mirror_deletes`, `mirror_dry_run`, `bucket_config`, `continuous`, `interval_secs` or `concurrency`; a running job picks them up at its next bucket or round. Also the source: `endpoint`, `access_key`, `secret_key` (empty keeps it) and `region`, tried against the source before they are saved |
 | `DELETE /api/imports/{id}` | Stop and forget the job and its records; imported data stays |
 
 From a shell, `zee3 admin import` does the same: `list`, `start <endpoint> --source-access-key K
 --source-secret-key S [--buckets a,b] [--region R] [--continuous] [--interval N] [--concurrency N]
 [--mirror-deletes] [--dry-run] [--bucket-config]`, `status <id>`, `set <id> [--mirror-deletes true|false]
-[--dry-run true|false] [--bucket-config true|false] [--continuous true|false] [--interval N]`, `pause`,
+[--dry-run true|false] [--bucket-config true|false] [--continuous true|false] [--interval N]
+[--endpoint URL] [--source-access-key K] [--source-secret-key S] [--region R] [--concurrency N]`, `pause`,
 `resume` and `remove`. `ZEE3_IMPORT_SECRET` can hold the source secret key.
+
+If the source refuses a job, for example with `AuthorizationHeaderMalformed ... expecting 'id'`, fix it
+in place: in the console open the job's menu, choose **Edit source and schedule**, set the region (or
+key, or endpoint) and choose **Save and resume**. Zee3 tries the new settings against the source first
+and keeps the old ones if they are refused. A running job starts its round again from the saved
+position; a new endpoint lists the buckets again from the start.
 
 - **Resumable.** The position (bucket and listing marker) is saved after every page. After a Zee3
   restart or a network failure the job continues from there.

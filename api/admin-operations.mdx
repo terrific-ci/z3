@@ -560,8 +560,11 @@ An import copies buckets and objects from MinIO or another S3 store into this no
   With `mirror_deletes`: only count and sample.
 </ParamField>
 
-`PATCH /api/imports/{id}` takes any of `mirror_deletes`, `mirror_dry_run`, `bucket_config`, `continuous`
-and `interval_secs` and answers the job.
+`PATCH /api/imports/{id}` takes any of `mirror_deletes`, `mirror_dry_run`, `bucket_config`, `continuous`,
+`interval_secs`, `concurrency`, `endpoint`, `access_key`, `secret_key` (empty keeps it) and `region`, and
+answers the job. A new endpoint, key or region is tried against the source first (400 if refused, and
+the job keeps its old settings); a running job then restarts its round from the saved position, a failed
+or paused one waits for `resume`.
 
 A job:
 
