@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install zee3 on Linux: downloads the zee3 binary of a GitHub release of
 # terrific-ci/z3, checks it against SHA256SUMS and puts it in /usr/local/bin.
-# On macOS, run Zee3 with Docker (terrificci/z3).
+# On macOS, run Zee3 with Docker (terrificci/zee3).
 #
 #   curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh
 #
@@ -43,8 +43,8 @@ need tar
 
 case "$(uname -s)" in
   Linux) os=linux ;;
-  Darwin) die "there are no macOS binaries; run zee3 with Docker instead: docker run -p 9000:9000 -p 9001:9001 terrificci/z3" ;;
-  *) die "unsupported system $(uname -s); use the Docker image terrificci/z3" ;;
+  Darwin) die "there are no macOS binaries; run zee3 with Docker instead: docker run -p 9000:9000 -p 9001:9001 terrificci/zee3" ;;
+  *) die "unsupported system $(uname -s); use the Docker image terrificci/zee3" ;;
 esac
 case "$(uname -m)" in
   x86_64|amd64) arch=amd64 ;;

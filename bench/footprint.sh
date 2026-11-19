@@ -10,7 +10,7 @@ STAGES=${1:-4}; shift || true
 SERVERS=${*:-zee3 minio rustfs}
 OUT=footprint-$(date +%Y%m%d-%H%M).txt
 NET=s3bench AK=benchadmin SK=bench-secret-12345 DATA=/var/tmp/s3bench-data
-ZEE3_IMAGE=${ZEE3_IMAGE:-terrificci/z3:latest}
+ZEE3_IMAGE=${ZEE3_IMAGE:-terrificci/zee3:latest}
 docker network create $NET >/dev/null 2>&1 || true
 : > "$OUT"
 

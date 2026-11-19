@@ -3,7 +3,7 @@ title: "Docker"
 description: "Run Zee3 with Docker or Docker Compose: ports, the data volume, environment settings and the health check."
 ---
 
-The image `terrificci/z3` is distroless (no shell, no package manager) and runs as a non-root user.
+The image `terrificci/zee3` is distroless (no shell, no package manager) and runs as a non-root user.
 It sets these defaults:
 
 | Variable | Value in the image | Outside Docker |
@@ -24,7 +24,7 @@ docker run -d --name zee3 --restart unless-stopped \
   -v zee3-data:/data \
   -e ZEE3_ACCESS_KEY=admin \
   -e ZEE3_SECRET_KEY=change-me-please \
-  terrificci/z3:latest
+  terrificci/zee3:latest
 ```
 
 <Warning>
@@ -41,7 +41,7 @@ Save this as `docker-compose.yml`, next to a `.env` file that holds the secret:
 ```yaml docker-compose.yml
 services:
   zee3:
-    image: terrificci/z3:latest
+    image: terrificci/zee3:latest
     restart: unless-stopped
     ports:
       - "9000:9000"            # S3 API
@@ -89,7 +89,7 @@ the mount points in `ZEE3_DISKS`. Metadata stays in `/data`.
 ```yaml docker-compose.yml
 services:
   zee3:
-    image: terrificci/z3:latest
+    image: terrificci/zee3:latest
     restart: unless-stopped
     ports:
       - "9000:9000"

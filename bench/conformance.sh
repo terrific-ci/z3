@@ -3,7 +3,7 @@
 # image (docs/conformance.md). Runs on the bench server, never the laptop.
 #   ./conformance.sh [--build] [all|mint|s3tests]
 #     --build   build the repository (..) into $ZEE3_IMAGE first
-#   ZEE3_IMAGE=terrificci/z3:1.0.3 ./conformance.sh     test an existing image
+#   ZEE3_IMAGE=terrificci/zee3:1.0.0 ./conformance.sh     test an existing image
 # Prints a summary per suite and exits 1 when anything in the subset fails
 # (excluded failures are listed with their reason). Results: $OUT.
 set -euo pipefail

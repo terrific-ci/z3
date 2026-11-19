@@ -116,8 +116,8 @@ mkdir conformance && for f in mint-exclude.txt mint_summary.py s3tests-exclude.t
   curl -fsSL -o conformance/$f $base/conformance/$f
 done
 
-ZEE3_IMAGE=terrificci/z3:latest ./conformance.sh        # Mint and s3-tests
-ZEE3_IMAGE=terrificci/z3:latest ./conformance.sh mint   # only Mint (or: s3tests)
+ZEE3_IMAGE=terrificci/zee3:latest ./conformance.sh        # Mint and s3-tests
+ZEE3_IMAGE=terrificci/zee3:latest ./conformance.sh mint   # only Mint (or: s3tests)
 ```
 
 For each suite, the script starts a fresh Zee3 container with Signature V2 on (both suites test it).

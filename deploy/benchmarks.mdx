@@ -13,7 +13,7 @@ benchmark tool, on one machine, one server at a time, with the same limits and w
 - **Limits:** every server ran in Docker on CPUs 0–1 with 2 GiB of memory and its data on the same
   disk (one drive each: Zee3 with a plain data directory, MinIO and RustFS in single-drive mode).
   warp ran on CPUs 2–3.
-- **Versions:** Zee3 1.0.0 (`terrificci/z3:1.0.0`), MinIO RELEASE.2026-08-04 (the community build
+- **Versions:** Zee3 1.0.0 (`terrificci/zee3:1.0.0`), MinIO RELEASE.2026-08-04 (the community build
   `pgsty/minio`; MinIO no longer publishes images), RustFS 1.0.6 (`rustfs/rustfs`), warp 1.3.1.
 - **Settings:** each server's defaults. The objects are random data, so Zee3's deduplication and
   compression play no part.

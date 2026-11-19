@@ -10,7 +10,7 @@ NET=s3bench
 AK=benchadmin
 SK=bench-secret-12345
 DATA=/var/tmp/s3bench-data
-ZEE3_IMAGE=${ZEE3_IMAGE:-terrificci/z3:0.1.0}
+ZEE3_IMAGE=${ZEE3_IMAGE:-terrificci/zee3:1.0.0}
 docker network create $NET >/dev/null 2>&1 || true
 : > "$OUT"
 
