@@ -262,12 +262,8 @@ policy, the user or access key, or by turning STS off.
 
 | Prefix | Used for |
 | --- | --- |
-| `zee3sts1.` | Federated sessions without session policies (as before) |
+| `zee3sts1.` | Federated sessions without session policies |
 | `zee3sts2.` | `AssumeRole` sessions, and any session with a session policy |
-
-Older Zee3 servers refuse `zee3sts2.` tokens with `InvalidToken`, rather than ignoring the session
-policy. Upgrade every site of a replication group before relying on them. Existing `zee3sts1.`
-sessions keep working after the upgrade.
 
 ## Settings
 

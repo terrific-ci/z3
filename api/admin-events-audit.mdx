@@ -260,6 +260,5 @@ With `scope=all`, `GET /api/trace` and `GET /api/logs` answer:
 
 Every entry carries `node` and `node_name`. Each node's `state` is `ok`, `connecting` or
 `unreachable`. For a history query (`since`, `until` or `history=true`), each node also has
-`history`: `disk`, or `memory` when that node has no history on disk (it is turned off, or the node
-runs an older Zee3); only its recent lines in memory are then included, filtered to the range. The streams send a `nodes` event with the same list at the start and whenever a
+`history`: `disk`, or `memory` when that node has no history on disk (it is turned off); only its recent lines in memory are then included, filtered to the range. The streams send a `nodes` event with the same list at the start and whenever a
 node's state changes; a node that cannot be reached never fails the request.

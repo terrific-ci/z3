@@ -23,9 +23,9 @@ zee3 admin cluster
 
 ```
 term 3  leader 2200471768134479368  copies 2
-2200471768134479368  zee3-1       leader    http://10.0.0.11:9002      v1.1.0    log 1840  0 shards 0 B, 32140 copies 41.2 GiB
-5168186497781187492  zee3-2       follower  http://10.0.0.12:9002      v1.1.0    log 1840  0 shards 0 B, 32087 copies 41.1 GiB  (this node)
-7709925377133580712  zee3-3       follower  http://10.0.0.13:9002      v1.1.0    log 1838  0 shards 0 B, 32195 copies 41.3 GiB
+2200471768134479368  zee3-1       leader    http://10.0.0.11:9002      v1.0.0    log 1840  0 shards 0 B, 32140 copies 41.2 GiB
+5168186497781187492  zee3-2       follower  http://10.0.0.12:9002      v1.0.0    log 1840  0 shards 0 B, 32087 copies 41.1 GiB  (this node)
+7709925377133580712  zee3-3       follower  http://10.0.0.13:9002      v1.0.0    log 1838  0 shards 0 B, 32195 copies 41.3 GiB
 ```
 
 Each line shows the member id, name, role (`leader`, `follower`, or `leaving` while a removed member
@@ -38,12 +38,12 @@ redundancy the leader found at its last sweep:
 
 ```
 term 4  leader 2200471768134479368  erasure coding 4+2 (chunks from 256.0 KiB, 3 copies below)
-2200471768134479368  zee3-1       leader    http://10.0.0.11:9002      v1.1.0    log 2410  24102 shards 10.4 GiB, 3911 copies 401.2 MiB
-5168186497781187492  zee3-2       follower  http://10.0.0.12:9002      v1.1.0    log 2410  24077 shards 10.4 GiB, 3925 copies 403.0 MiB  (this node)
-7709925377133580712  zee3-3       follower  http://10.0.0.13:9002      v1.1.0    log 2410  24131 shards 10.5 GiB, 3902 copies 399.8 MiB
-1093384251740098230  zee3-4       follower  http://10.0.0.14:9002      v1.1.0    log 2409  24050 shards 10.4 GiB, 3917 copies 402.1 MiB
-8840018827714631655  zee3-5       follower  http://10.0.0.15:9002      v1.1.0    log 2410  24098 shards 10.4 GiB, 3920 copies 402.6 MiB
-3317402957198144021  zee3-6       follower  http://10.0.0.16:9002      v1.1.0    log 2410  24088 shards 10.4 GiB, 3913 copies 401.5 MiB
+2200471768134479368  zee3-1       leader    http://10.0.0.11:9002      v1.0.0    log 2410  24102 shards 10.4 GiB, 3911 copies 401.2 MiB
+5168186497781187492  zee3-2       follower  http://10.0.0.12:9002      v1.0.0    log 2410  24077 shards 10.4 GiB, 3925 copies 403.0 MiB  (this node)
+7709925377133580712  zee3-3       follower  http://10.0.0.13:9002      v1.0.0    log 2410  24131 shards 10.5 GiB, 3902 copies 399.8 MiB
+1093384251740098230  zee3-4       follower  http://10.0.0.14:9002      v1.0.0    log 2409  24050 shards 10.4 GiB, 3917 copies 402.1 MiB
+8840018827714631655  zee3-5       follower  http://10.0.0.15:9002      v1.0.0    log 2410  24098 shards 10.4 GiB, 3920 copies 402.6 MiB
+3317402957198144021  zee3-6       follower  http://10.0.0.16:9002      v1.0.0    log 2410  24088 shards 10.4 GiB, 3913 copies 401.5 MiB
 redundancy: 24091 erasure-coded (0 missing a shard, 0 at risk, 0 unreadable), 7829 as copies
 ```
 

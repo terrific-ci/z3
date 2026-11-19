@@ -290,12 +290,10 @@ This keeps STS simple and adds no writes to replicate per session. The trade-off
 can't be revoked before it expires. Revoke through the mapping, the policy, the user or access
 key, or by turning STS off.
 
-<Warning>
-  `AssumeRole` sessions and sessions with a session policy use the `zee3sts2.` token format. Older Zee3
-  servers refuse these tokens (`InvalidToken`), so upgrade every site of a replication group before
-  relying on them. Federated sessions without a session policy keep the `zee3sts1.` format and keep
-  working across the upgrade.
-</Warning>
+<Note>
+  `AssumeRole` sessions and sessions with a session policy use the `zee3sts2.` token format;
+  federated sessions without a session policy use `zee3sts1.`.
+</Note>
 
 ## Not supported yet
 

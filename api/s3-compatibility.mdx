@@ -137,11 +137,6 @@ Zee3 stores these headers with an object and returns them on `GetObject` and `He
   `userMetadata` of [bucket events](/events/bucket-events). The names `x-amz-meta-zee3-sys-*` are
   reserved: Zee3 drops client metadata keys that start with `zee3-sys-`.
 
-<Note>
-  During a rolling upgrade, nodes still on an older release return these headers as
-  `x-amz-meta-zee3-sys-*`. Upgrade every node of a replication group or cluster.
-</Note>
-
 ## Responses
 
 - `Content-Type` is `binary/octet-stream` for an object uploaded without one, objects stored by

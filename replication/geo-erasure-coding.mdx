@@ -131,8 +131,6 @@ A layout with more parity can rebuild from fewer sites, at the cost of more stor
 ### Limits
 
 - Versions in the [trash](/storage/deletion-protection) aren't repaired until they're restored.
-- Sites running an older Zee3 without the peer route `POST /v1/geo/repair` are skipped, like a site
-  that doesn't answer.
 - In a [cluster](/deploy/cluster#geo-erasure-coding), this repair runs on the leader, and a shard
   counts as missing only when no member holds it. Call `POST /api/heal/geo` on the leader: on a
   follower it checks nothing.

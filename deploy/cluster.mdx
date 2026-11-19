@@ -130,11 +130,6 @@ This is separate from [erasure coding over disks](/durability/erasure-coding) (`
 node, and from [geo erasure coding](/replication/geo-erasure-coding) across sites. All three can be
 used together.
 
-<Warning>
-  Upgrade **every** member before you turn erasure coding on. A member on an older version can't
-  read the new Raft commands: it stops following the log until it is upgraded.
-</Warning>
-
 ### Turn it on
 
 <Tabs>
@@ -425,14 +420,8 @@ Restart members one at a time, and wait until `zee3 admin cluster status` shows 
 before moving on. Reads and writes continue on the other members meanwhile. Each member's version is
 in the status. Don't use features of the new version until every member runs it.
 
-Replication on a cluster adds new commands to the Raft log, which members on an older version can't
-read. Upgrade every member first, then configure peers, bucket replication, site replication or geo
-erasure coding on the cluster. A member still on the old version stops following the log when the
-first new command arrives, and catches up once it is upgraded.
-
-[Erasure coding across members](#erasure-coding-across-members) adds Raft commands too. Upgrade every
-member before you turn it on. The on-disk format doesn't change, and chunks stored as copies stay
-readable by every version.
+A member on an older version can't read Raft commands that a newer version adds: it stops following
+the log until it is upgraded and then catches up.
 
 ## Limitations
 
