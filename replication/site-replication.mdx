@@ -164,6 +164,10 @@ and copy the token.
   place. When this node belongs to a site group, the new token is sent to every site automatically.
   Peers configured by hand on other nodes (plain [bucket replication](/replication/bucket-replication))
   must be edited there.
+- **Connection code:** one string with this node's name, peer address and token, for **Add peer** on
+  another node, which fills in all three from it. The address is guessed from the host the console
+  was opened on and the peer port; correct it under *Other nodes reach this one at* if the other node
+  reaches this one differently. The code holds the token, so share it like the token.
 - A token set in the console is kept in `<data dir>/credentials.json`.
 - A token from `ZEE3_PEER_TOKEN` can't be changed in the console: change the variable and restart.
 - Cluster members share one token, which must come from `ZEE3_PEER_TOKEN`. Cluster mode reads the

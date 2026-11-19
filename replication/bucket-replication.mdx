@@ -41,7 +41,10 @@ bucket `data`.
   <Step title="On node A: add B as a peer and replicate the bucket to it">
     <Tabs>
       <Tab title="Console">
-        **Replication → Add peer**: name `dc2`, endpoint `http://10.0.0.2:9002`, token `token-of-b`.
+        On node B, open **Replication → Peers and sites → This node's peer API** and copy its
+        **connection code** (check the address under *Other nodes reach this one at* first). On node A,
+        choose **Add peer** and paste it: name, endpoint and token are filled in. Or type them yourself:
+        name `dc2`, endpoint `http://10.0.0.2:9002`, token `token-of-b`.
         Then open the bucket, **Settings → Replication**, and add `dc2` as a peer.
 
         <Frame>
