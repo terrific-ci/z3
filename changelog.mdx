@@ -6,17 +6,25 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.1.1**, released November 19, 2026. To install or upgrade to it:
+The latest release is **v1.1.2**, released November 19, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/zee3:1.1.1
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.1
+docker pull terrificci/zee3:1.1.2
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.2
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.1.1" description="November 19, 2026" tags={["Latest"]}>
+<Update label="v1.1.2" description="November 19, 2026" tags={["Latest"]}>
+
+- **Imports:** faster: the next listing pages are read while objects are still being copied, so one slow object no longer holds the rest back (2,000 small objects in 3.7 s instead of 4.7 s on a local link), and objects of 32 MiB and more are fetched as several ranges at once (about 29% faster one at a time over a 60 ms link). Over a link with latency, raising the job's objects in parallel helps small objects most. See [Benchmarks](/deploy/benchmarks).
+- **Replication:** Replication → Peers and sites → This node's peer API shows a connection code with this node's name, address and peer token; pasting it into **Add peer** on another node fills in all three. The token field now says it is the other node's peer token and where to find it. See [Bucket replication](/replication/bucket-replication).
+- **Fix:** copy buttons in the console did nothing when the console was opened over plain HTTP on another host than localhost.
+
+</Update>
+
+<Update label="v1.1.1" description="November 19, 2026">
 
 - **Imports:** an import job's endpoint, access key, secret key, region and parallelism can now be changed in place: Import/Export → the job's menu → **Edit source and schedule**, or `zee3 admin import set <id> --region …`. The new settings are tried against the source before they are saved, and a failed job resumes with **Save and resume**, for example after `AuthorizationHeaderMalformed ... expecting 'id'`. See [Migrate from MinIO](/deploy/migrate-from-minio).
 - **Health check:** `GET /api/health` also answers on the S3 port, so a load balancer in front of S3 can check the node without the console port.
