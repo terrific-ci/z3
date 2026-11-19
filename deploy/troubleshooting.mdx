@@ -73,13 +73,14 @@ Three levels, from quickest to most thorough:
 
 | Check | What it tells you |
 | --- | --- |
-| `GET /api/health` on the admin port | `{"status": "ok"}` when the node answers. Needs no sign-in; for load balancers and monitoring |
+| `GET /api/health` on the admin port or the S3 port | `{"status": "ok"}` when the node answers. Needs no sign-in; for load balancers and monitoring. The S3 port answers it once setup is done, and only for unsigned requests without a query, so a signed request for the key `health` in a bucket named `api` still reaches S3 |
 | `GET /minio/health/live`, `/ready`, `/cluster`, `/cluster/read` on the S3 port | MinIO's health endpoints: `200` or `503`, no sign-in. `cluster` and `cluster/read` check that enough disks are online to write or read and, in cluster mode, that the cluster has a leader. For load balancers and Kubernetes probes that only reach the S3 port ([MinIO compatibility](/api/s3-compatibility#minio-compatibility)) |
 | `zee3 healthcheck` | Exits with 0 when `GET /api/health` answers on `ZEE3_ADMIN_ADDR` of this machine. The Docker image's `HEALTHCHECK` uses it |
 | **Support** page, `zee3 admin support health` | Disks, disk writes, healing, peers and clocks, peer TLS, replication, memory and CPU, errors in the last hour, root credentials. Each is `ok`, `warn` or `fail`; the CLI exits with 1 if any check fails |
 
 ```bash
 curl -s http://127.0.0.1:9001/api/health
+curl -s http://127.0.0.1:9000/api/health
 curl -fsS -o /dev/null http://127.0.0.1:9000/minio/health/cluster && echo writable
 zee3 healthcheck && echo healthy
 zee3 admin support health

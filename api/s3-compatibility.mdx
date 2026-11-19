@@ -207,6 +207,9 @@ For tools written against MinIO, the S3 port also serves:
 
 - The health paths need no credentials and answer `503` when the check fails. Use them for load
   balancers and Kubernetes probes.
+- `GET /api/health`, the admin port's liveness check, also answers `{"status": "ok"}` on the S3
+  port. Only an unsigned request without a query gets that answer; a signed or presigned request for
+  the key `health` in a bucket named `api` is served by S3 as usual.
 - The metrics paths take the bearer token that `mc admin prometheus generate` writes for an
   access key. The key's user needs `admin:Prometheus`.
 - `x-minio-force-delete` needs `s3:DeleteObjectVersion` on each key and is refused on a bucket with
