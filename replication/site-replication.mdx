@@ -118,6 +118,13 @@ setup page under **Join code** and choose **Join**: the node joins without an ap
 works once, for one hour, and is lost if the existing node restarts. It holds the existing console's
 address as your browser reached it, so make the code from an address the new node can reach too.
 
+### Several nodes at once
+
+Several new nodes can ask at the same time. Each request shows its own code in **Join requests**;
+match each with the screen of the node showing it and answer them one by one. Every approved node
+becomes its own site, nodes with the same host name get distinct names (`storage`, `storage-2`),
+and approvals made together never overwrite each other's place in the group.
+
 ### What the new node gets
 
 - The existing node's **root credentials**, kept in its `<data dir>/credentials.json`: the same root
