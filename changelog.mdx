@@ -6,107 +6,52 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.2.0**, released November 18, 2026. To install or upgrade to it:
+The latest release is **v1.0.0**, released November 19, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/z3:1.2.0
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.2.0
+docker pull terrificci/zee3:1.0.0
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.0.0
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.2.0" description="November 18, 2026" tags={["Latest"]}>
+<Update label="v1.0.0" description="November 19, 2026" tags={["Latest"]}>
 
-- **Upgrading:** 1.2.0 cannot open a data directory written by 1.1.0 or 1.0.x: IAM secrets, KMS keys and encrypted objects are now protected by keys under the Zee3 name. Start with an empty data directory and copy objects over with the import, as described in [Upgrading](/deploy/upgrading).
-
-</Update>
-
-<Update label="v1.1.0" description="November 18, 2026">
-
-- **New name:** z3 is now Zee3. The binary and command line are `zee3` and `zee3 admin`, environment variables start with `ZEE3_`, metrics with `zee3_`, headers with `x-zee3-`, and the default credentials are `zee3admin` / `zee3admin-secret`. The Docker image keeps its name, `terrificci/z3`. See [Upgrading](/deploy/upgrading).
-- **Cluster:** a cluster can now replicate buckets with other nodes or clusters, join a site replication group and be one site in geo erasure coding. Only the leader pulls from peers, any member serves them, and a peer endpoint may list several URLs separated by commas. See [Cluster](/deploy/cluster).
-- **Cluster erasure coding:** `zee3 admin cluster ec 4+2` stores large chunks as data and parity shards on different members instead of full copies, so two members can be lost at 1.5x storage instead of 3x. Existing chunks are converted in the background, and the Cluster page shows the layout and redundancy. See [Cluster](/deploy/cluster).
-- **Mutual TLS between nodes:** `ZEE3_PEER_TLS_CERT`, `ZEE3_PEER_TLS_KEY` and `ZEE3_PEER_TLS_CA` secure replication, site replication and cluster traffic with certificates on both sides, with a step-by-step rollout for running groups and a Peer TLS health check. See [Mutual TLS between nodes](/deploy/peer-tls).
-- **Lean Replica:** a small node can keep only recent object data within a size or age window while metadata stays complete; older data is read through from a full replica. See [Lean Replica](/replication/lean-replica).
-- **Change log pruning:** the change log, tombstones and internal markers are pruned once every peer has applied them, with a retention setting that also bounds point-in-time rollback; a peer that falls too far behind resyncs fully. See [Replication](/replication/overview).
-- **Geo healing across sites:** with geo erasure coding, a site that lost its own shards entirely (empty disks, a replaced disk set, a shard corrupt everywhere) rebuilds them from the other sites on its own, honouring residency rules. See [Geo erasure coding](/replication/geo-erasure-coding).
-- **Encryption:** AWS KMS, Azure Key Vault and Google Cloud KMS join Vault and KES as external key stores. Switching to another key store keeps the previous one as a retired store that still opens the objects it sealed, and a rotation job moves them over. External KMS settings now travel in configuration exports. See [External KMS](/security/external-kms).
-- **STS:** `AssumeRole` gives IAM users and access keys temporary credentials, and session policies (`Policy`, `PolicyArns`) narrow any STS session. See [STS](/access/sts).
-- **S3 compatibility:** UploadPartCopy, GetObject and HeadObject `partNumber`, GetObjectAttributes, additional checksums (CRC32, CRC32C, CRC64NVME, SHA1, SHA256), conditional writes and deletes, ListBuckets paging, and stored Cache-Control, Content-Disposition, Content-Encoding, Content-Language, Expires and storage class. Results against MinIO Mint and ceph/s3-tests are published. See [S3 compatibility](/api/s3-compatibility) and [S3 conformance](/api/s3-conformance).
-- **MinIO compatibility:** the `/minio/health/*` endpoints for load balancers and probes, `/minio/v2/metrics/*` with an `mc admin prometheus generate` token, `x-minio-force-delete` on DeleteObject and `metadata=true` on ListObjectsV2.
-- **Import from MinIO or S3:** an import can copy each bucket's lifecycle rules, bucket policy, tags, Object Lock and default encryption, and can mirror deletions made at the source during cutover, with a dry run first. `zee3 admin import` manages imports from a shell. See [Migrate from MinIO](/deploy/migrate-from-minio).
-- **Logs:** server logs are kept on disk and survive restarts; the Logs page browses history by time range, and `zee3 admin logs` and `zee3 admin trace` follow or search every node of a site group. See [Trace and logs](/audit/trace-and-logs).
-- **Performance:** on Linux, `ZEE3_IO_URING=1` reads chunks through io_uring; downloads were 6 to 12% faster on the benchmark machine and uploads unchanged. It is off by default, and in Docker it needs a seccomp profile that allows io_uring. See [Benchmarks](/deploy/benchmarks).
-- **Durability:** orphaned chunk files left by an upload that crashed are swept after each full heal pass or on demand with `zee3 admin sweep`. See [Healing](/durability/healing).
-- **Replication:** link counters keep growing across restarts instead of starting from zero.
-- **Event destinations:** NSQ over TCP supports TLS and `AUTH`. See [Event destinations](/events/destinations).
-- **Console:** search a bucket by a word in the name or by its start, preview PDF, audio and other files in a large viewer with navigation, delete many objects at once or by pattern and date range, and page through long version histories and batch jobs.
-- **Fix:** on a cluster, uploading content that garbage collection removed in the last day kept failing with a retryable error until then; it now works at once.
-- **Fix:** the replication map no longer draws its empty-state hint over the node card.
-- **Upgrading:** environment variables, default credentials, metric and header names, the event destination ARN prefix and the configuration export format changed with the new name: update service files, dashboards and clients, and take a new configuration export after upgrading. Temporary STS credentials issued before the upgrade stop working. Upgrade every member of a cluster before turning on replication or erasure coding there. The on-disk metadata format is unchanged. See [Upgrading](/deploy/upgrading).
-
-</Update>
-
-<Update label="v1.0.2" description="November 18, 2026">
-
-- **Security:** LDAP sign-in and STS with LDAP now use a current TLS library, fixing known weaknesses of the old one in certificate checks and key exchange. Nothing to change in the LDAP settings.
-- **Security:** the archive library behind support downloads (profiles, inspect) is updated to a version without known vulnerabilities.
-- **Platforms:** release binaries are for Linux (amd64 and arm64). On macOS, run z3 with Docker; the install script still installs the macOS binaries of 1.0.1 with `--version 1.0.1`.
-- **Upgrading:** no change to the metadata format; replace the binary or the image, one node after another.
-
-</Update>
-
-<Update label="v1.0.1" description="November 18, 2026">
-
-- **Memory:** the metadata cache is capped at 128 MiB by default (`Z3_META_CACHE_MB`), so z3's memory levels off instead of growing with the number of objects: about 160 MiB at 200,000 objects, or about 100 MiB with `Z3_META_CACHE_MB=64`, with writes just as fast. The historical metrics and the cluster log have their own small caps (`Z3_METRICS_CACHE_MB`, `Z3_RAFT_CACHE_MB`).
-- **Healing:** the weekly full verification pauses between batches and uses at most `Z3_HEAL_DUTY` percent of the time (25 by default), so the disk and CPU stay with requests and other programs. See [Healing](/durability/healing).
-- **Shared machines:** recommended settings and Docker limits for running z3 beside a database and other applications, with its footprint measured against MinIO and RustFS. See [Running alongside other services](/deploy/shared-host).
-- **Upgrading:** no change to the metadata format; replace the binary or the image, one node after another.
-
-</Update>
-
-<Update label="v1.0.0" description="November 18, 2026">
-
-- **Cluster mode:** several nodes act as one z3. Metadata goes through a Raft log applied on every member, each chunk is kept on `Z3_CLUSTER_COPIES` members, and any member answers S3 requests with reads that see every acknowledged write. Members join and leave without downtime (a leaving member hands its copies over first) and can be upgraded one at a time. See [Cluster](/deploy/cluster) and [`z3 admin cluster`](/cli/cluster).
-- **Replication map:** the Replication page draws every node of the group and every link between them, live, with lag, traffic, conflicts and errors, and the details of each link per bucket in both directions. See [Replication map](/replication/map).
-- **Edge and branch offices:** each peer shows whether it is online, since when it is offline, and how many changes wait to be sent and received. With `on_offline: "local"`, `quorum` and `all` writes answer at once while the peers they need are offline. See [Edge and branch offices](/replication/edge).
-- **Deletion protection:** with a deletion delay on a bucket, permanently deleted versions go to a trash and can be restored until the delay has passed. Weakening the protection only takes effect once the current delay has passed, for every account including root. See [Deletion protection](/storage/deletion-protection).
-- **Rollback to a point in time:** a bucket, a prefix or one key goes back to how it was at a given time, planned from the change log, previewed, and run as a batch job that only adds versions (including versions from the trash). See [Point-in-time rollback](/storage/point-in-time).
-- **Performance:** uploads hash and write several chunks at once while the body keeps arriving, and downloads read and verify several chunks ahead of the client. See [Benchmarks](/deploy/benchmarks).
-- **Console:** a new look (charcoal with a yellow accent), a sign-in mascot, a sidebar with pinned buckets and menu search, a new Overview, a Flow tab on buckets, a Cluster page, and tabs on the Replication page.
-- **Upgrading:** the metadata format moves to version 7 when a node starts; there is no way back to 0.1.0 with the same data directory. Upgrade every node of a replication group, since the peer protocol gained new messages. See [Upgrading](/deploy/upgrading).
-
-</Update>
-
-<Update label="v0.1.0" description="November 17, 2026">
-
-- **S3 API:** on port 9000: buckets, versioning, objects with ranges, metadata, tags and conditional requests, `ListObjects` V1 and V2, `ListObjectVersions`, `CopyObject`, `DeleteObjects`, multipart uploads and presigned URLs. See [S3 compatibility](/api/s3-compatibility).
+- **S3 API:** on port 9000: buckets, versioning, objects with ranges, metadata, tags and conditional requests and writes, `ListObjects` V1 and V2 with paging, `ListObjectVersions`, `CopyObject`, `DeleteObjects`, multipart uploads with `UploadPartCopy` and `partNumber` reads, `GetObjectAttributes`, additional checksums (CRC32, CRC32C, CRC64NVME, SHA1, SHA256) and presigned URLs, with results against MinIO Mint and ceph/s3-tests published. See [S3 compatibility](/api/s3-compatibility) and [S3 conformance](/api/s3-conformance).
+- **MinIO compatibility:** the `/minio/health/*` endpoints, `/minio/v2/metrics/*` with an `mc admin prometheus generate` token, `x-minio-force-delete`, `metadata=true` on ListObjectsV2 and MinIO's quota and admin error codes.
 - **Content-defined chunking:** with BLAKE3, identical data is stored once, every read verifies its hash, and `CopyObject` and completing a multipart upload copy no data.
-- **Erasure coding:** over a set of disks (`Z3_DISKS`), with healing that repairs damaged shards found by reads, refills a replaced disk, and verifies everything on a schedule.
-- **Pools:** grow with a new disk set (`Z3_POOLS`), rebalance by capacity, and decommission a pool before removing it, with objects readable throughout.
-- **Lifecycle:** expiration, noncurrent versions, orphaned delete markers, aborting uploads, and transitions to tiers on AWS S3, MinIO or another z3, Google Cloud Storage and Azure Blob, with reads going through z3 transparently.
-- **Object Lock:** governance and compliance retention, legal hold and default retention per bucket.
-- **Bucket tags and quotas:** with MinIO's `XMinioAdminBucketQuotaExceeded` when a bucket is full.
-- **Compression:** LZ4 per chunk for chosen names and content types.
-- **Batch jobs:** replicate to another bucket or S3 store, expire with a dry run, and move encrypted objects to another KMS key without rewriting data.
-- **Active-active replication:** between nodes over a pull-based peer API, with `async`, `quorum` and `all` consistency, prefix and tag rules, conflict resolution by hybrid logical clocks, and Merkle anti-entropy.
+- **Performance:** uploads hash and write several chunks at once while the body keeps arriving, downloads read and verify several chunks ahead of the client, and on Linux `ZEE3_IO_URING=1` reads chunks through io_uring. See [Benchmarks](/deploy/benchmarks).
+- **Memory:** the metadata cache is capped (`ZEE3_META_CACHE_MB`, 128 MiB by default), so memory levels off instead of growing with the number of objects. See [Running alongside other services](/deploy/shared-host).
+- **Erasure coding:** over a set of disks (`ZEE3_DISKS`), with healing that repairs damaged shards found by reads, refills a replaced disk, verifies everything on a schedule within `ZEE3_HEAL_DUTY`, and sweeps orphaned chunk files. See [Healing](/durability/healing).
+- **Pools:** grow with a new disk set (`ZEE3_POOLS`), rebalance by capacity, and decommission a pool before removing it, with objects readable throughout.
+- **Cluster mode:** several nodes act as one Zee3 through a Raft log, with each chunk kept on several members or as erasure-coded shards across them (`zee3 admin cluster ec 4+2`), members joining and leaving without downtime, and rolling upgrades. See [Cluster](/deploy/cluster).
+- **Active-active replication:** between nodes and clusters over a pull-based peer API, with `async`, `quorum` and `all` consistency, prefix and tag rules, conflict resolution by hybrid logical clocks, Merkle anti-entropy and change-log pruning once every peer has applied a change. See [Replication](/replication/overview).
 - **Site replication:** one call joins every site in a mesh, hub-and-spoke or chain topology, and keeps buckets, IAM, settings and other cluster documents in step.
-- **Across sites:** read-your-writes with the `x-z3-session` header, bandwidth limits and time windows per peer, data residency rules, and geo erasure coding.
+- **Across sites:** read-your-writes with the `x-zee3-session` header, bandwidth limits and time windows per peer, data residency rules, and geo erasure coding with sites that rebuild lost shards from the others. See [Geo erasure coding](/replication/geo-erasure-coding).
+- **Replication map:** the Replication page draws every node and link of the group, live, with lag, traffic, conflicts and errors per bucket in both directions. See [Replication map](/replication/map).
+- **Edge and branch offices:** each peer shows whether it is online and how many changes wait, and with `on_offline: "local"` writes answer at once while the peers they need are offline. See [Edge and branch offices](/replication/edge).
+- **Lean Replica:** a small node keeps only recent object data within a size or age window while metadata stays complete, reading older data through from a full replica. See [Lean Replica](/replication/lean-replica).
+- **Mutual TLS between nodes:** `ZEE3_PEER_TLS_CERT`, `ZEE3_PEER_TLS_KEY` and `ZEE3_PEER_TLS_CA` secure replication, site replication and cluster traffic, with a step-by-step rollout for running groups. See [Mutual TLS between nodes](/deploy/peer-tls).
+- **Lifecycle:** expiration, noncurrent versions, orphaned delete markers, aborting uploads, and transitions to tiers on AWS S3, MinIO or another Zee3, Google Cloud Storage and Azure Blob, with reads going through Zee3 transparently.
+- **Object Lock:** governance and compliance retention, legal hold and default retention per bucket.
+- **Deletion protection:** with a deletion delay on a bucket, permanently deleted versions go to a trash and can be restored until the delay has passed. See [Deletion protection](/storage/deletion-protection).
+- **Rollback to a point in time:** a bucket, a prefix or one key goes back to how it was at a given time, previewed first and run as a batch job that only adds versions. See [Point-in-time rollback](/storage/point-in-time).
+- **Bucket tags, quotas and compression:** quotas per bucket, and LZ4 per chunk for chosen names and content types.
+- **Batch jobs:** replicate to another bucket or S3 store, expire with a dry run, and move encrypted objects to another KMS key without rewriting data.
 - **IAM:** users, groups, AWS-style policies with conditions, access keys with their own policy and expiry, and bucket policies including anonymous access.
-- **OpenID Connect and LDAP:** sign-in for the console, and STS (`AssumeRoleWithWebIdentity`, `AssumeRoleWithLDAPIdentity`) for temporary S3 credentials that work on every site.
-- **Encryption:** SSE-S3, SSE-KMS and SSE-C with a data key per object (AES-256-GCM per chunk), bucket default encryption, an internal KMS, or HashiCorp Vault and MinIO KES as external KMS.
-- **Bucket events:** to webhooks, Redis, NATS, Elasticsearch, Kafka, RabbitMQ, MQTT, PostgreSQL, MySQL and NSQ, with TLS options, a queue that survives restarts and unreachable destinations, and exactly one event per change across sites. See [Bucket events](/events/bucket-events).
-- **ListenBucketNotification:** on the S3 port for `mc event listen`, and Watch live in the console.
-- **Audit log:** every S3 request and admin change to webhook, Redis, NATS, Elasticsearch or Kafka, in MinIO's format, with secrets redacted and an on-disk queue. See [Audit log](/audit/audit-log).
-- **Trace and logs:** live, for one node or every node of the group.
-- **Web console:** on port 9001 for everything above, with Find (⌘ K), dark and light themes, and a phone layout. See [Web console](/operations/console).
+- **OpenID Connect, LDAP and STS:** sign-in for the console, and temporary S3 credentials from `AssumeRoleWithWebIdentity`, `AssumeRoleWithLDAPIdentity` and `AssumeRole`, narrowed by session policies and valid on every site. See [STS](/access/sts).
+- **Encryption:** SSE-S3, SSE-KMS and SSE-C with a data key per object (AES-256-GCM per chunk), bucket default encryption, and an internal KMS or HashiCorp Vault, MinIO KES, AWS KMS, Azure Key Vault and Google Cloud KMS, with retired key stores still opening what they sealed. See [External KMS](/security/external-kms).
+- **Bucket events:** to webhooks, Redis, NATS, Elasticsearch, Kafka, RabbitMQ, MQTT, PostgreSQL, MySQL and NSQ, with TLS, a queue that survives restarts and unreachable destinations, exactly one event per change across sites, and `ListenBucketNotification` for `mc event listen`. See [Bucket events](/events/bucket-events).
+- **Audit, trace and logs:** every S3 request and admin change to webhook, Redis, NATS, Elasticsearch or Kafka in MinIO's format with secrets redacted, live trace, and server logs kept on disk, for one node or every node of a site group. See [Audit log](/audit/audit-log) and [Trace and logs](/audit/trace-and-logs).
 - **Metrics:** running status, historical metrics per minute, hour and day for up to three years, per bucket too, and Prometheus metrics at `/metrics`.
 - **Cluster settings:** changed at runtime: region, request limits, CORS, upload size, Signature V2, compression, scanner intervals and logging. See [Cluster settings](/operations/settings).
 - **Support tools:** health checks, drive and network speed tests, CPU profiles with flame graphs, and inspecting how an object is stored.
 - **File protocols:** WebDAV, FTP/FTPS, SFTP and NFSv3 over the same buckets and policies, off by default.
-- **Import:** from MinIO or any S3 store, and config export and import between nodes.
-- **Command line:** `z3 admin` for settings, protocols, batch jobs, support, pools and metrics. See [Command line](/cli/overview).
+- **Import:** from MinIO or any S3 store, including bucket settings and deletions made during cutover, and configuration export and import between nodes. See [Migrate from MinIO](/deploy/migrate-from-minio).
+- **Web console:** on port 9001 for everything above, with bucket search, file previews, bulk deletes, Find (⌘ K), dark and light themes and a phone layout. See [Web console](/operations/console).
+- **Command line:** `zee3 admin` for settings, cluster, protocols, imports, batch jobs, support, pools, logs and metrics. See [Command line](/cli/overview).
+- **Platforms:** Linux binaries for amd64 and arm64, a Docker image, and an install script. See [Install](/deploy/install).
 
 </Update>
 
