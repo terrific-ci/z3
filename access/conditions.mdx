@@ -123,7 +123,10 @@ See [TLS and reverse proxies](/deploy/tls-and-proxies).
 
 ## In the console
 
-The policy editor's **Add condition** menu adds a ready-made condition to the last statement:
+In the **Visual** policy editor each statement has a **Conditions** list: pick a key (client
+address, HTTPS, time, prefix, user agent, tags, ...), a comparison and the values, separated by
+commas. All conditions of a statement must hold. **Add condition** offers ready-made ones (in the
+**JSON** view it adds them to the last statement):
 
 | Menu item | Adds |
 | --- | --- |

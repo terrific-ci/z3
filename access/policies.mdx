@@ -142,8 +142,11 @@ These exist on every node and can't be changed or deleted:
 
     1. Open **Policies** and click **Create policy**.
     2. Enter a **Name** and an optional **Description**.
-    3. Write the policy in the JSON editor. It's checked as you type. **Add condition** inserts a
-       common [condition](/access/conditions) into the last statement.
+    3. Build the policy in the **Visual** editor: each statement is a card with **Allow** or
+       **Deny**, the actions grouped by what they do (with **Read only**, **Read and write** and
+       **Everything in S3** shortcuts), the buckets and prefixes it covers, and optional
+       [conditions](/access/conditions). Switch to **JSON** to see or edit the raw document; both
+       views edit the same policy. A document the visual editor can't show opens in **JSON**.
     4. Save, then attach the policy to users or groups.
 
     <Frame>
