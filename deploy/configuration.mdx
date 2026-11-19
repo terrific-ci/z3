@@ -5,7 +5,9 @@ description: "Every startup option of Zee3: environment variables, command-line 
 
 Zee3 reads its startup configuration from environment variables or the matching command-line flags.
 A flag wins over the variable. There is no configuration file; put the variables in the Docker
-`environment` block or in `/etc/zee3/zee3.env` for [systemd](/deploy/systemd).
+`environment` block or in `/etc/zee3/zee3.env` for [systemd](/deploy/systemd). The only exception is
+`<data dir>/credentials.json`, where Zee3 keeps the root credentials chosen on the
+[setup page](#root-credentials) and a peer token set in the console; a variable always wins over it.
 
 ```bash
 zee3 --help     # every flag with its variable and default
@@ -38,15 +40,15 @@ Each address is `IP:port`. Zee3 serves plain HTTP on the S3 API and the console;
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `ZEE3_ACCESS_KEY` | `--access-key` | `zee3admin` | Access key of the root account |
-| `ZEE3_SECRET_KEY` | `--secret-key` | `zee3admin-secret` | Secret key of the root account |
+| `ZEE3_ACCESS_KEY` | `--access-key` | none | Access key of the root account. Without it (and `ZEE3_SECRET_KEY`), a new node shows the [setup page](#root-credentials) |
+| `ZEE3_SECRET_KEY` | `--secret-key` | none | Secret key of the root account |
 | `ZEE3_ENABLE_SIGV2` | `--enable-sigv2` | `false` | Accept legacy Signature V2 (headers and presigned URLs). V2 uses HMAC-SHA1 and doesn't bind requests to a region |
 
 ### Replication
 
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
-| `ZEE3_PEER_TOKEN` | `--peer-token` | empty | Token peers must present to pull from this node. The replication API is off while it is empty (this node can still pull from others). Also enables [cluster mode](/deploy/cluster) |
+| `ZEE3_PEER_TOKEN` | `--peer-token` | empty | Token peers must present to pull from this node. The replication API is off while there is no token (this node can still pull from others). Can also be set in the console ([Peer token from the console](/replication/site-replication#peer-token-from-the-console)); the variable wins and locks it there. Also enables [cluster mode](/deploy/cluster), which reads it only at start |
 | `ZEE3_CLUSTER_ADDR` | `--cluster-addr` | `http://127.0.0.1:<peer port>` (`https://` with peer TLS in `mtls` or `tls` mode) | This node's peer API as other cluster members reach it |
 | `ZEE3_NODE_NAME` | `--node-name` | host name | This node's name in a cluster |
 | `ZEE3_CLUSTER_COPIES` | `--cluster-copies` | `3` | Copies of each chunk in a cluster, capped at the member count. With [erasure coding across members](/deploy/cluster#erasure-coding-across-members), copies of chunks below the smallest size to shard |
@@ -132,17 +134,31 @@ the file protocols. See [Settings](/operations/settings) and [`zee3 admin settin
 
 ## Root credentials
 
-`ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` define the **root** account: it has every right and can't be
-restricted or deleted. It signs S3 requests and signs in to the console like any other identity.
-While either one is still the default, Zee3 logs a warning at startup and the
-[health check](/operations/support) reports it.
+The **root** account has every right and can't be restricted or deleted. It signs S3 requests and
+signs in to the console like any other identity. Zee3 takes its credentials from, in this order:
+
+1. `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY`, when set. The setup page never shows.
+2. `<data dir>/credentials.json` (mode `0600`), written by the setup page: either the keys you chose
+   under **New node**, or the root credentials of the node you joined under **Join a Zee3** (see
+   [Join from the setup page](/replication/site-replication#join-from-the-setup-page)).
+3. Neither, on a **new** data directory: the console port (`ZEE3_ADMIN_ADDR`) serves only the setup
+   page until setup is done. The S3 API, the peer API and everything else start after it;
+   `GET /api/health` answers 200 meanwhile, so container health checks keep working.
+4. Neither, on a data directory that already holds data (buckets, IAM documents or a site group,
+   such as one an older version used without credentials): the old built-in `zee3admin` /
+   `zee3admin-secret`, so existing installs keep working.
+
+On the setup page the access key needs 3 to 128 letters, digits or `. _ - @`, and the secret key 8 to
+128 characters, different from the access key. While root still uses the built-in credentials,
+Zee3 logs a warning at startup and the [health check](/operations/support) reports it.
 
 <Warning>
   Choose the root secret key **before the first start** and keep it. Zee3 encrypts user and access
   key secrets, and the keys of its internal KMS, with a key derived from the root secret. If you
   change `ZEE3_SECRET_KEY` later, existing user and access key secrets can no longer be opened (users
   need new secrets), and the internal KMS keys can't be opened, so objects encrypted with them can't
-  be read. You can change `ZEE3_ACCESS_KEY` on its own.
+  be read. You can change `ZEE3_ACCESS_KEY` on its own. For the same reason the console can't change
+  the root secret chosen on the setup page.
 </Warning>
 
 For applications, create [users and access keys](/access/users-groups-keys) instead of using root.
@@ -154,7 +170,7 @@ For applications, create [users and access keys](/access/users-groups-keys) inst
 | Variable | Flag | Default | Meaning |
 | --- | --- | --- | --- |
 | `ZEE3_ADMIN_URL` | `--url` | `http://127.0.0.1:9001` | Admin API of the node to manage |
-| `ZEE3_ACCESS_KEY` | `--access-key` | `zee3admin` | Identity to sign in with: root, a user or an access key |
+| `ZEE3_ACCESS_KEY` | `--access-key` | `zee3admin` | Identity to sign in with: root, a user or an access key. The default only matches a node that still runs with the old built-in credentials |
 | `ZEE3_SECRET_KEY` | `--secret-key` | `zee3admin-secret` | Its secret |
 
 See the [CLI](/cli/overview).

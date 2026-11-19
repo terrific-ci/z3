@@ -17,7 +17,8 @@ Use it over SSH, on a server without a browser, in scripts and cron jobs.
 
 ## A quick example
 
-On the server itself, where `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` are already set for the node:
+On the server itself, with `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` set to an identity of the node (such as
+the root account chosen on the setup page):
 
 ```bash
 zee3 admin support health
@@ -52,7 +53,7 @@ through the [admin API](/api/overview), or with any S3 client.
 | Option | Environment | Default | What it is |
 | --- | --- | --- | --- |
 | `--url <URL>` | `ZEE3_ADMIN_URL` | `http://127.0.0.1:9001` | The node's admin API |
-| `--access-key <KEY>` | `ZEE3_ACCESS_KEY` | `zee3admin` | Who to sign in as |
+| `--access-key <KEY>` | `ZEE3_ACCESS_KEY` | `zee3admin` | Who to sign in as. The default only works on a node that still uses the old built-in credentials |
 | `--secret-key <SECRET>` | `ZEE3_SECRET_KEY` | `zee3admin-secret` | Its secret |
 
 The options belong to `admin`, so they go **between `admin` and the command**:

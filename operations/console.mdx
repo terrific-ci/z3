@@ -11,11 +11,28 @@ uses. There is nothing else to install.
   <img src="/images/overview.png" alt="The console's Overview page" />
 </Frame>
 
+## First start: the setup page
+
+A node with a new data directory and no root credentials (neither `ZEE3_ACCESS_KEY` and
+`ZEE3_SECRET_KEY` nor stored ones) serves only the **setup page** on the admin port. The S3 API and
+everything else start once setup is done; `GET /api/health` already answers. There are two choices:
+
+- **New node**: choose the root access key and secret key, then **Finish setup**. They are kept in
+  `<data dir>/credentials.json`. The secret also seals the secrets Zee3 stores, so it can't be changed
+  from the console later.
+- **Join a Zee3**: become a site of an existing node's site group. The page finds Zee3 nodes on the
+  network (or takes a console address) and shows a pairing code to approve there, or takes a join
+  code. The new node takes over that node's root account. See
+  [Join from the setup page](/replication/site-replication#join-from-the-setup-page).
+
+With the variables set, the setup page never shows. See
+[Root credentials](/deploy/configuration#root-credentials).
+
 ## Signing in
 
 Sign in with any identity Zee3 knows:
 
-- the root account (`ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY`),
+- the root account (chosen on the setup page, or `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY`),
 - an IAM user (user name and secret key),
 - an access key and its secret,
 - an LDAP account, or **single sign-on** through OpenID Connect, when an
@@ -56,7 +73,7 @@ only the buckets their policies let them use. See [Admin rights](/api/overview#r
 | | Audit | [Audit targets](/audit/audit-log) with delivery status | `admin:ServerInfo` |
 | | Encryption | KMS keys, the default SSE-S3 key, an external KMS (Vault, KES, AWS, Azure, Google Cloud) and retired key stores, buckets encrypted by default | `admin:ServerInfo` |
 | | Cluster | [Cluster](/deploy/cluster) members with role, log progress, version, and shards and copies each holds; add and remove members; the **Erasure coding** panel with the layout and the leader's redundancy audit (chunks missing a shard, at risk, unreadable), **Turn on** or **Change layout**; the last placement sweep | `admin:ServerInfo` |
-| | Replication | Live state of each link; peers; site replication | `admin:ServerInfo` |
+| | Replication | Live state of each link; peers; site replication. Under **Peers and sites**: **This node's peer API** (whether it listens, where the token comes from, show, **Turn on** or **Change** the token; see [Peer token from the console](/replication/site-replication#peer-token-from-the-console)) and **Join requests** (approve or deny new nodes by their pairing code, or make a **Join code**; root only; see [Join from the setup page](/replication/site-replication#join-from-the-setup-page)) | `admin:ServerInfo` |
 | | Protocols | S3 and the file protocols: on or off, settings, state, sessions, connect commands | `admin:ServerInfo` |
 | | Disks | Disk state and capacity, erasure layout, healing (with geo shards rebuilt from other sites, geo chunks not rebuildable now and the last geo check), **Verify and repair**, the **Orphaned chunks** panel with **Sweep now** | `admin:ServerInfo` |
 | | Pools | Pools, rebalance and decommission ([Pools](/durability/pools)) | `admin:ServerInfo` |

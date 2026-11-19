@@ -10,8 +10,8 @@ random node id, created the first time it starts, and serves three things:
 
 - the **S3 API** on port 9000, for applications and S3 clients,
 - the **console and admin API** on port 9001, for people and scripts,
-- the **replication API** on port 9002, which other nodes pull changes from (only when
-  `ZEE3_PEER_TOKEN` is set).
+- the **replication API** on port 9002, which other nodes pull changes from (only once
+  the node has a peer token, from `ZEE3_PEER_TOKEN` or the console).
 
 The data directory holds the metadata database (`meta.redb`) and, unless you give Zee3 separate
 disks, the chunks themselves (under `chunks/`).

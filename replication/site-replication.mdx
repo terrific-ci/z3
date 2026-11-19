@@ -26,12 +26,18 @@ bucket-level and configuration changes.
 
 ## Set it up
 
-Every site needs a name, a reachable replication API and its own `ZEE3_PEER_TOKEN`:
+Every site needs a name, a reachable replication API and its own peer token, set with
+`ZEE3_PEER_TOKEN` or [in the console](#peer-token-from-the-console):
 
 ```bash
 # on each site, with its own token
 ZEE3_PEER_TOKEN=token-of-dc1 zee3
 ```
+
+<Tip>
+  To add a **new** node, you don't need any of this: start it without root credentials and choose
+  **Join a Zee3** on its setup page. See [Join from the setup page](#join-from-the-setup-page).
+</Tip>
 
 Then one call to **one** node configures the whole group. That node stores the configuration and
 sends it to every other site, using each site's token:
@@ -67,11 +73,95 @@ sends it to every other site, using each site's token:
 | Field | Meaning |
 | --- | --- |
 | `name` | This node's own site; must be one of `sites` |
-| `sites` | At least two sites, by name. Each has `endpoint` (`http://` or `https://`, the site's replication API; several URLs separated by commas for the members of a cluster) and `token` (that site's `ZEE3_PEER_TOKEN`) |
+| `sites` | At least two sites, by name. Each has `endpoint` (`http://` or `https://`, the site's replication API; several URLs separated by commas for the members of a cluster) and `token` (that site's peer token) |
 | `sites.*.max_bytes_per_sec`, `sites.*.windows` | Optional bandwidth limit and UTC time windows for pulling from that site; see [Bandwidth limits](/replication/bucket-replication#bandwidth-limits-and-time-windows) |
 | `topology` | Who pulls from whom (below); `"mesh"` by default |
 
 Setting it up needs the `admin:ConfigUpdate` right.
+
+## Join from the setup page
+
+A node with a new data directory and no root credentials opens with the console's
+[setup page](/deploy/configuration#root-credentials). Choose **Join a Zee3** there and the new node
+becomes a site of an existing node's site group (the existing node makes a group if it has none):
+every bucket replicates both ways, and buckets, versioning, policies and IAM follow.
+
+<Steps>
+  <Step title="Find the existing node">
+    The **On this network** tab looks for Zee3 nodes on its own: it listens for the mDNS service
+    `_zee3._tcp`, which every set-up node announces for its console, and scans the local private IPv4
+    subnets (up to a `/22` per interface) for `GET /api/setup` on the console ports (this node's,
+    `9001` and `80`). Pick the node to join, or type its console address, such as `10.0.0.5:9001`, and
+    choose **Request**.
+
+    The existing node's console must be reachable on the network: `ZEE3_ADMIN_ADDR` must not listen on
+    localhost only (the Docker image already uses `0.0.0.0:9001`). mDNS does not cross Docker bridge
+    networks; there, type the address or use a join code.
+  </Step>
+  <Step title="Approve the pairing code">
+    The new node shows a six-digit **pairing code**. On the existing node, signed in as root, open
+    **Replication → Peers and sites → Join requests**, check that the request shows the same code,
+    and approve it (or deny it). A request expires after 10 minutes.
+  </Step>
+  <Step title="Wait for the new node to start">
+    The new node receives the root credentials and finishes setup. As soon as its peer API answers,
+    the existing node adds it to the site group and sends the configuration to every site. Sign in on
+    the new node with the existing node's root account.
+  </Step>
+</Steps>
+
+### With a join code
+
+Instead of approving a request, root on the existing node can choose **Join code** in the same
+**Join requests** panel. It shows a code that starts with `zee3-join:`. Paste it on the new node's
+setup page under **Join code** and choose **Join**: the node joins without an approval. A join code
+works once, for one hour, and is lost if the existing node restarts. It holds the existing console's
+address as your browser reached it, so make the code from an address the new node can reach too.
+
+### What the new node gets
+
+- The existing node's **root credentials**, kept in its `<data dir>/credentials.json`: the same root
+  account signs in on both.
+- A generated **peer token** for its own peer API (or its `ZEE3_PEER_TOKEN`, when set), which turns
+  the peer API on.
+- Its place in the site group: a site named after its `ZEE3_SITE_NAME`, or its host name. Its
+  replication endpoint is the address its request came from, with its peer port (`ZEE3_PEER_ADDR`,
+  `9002` by default).
+
+When a proxy or NAT is between the nodes, open **This node's replication address** on the setup page
+and give the URL the existing node reaches the new node's peer API at, such as
+`http://203.0.113.9:9002`. The new node's peer port must be reachable from the existing node either
+way. The existing node keeps trying for ten minutes after the approval; if it never gets an answer,
+the new node is set up but not in the group (see
+[Troubleshooting](/deploy/troubleshooting#setup-and-joining)).
+
+If the existing node had no peer token yet, approving (or using a join code) generates one and turns
+its peer API on. When it has no site group, it makes one with itself under its own name, at the
+address the new node reached it at with its peer port.
+
+<Warning>
+  Only root can approve join requests and make join codes. The root credentials and peer tokens
+  travel over the console's own scheme, so on networks you don't trust put the existing node's
+  console behind [HTTPS](/deploy/tls-and-proxies) and join through that address. Approve only codes
+  you can see on the new node's screen.
+</Warning>
+
+## Peer token from the console
+
+**Replication → Peers and sites → This node's peer API** shows whether this node's peer API listens,
+on which address, and where its token comes from: `ZEE3_PEER_TOKEN` or the console. Root can show
+and copy the token.
+
+- **Turn on** generates a token and starts the peer API without a restart.
+- **Change** sets a new token (at least 16 characters, no spaces) or **Generate one**. It applies in
+  place. When this node belongs to a site group, the new token is sent to every site automatically.
+  Peers configured by hand on other nodes (plain [bucket replication](/replication/bucket-replication))
+  must be edited there.
+- A token set in the console is kept in `<data dir>/credentials.json`.
+- A token from `ZEE3_PEER_TOKEN` can't be changed in the console: change the variable and restart.
+- Cluster members share one token, which must come from `ZEE3_PEER_TOKEN`. Cluster mode reads the
+  token only at start, so restart a node whose token was set in the console before it joins a
+  [cluster](/deploy/cluster).
 
 ## A cluster as a site
 

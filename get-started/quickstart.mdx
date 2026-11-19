@@ -1,6 +1,6 @@
 ---
 title: "Quickstart"
-description: "Run Zee3 with Docker, sign in to the console, create a bucket and upload a file with the AWS CLI."
+description: "Run Zee3 with Docker, choose the root credentials, create a bucket and upload a file with the AWS CLI."
 ---
 
 This gets Zee3 running on your machine with Docker, the quickest way to try it. For a server install,
@@ -12,24 +12,32 @@ see [Install](/deploy/install).
     docker run -d --name zee3 --restart unless-stopped \
       -p 9000:9000 -p 9001:9001 \
       -v zee3-data:/data \
-      -e ZEE3_ACCESS_KEY=admin \
-      -e ZEE3_SECRET_KEY=change-me-please \
       terrificci/zee3:latest
     ```
 
     The S3 API listens on port **9000** and the console on **9001**. Data is kept in the `zee3-data`
     volume. For a Compose file and every setting, see [Docker](/deploy/docker).
+  </Step>
+  <Step title="Choose the root credentials">
+    Open `http://localhost:9001`. A new node has no root account yet, so the console shows the
+    **setup page** and nothing else runs (the S3 API starts once setup is done). Choose **New node**
+    and pick the root access key and secret key, for example `admin` and `change-me-please`.
 
     <Warning>
-      `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` are the root account. Without them Zee3 starts with
-      `zee3admin` / `zee3admin-secret` and logs a warning. Choose the secret before you store anything
-      you want to keep: user secrets and internal KMS keys are sealed with a key derived from it, so
-      changing it later makes them unreadable.
+      Choose the secret with care: user secrets and internal KMS keys are sealed with a key derived
+      from it, so it can't be changed later. The access key needs 3 to 128 letters, digits or
+      `. _ - @`; the secret key 8 to 128 characters.
     </Warning>
+
+    <Tip>
+      For an unattended install, set `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` instead (add
+      `-e ZEE3_ACCESS_KEY=admin -e ZEE3_SECRET_KEY=change-me-please` to `docker run`): with them set,
+      the setup page never shows. To add this node to Zee3 nodes you already run, choose
+      **Join a Zee3** instead; see [Join from the setup page](/replication/site-replication#join-from-the-setup-page).
+    </Tip>
   </Step>
   <Step title="Sign in to the console">
-    Open `http://localhost:9001` and sign in with the access key and secret key you set
-    (`admin` and `change-me-please` above).
+    Sign in with the access key and secret key you chose (`admin` and `change-me-please` above).
 
     <Frame>
       <img src="/images/login.png" alt="The Zee3 sign-in page" />

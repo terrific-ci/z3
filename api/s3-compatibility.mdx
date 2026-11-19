@@ -9,7 +9,7 @@ against it unchanged; point them at the endpoint and use path-style addressing. 
 [S3 conformance](/api/s3-conformance).
 
 ```bash
-export AWS_ACCESS_KEY_ID=zee3admin AWS_SECRET_ACCESS_KEY=zee3admin-secret AWS_DEFAULT_REGION=us-east-1
+export AWS_ACCESS_KEY_ID=admin AWS_SECRET_ACCESS_KEY=change-me-please AWS_DEFAULT_REGION=us-east-1
 aws --endpoint-url http://localhost:9000 s3 mb s3://photos
 aws --endpoint-url http://localhost:9000 s3 cp ./cat.jpg s3://photos/
 ```

@@ -9,7 +9,7 @@ identities sign S3 requests and sign in to the console. What each one may do com
 
 | Identity | Signs in with | Rights |
 | --- | --- | --- |
-| **Root** | `ZEE3_ACCESS_KEY` / `ZEE3_SECRET_KEY` | Everything. Can't be limited or deleted. |
+| **Root** | The keys chosen on the setup page, or `ZEE3_ACCESS_KEY` / `ZEE3_SECRET_KEY` | Everything. Can't be limited or deleted. |
 | **User** | Its name as the access key, plus its secret key | Its own policies plus those of its enabled groups |
 | **Access key** | An access key (20 characters) and secret key (40 characters) | The same as its parent user, or less when it has its own policy |
 | **Temporary credentials** | A `ZSTS…` access key, secret key and session token from [STS](/access/sts) | The identity behind them (a user, an access key, or an OIDC or LDAP user), narrowed by session policies if any. S3 API only |
@@ -17,10 +17,17 @@ identities sign S3 requests and sign in to the console. What each one may do com
 People can also sign in through [OpenID Connect or LDAP](/access/openid-connect-ldap) without a
 Zee3 user; their policies come from the identity provider.
 
+The root credentials come from the environment (`ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY`) when set,
+otherwise from the console's setup page on a node's first start: chosen there, or taken over from the
+node it joined, so the same root account signs in on every site that joined this way. Their secret
+also seals the secrets Zee3 stores, so the console can't change it later. See
+[Root credentials](/deploy/configuration#root-credentials).
+
 <Warning>
-  The default root credentials (`zee3admin` / `zee3admin-secret`) are for trying Zee3 out. Set your own
-  `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` before Zee3 is reachable on a network, and use users and access
-  keys for everyday work. See [Configuration](/deploy/configuration).
+  Use root only to administer Zee3. Give people and applications users and access keys for everyday
+  work. A data directory from an older version that never had root credentials set keeps the
+  built-in `zee3admin` / `zee3admin-secret`: set your own with the variables before Zee3 is reachable
+  on a network, and before it stores user secrets or KMS keys.
 </Warning>
 
 <Frame>

@@ -53,7 +53,7 @@ certificate and the CA, `http://` peers in plain HTTP.
   certificate and its own peer port stays plain HTTP.
 - In `mtls` and `tls` mode, a plain HTTP request to the peer port is answered with
   `426 Upgrade Required` and the connection is closed.
-- The peer port is still off without `ZEE3_PEER_TOKEN`.
+- The peer port is still off without a peer token (`ZEE3_PEER_TOKEN` or set in the console).
 
 ## Create the certificates
 

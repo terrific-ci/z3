@@ -96,11 +96,22 @@ zee3 --help           # every option, with its environment variable
 Start a node in the current directory to try it (data goes to `./data`):
 
 ```bash
-ZEE3_ACCESS_KEY=admin ZEE3_SECRET_KEY=change-me-please zee3
+zee3
 ```
 
-Then open `http://127.0.0.1:9001`. See the [Quickstart](/get-started/quickstart) for the first
-bucket.
+Then open `http://127.0.0.1:9001`. A new data directory starts with the **setup page**: choose the root
+access key and secret key there (they are kept in `<data dir>/credentials.json`), or join Zee3 nodes
+you already run. The S3 API starts once setup is done. On a remote server the console listens on
+`127.0.0.1` by default: reach it through an SSH tunnel (`ssh -L 9001:127.0.0.1:9001 server`) or set
+`ZEE3_ADMIN_ADDR`. See the [Quickstart](/get-started/quickstart)
+for the first bucket.
+
+For an unattended install (a script, systemd, configuration management), set the root account in the
+environment instead; the setup page then never shows:
+
+```bash
+ZEE3_ACCESS_KEY=admin ZEE3_SECRET_KEY=change-me-please zee3
+```
 
 ## Next
 
@@ -109,7 +120,7 @@ bucket.
     [Docker](/deploy/docker) or [systemd](/deploy/systemd).
   </Step>
   <Step title="Set the root credentials">
-    `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY`, before the first start. See
+    On the setup page, or with `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` before the first start. See
     [Configuration](/deploy/configuration#root-credentials).
   </Step>
   <Step title="Give it disks">

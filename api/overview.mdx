@@ -10,7 +10,7 @@ A Zee3 node serves three HTTP APIs, each on its own port:
 | --- | --- | --- | --- |
 | S3 | `0.0.0.0:9000` | `ZEE3_S3_ADDR` | Applications and S3 clients ([S3 compatibility](/api/s3-compatibility)), and [STS](/api/sts) |
 | Admin | `127.0.0.1:9001` | `ZEE3_ADMIN_ADDR` | The console, the [CLI](/cli/overview) and automation: everything under `/api/`, plus [`/metrics`](/api/prometheus) |
-| Peer | `0.0.0.0:9002` | `ZEE3_PEER_ADDR` | Other Zee3 nodes: replication, and trace and logs for the all-nodes view. Off until `ZEE3_PEER_TOKEN` is set |
+| Peer | `0.0.0.0:9002` | `ZEE3_PEER_ADDR` | Other Zee3 nodes: replication, and trace and logs for the all-nodes view. Off until the node has a peer token (`ZEE3_PEER_TOKEN` or set in the console) |
 
 This section documents the **admin API**. It speaks JSON and is what the console uses, so anything
 the console does can be scripted.
@@ -29,11 +29,11 @@ Every `/api/` endpoint needs a session token, except the few listed under
 ```bash
 curl -X POST http://127.0.0.1:9001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"access_key": "zee3admin", "secret_key": "zee3admin-secret"}'
+  -d '{"access_key": "admin", "secret_key": "change-me-please"}'
 ```
 
 ```json
-{ "token": "729bdb67d66e36145d64112072f1df835f9022d6957e983f53c40e2a0f4b13a4", "access_key": "zee3admin", "expires_in_secs": 43200 }
+{ "token": "729bdb67d66e36145d64112072f1df835f9022d6957e983f53c40e2a0f4b13a4", "access_key": "admin", "expires_in_secs": 43200 }
 ```
 
 <ParamField body="access_key" type="string" required>
@@ -89,7 +89,9 @@ the user acting, an access key's parent for a key.
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /api/health` | `{"status": "ok"}` when the node is up |
+| `GET /api/health` | `{"status": "ok"}` when the node is up (`{"status": "setup"}` while it waits on the [setup page](/deploy/configuration#root-credentials)) |
+| `GET /api/setup` | `{"product": "zee3", "needed": ..., "version", "name", "node"}`: whether the node still needs [first-run setup](/api/admin-replication#first-run-setup) |
+| `POST /api/join/requests`, `GET /api/join/requests/{id}`, `POST /api/join/code` | A new node asking to join this one's site group ([Join requests](/api/admin-replication#join-requests)) |
 | `POST /api/auth/login` | Sign in |
 | `GET /api/auth/providers` | What the sign-in page offers: `{"oidc": "<button label>" or null, "ldap": true/false}` |
 | `GET /api/auth/oidc/start`, `GET /api/auth/oidc/callback` | The OpenID Connect sign-in flow |
@@ -178,7 +180,7 @@ its `api.name` (for example `PUT /api/buckets/{bucket}/policy`) and the signed-i
 | --- | --- |
 | [Buckets and objects](/api/admin-buckets) | Buckets, objects, versioning, change log, lifecycle, Object Lock, tags, quota, encryption and KMS, tiers |
 | [IAM](/api/admin-iam) | Users, groups, policies, access keys, bucket policies, identity providers, STS settings |
-| [Replication](/api/admin-replication) | Peers, bucket replication, conflicts, link status, site replication |
+| [Replication](/api/admin-replication) | Peers, bucket replication, conflicts, link status, site replication, peer token, first-run setup, join requests |
 | [Events and audit](/api/admin-events-audit) | Event destinations and rules, watching live, audit targets, trace, logs |
 | [Operations](/api/admin-operations) | Info, status, metrics, support, pools, settings, protocols, batch, disks, heal, GC, config, imports |
 | [Prometheus](/api/prometheus) | `/metrics` |

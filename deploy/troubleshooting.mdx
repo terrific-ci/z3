@@ -32,7 +32,7 @@ Zee3 exits with one of these when it can't start. Read them in `journalctl -u ze
 | Symptom | Cause and fix |
 | --- | --- |
 | The console doesn't open from another machine | Outside Docker, the console listens on `127.0.0.1:9001`. Use an SSH tunnel (`ssh -L 9001:127.0.0.1:9001 you@server`), a [reverse proxy](/deploy/tls-and-proxies), or `ZEE3_ADMIN_ADDR=0.0.0.0:9001` on a trusted network |
-| `using default credentials` warning at startup | `ZEE3_ACCESS_KEY` or `ZEE3_SECRET_KEY` is still the default. Set both. See [Root credentials](/deploy/configuration#root-credentials) |
+| `using default credentials` warning at startup | Root still uses the built-in `zee3admin` / `zee3admin-secret`: a data directory from an older version that never had credentials set, or only one of `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` set. Set both. See [Root credentials](/deploy/configuration#root-credentials) |
 | Users can't sign in and KMS keys show `cannot be opened with this node's root secret` | `ZEE3_SECRET_KEY` changed after the node stored secrets. Put the old secret back. Otherwise give users new secret keys; internal KMS keys can't be recovered without the old secret |
 | Reads of encrypted objects fail with `…sealed by vault, which is not configured on this node` | The KMS that sealed them was forgotten as a retired key store. Connect the same KMS again, then move the objects with a rotate job. See [Retired key stores](/security/external-kms#retired-key-stores) |
 | `NoSuchBucket` for a bucket that exists, or requests going to the wrong bucket | The client uses virtual-hosted addressing (`bucket.host`). Turn on path-style; see [Clients](/get-started/clients) |
@@ -49,10 +49,23 @@ Zee3 exits with one of these when it can't start. Read them in `journalctl -u ze
 | A disk shows `foreign` | It belongs to another set, sits at another position in `ZEE3_DISKS`, or holds other files (`not empty and not a zee3 disk`). Restore the original order, or give Zee3 an empty directory |
 | A disk shows `offline` with `directory does not exist` | A replaced disk isn't mounted, or its directory wasn't created. Mount it and create the directory, owned by Zee3's user |
 | `write quorum not met for chunk ...` | Too many disks of the set are offline to write. Bring disks back; reads keep working down to the parity limit. See [Disks](/deploy/disks) |
-| Peers can't pull: `401 invalid peer token`, or connection refused on 9002 | The replication API runs only with `ZEE3_PEER_TOKEN`; the log says `replication API disabled` otherwise. The token in the peer's configuration must be **this** node's token |
+| Peers can't pull: `401 invalid peer token`, or connection refused on 9002 | The replication API runs only with a peer token, from `ZEE3_PEER_TOKEN` or **Turn on** under **Replication → Peers and sites → This node's peer API**; the log says `replication API disabled` otherwise. The token in the peer's configuration must be **this** node's token. After changing it in the console, edit peers configured by hand on other nodes |
 | A link fails with a certificate error, or `426` from the peer | See the TLS messages in [Mutual TLS between nodes](/deploy/peer-tls#check-it). `426` means the peer requires TLS: use an `https://` endpoint |
 | Replication lag keeps growing | See the link's last error on the **Replication** page. Check bandwidth limits and time windows on the peer; see [Replication overview](/replication/overview#monitoring) |
 | `docker ps` shows `unhealthy` | `zee3 healthcheck` can't reach the admin API. Check the container's logs for one of the startup errors above |
+
+## Setup and joining
+
+| Symptom | Cause and fix |
+| --- | --- |
+| The console shows only the setup page and nothing answers on port 9000 | A new data directory without root credentials waits for [setup](/deploy/configuration#root-credentials); the S3 API starts after it. Finish setup in the console, or set `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` and restart |
+| The setup page shows after an upgrade | It doesn't for a data directory that already holds data: that keeps its credentials, or the built-in ones. If it shows, Zee3 opened an empty directory: check `ZEE3_DATA_DIR` and that the volume or disk is mounted, then restart |
+| `No Zee3 answered here` on the setup page | The existing node's console listens on localhost only (`ZEE3_ADMIN_ADDR`, `127.0.0.1:9001` outside Docker), a firewall blocks it, it is on another subnet, or the nodes are in Docker bridge networks, which mDNS doesn't cross. Type the other console's address, or use a [join code](/replication/site-replication#with-a-join-code) |
+| `... is not set up yet either` | The address you typed is another node waiting on its setup page. Finish setup there first, then join it |
+| `this join code is not valid here` | The code was used, is older than an hour, or the node that made it restarted. Make a new one |
+| The join was approved but the node never became a site (`its peer API at ... never answered`) | The existing node must reach the new node's peer port (`ZEE3_PEER_ADDR`, `9002` by default) at the address it saw the request come from; it keeps trying for ten minutes after the approval. Publish or open that port in time. Otherwise the new node is set up (it signs in with the root account) but not in the group: add it on the existing node under **Replication → Site replication** with an endpoint that reaches it. Behind a proxy, NAT or a Docker port mapping, set **This node's replication address** on the setup page when you join |
+| `the peer token comes from ZEE3_PEER_TOKEN` | A token set by the variable can't be changed in the console. Change the variable and restart |
+| `cluster members share one peer token` | On a [cluster](/deploy/cluster) member the token must come from `ZEE3_PEER_TOKEN`, the same on every member |
 
 ## Health check
 

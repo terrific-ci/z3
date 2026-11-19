@@ -38,9 +38,14 @@ Replication is that log, pulled by the other nodes:
 
 Existing data replicates too: a new peer reads the change log from the start.
 
-Nodes talk over the replication API on port 9002 with a bearer token: each node's `ZEE3_PEER_TOKEN`,
-which its peers present when they pull. A node without a token can still pull from others, but no
-one can pull from it.
+Nodes talk over the replication API on port 9002 with a bearer token: each node's peer token, which
+its peers present when they pull. Set it with `ZEE3_PEER_TOKEN` or turn it on in the console
+([Peer token from the console](/replication/site-replication#peer-token-from-the-console)). A node
+without a token can still pull from others, but no one can pull from it.
+
+A new node can also join an existing node's site group straight from its first-run setup page, with
+a pairing code or a join code; see
+[Join from the setup page](/replication/site-replication#join-from-the-setup-page).
 
 To encrypt this traffic and let nodes prove who they are, turn on
 [mutual TLS between nodes](/deploy/peer-tls): every node gets a certificate from your own CA, and

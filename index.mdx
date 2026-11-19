@@ -115,7 +115,7 @@ A node listens on three ports:
 | --- | --- | --- |
 | 9000 | `0.0.0.0:9000` | S3 API |
 | 9001 | `127.0.0.1:9001` | Console and admin API |
-| 9002 | `0.0.0.0:9002` | Replication API that peers pull from (only when `ZEE3_PEER_TOKEN` is set) |
+| 9002 | `0.0.0.0:9002` | Replication API that peers pull from (only once the node has a peer token) |
 
 Zee3 runs on Linux (amd64 and arm64) as a [Docker image](/deploy/docker), a
 [systemd service](/deploy/systemd) or the [release binaries](/deploy/install), and on macOS in Docker.

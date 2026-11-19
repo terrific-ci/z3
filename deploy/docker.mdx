@@ -14,7 +14,8 @@ It sets these defaults:
 | `ZEE3_PEER_ADDR` | `0.0.0.0:9002` | `0.0.0.0:9002` |
 
 So inside the container the S3 API is on **9000**, the console and admin API on **9001**, and the
-replication API on **9002** (only when `ZEE3_PEER_TOKEN` is set).
+replication API on **9002** (only once the node has a peer token, from `ZEE3_PEER_TOKEN` or the
+console).
 
 ## docker run
 
@@ -27,11 +28,16 @@ docker run -d --name zee3 --restart unless-stopped \
   terrificci/zee3:latest
 ```
 
+With `ZEE3_ACCESS_KEY` and `ZEE3_SECRET_KEY` set, the node starts straight away. Leave them out and a
+new volume starts with the **setup page** on port 9001: open `http://localhost:9001` and choose the root
+credentials there, or join Zee3 nodes you already run (see
+[Join from the setup page](/replication/site-replication#join-from-the-setup-page)). The S3 API starts
+once setup is done; the [health check](#health) already answers during setup.
+
 <Warning>
-  The default root credentials are `zee3admin` / `zee3admin-secret`. Always set `ZEE3_ACCESS_KEY` and
-  `ZEE3_SECRET_KEY`, and set them **before the first start**: user secrets and internal KMS keys are
-  sealed with a key derived from the root secret, so changing it later makes them unreadable. See
-  [Root credentials](/deploy/configuration#root-credentials).
+  Choose the root secret **before you store anything**, in the variables or on the setup page: user
+  secrets and internal KMS keys are sealed with a key derived from it, so changing it later makes them
+  unreadable. See [Root credentials](/deploy/configuration#root-credentials).
 </Warning>
 
 ## Docker Compose
@@ -124,11 +130,11 @@ Settings go in the `environment` block. The ones you'll usually want:
 
 | Variable | Purpose |
 | --- | --- |
-| `ZEE3_ACCESS_KEY` / `ZEE3_SECRET_KEY` | The root account. Change both from the defaults |
+| `ZEE3_ACCESS_KEY` / `ZEE3_SECRET_KEY` | The root account. Without them a new node shows the setup page |
 | `ZEE3_DISKS` | Disk directories for an erasure-coded chunk store, comma-separated |
 | `ZEE3_PARITY` | Parity shards per chunk on the disk set (default 2 from four disks up, otherwise 1) |
 | `ZEE3_POOLS` | Several pools instead of `ZEE3_DISKS`; see [Pools](/durability/pools) |
-| `ZEE3_PEER_TOKEN` | Turns on the replication API on 9002; other nodes need this token to pull |
+| `ZEE3_PEER_TOKEN` | Turns on the replication API on 9002; other nodes need this token to pull. Can also be set in the console |
 | `ZEE3_SITE_NAME` | This node's site name for residency rules and geo erasure coding |
 | `ZEE3_ENABLE_SIGV2` | Accept legacy Signature V2 requests (`true`) |
 | `RUST_LOG` | What the server logs to standard output (`info` by default) |
@@ -140,8 +146,10 @@ without a restart (see [Settings](/operations/settings)).
 
 ## Replication between containers
 
-A node that other nodes pull from needs `ZEE3_PEER_TOKEN` and its port 9002 published (or reachable on
-a shared network). Each node gets its own token; peers present it when they pull.
+A node that other nodes pull from needs a peer token and its port 9002 published (or reachable on a
+shared network). Each node gets its own token; peers present it when they pull. Set it with
+`ZEE3_PEER_TOKEN`, or turn the peer API on in the console under **Replication → Peers and sites**
+(see [Peer token from the console](/replication/site-replication#peer-token-from-the-console)).
 
 ```yaml
     ports:
@@ -153,7 +161,10 @@ a shared network). Each node gets its own token; peers present it when they pull
 ```
 
 Then connect the nodes; see [Bucket replication](/replication/bucket-replication) or
-[Site replication](/replication/site-replication).
+[Site replication](/replication/site-replication). A new container can also join from its setup page.
+mDNS does not cross Docker bridge networks, so the setup page's detector may not see the other
+container: type the other console's address (such as `zee3-a:9001` on a shared Compose network) or
+paste a join code.
 
 For [mutual TLS between nodes](/deploy/peer-tls), mount the certificates read-only and point Zee3 at
 them. The container runs as uid 65532, which must be able to read the key:
@@ -172,7 +183,7 @@ them. The container runs as uid 65532, which must be able to read the key:
 
 The image has a `HEALTHCHECK` that runs `zee3 healthcheck` every 30 seconds. It asks the node's own
 admin API (`GET /api/health` on `ZEE3_ADMIN_ADDR`), so `docker ps` shows `healthy` once Zee3 has started
-and `unhealthy` if it stops answering. If it shows `unhealthy`, check `docker compose logs zee3`:
+(also while it waits on the setup page) and `unhealthy` if it stops answering. If it shows `unhealthy`, check `docker compose logs zee3`:
 usually a port that couldn't be bound, a data directory that isn't writable, or a disk
 configuration error. See [Troubleshooting](/deploy/troubleshooting).
 

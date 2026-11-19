@@ -42,7 +42,7 @@ GET /{bucket}?events=s3:ObjectCreated:*&events=s3:ObjectRemoved:*&prefix=photos/
 ### With mc
 
 ```bash
-mc alias set zee3 http://127.0.0.1:9000 zee3admin zee3admin-secret
+mc alias set zee3 http://127.0.0.1:9000 admin change-me-please
 mc event listen zee3/photos --event put,delete --prefix 2026/ --suffix .jpg
 ```
 

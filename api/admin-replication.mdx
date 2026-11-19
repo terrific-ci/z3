@@ -1,13 +1,14 @@
 ---
 title: "Replication"
-description: "Admin API endpoints for peers, per-bucket replication, conflicts, link status, anti-entropy and site replication."
+description: "Admin API endpoints for peers, per-bucket replication, conflicts, link status, anti-entropy, site replication, the peer token, first-run setup and joining new nodes."
 ---
 
 These endpoints set up and watch [replication](/replication/overview). Reading needs
 `admin:ServerInfo`; changing needs `admin:ConfigUpdate`.
 
-Replication itself runs between nodes on the **peer API** (port 9002), which needs `ZEE3_PEER_TOKEN`
-on the node being pulled from. The endpoints below are on the admin API.
+Replication itself runs between nodes on the **peer API** (port 9002), which needs a peer token
+(`ZEE3_PEER_TOKEN`, or [set in the console](/replication/site-replication#peer-token-from-the-console)) on the node being pulled from. The
+endpoints below are on the admin API.
 
 On a [cluster](/deploy/cluster#replication-with-other-zee3-nodes), call them on any member: peers and
 replication settings are stored in the cluster's metadata, and every member answers the same.
@@ -34,6 +35,15 @@ replication settings are stored in the cluster's metadata, and every member answ
 | `GET` | `/api/site` | Site replication (tokens hidden) |
 | `PUT` | `/api/site` | Join or change site replication; pushed to every other site |
 | `DELETE` | `/api/site` | Leave site replication (this node only) |
+| `GET` | `/api/node/peer` | [This node's peer token](#peer-token): token source, listening state (the token for root) |
+| `PUT` | `/api/node/peer` | Set or generate this node's peer token (root) |
+| `GET` | `/api/join/pending` | [Join requests](#join-requests) of the last ten minutes |
+| `POST` | `/api/join/requests/{id}/approve` | Approve a join request (root) |
+| `POST` | `/api/join/requests/{id}/deny` | Deny a join request (root) |
+| `POST` | `/api/join/codes` | Make a one-use join code (root) |
+
+The [first-run setup](#first-run-setup) endpoints and the public side of [joining](#join-requests)
+need no session.
 
 ## Peers
 
@@ -51,7 +61,7 @@ A peer is another Zee3 node this node pulls changes from.
 </ParamField>
 
 <ParamField body="token" type="string" required>
-  The peer's `ZEE3_PEER_TOKEN`. When changing an existing peer, an empty token keeps the saved one.
+  The peer's token (its `ZEE3_PEER_TOKEN`, or the one set in its console). When changing an existing peer, an empty token keeps the saved one.
 </ParamField>
 
 <ParamField body="max_bytes_per_sec" type="integer">
@@ -201,7 +211,7 @@ authenticating with that site's token, so **one call sets up the whole group**:
 | Field | Meaning |
 | --- | --- |
 | `name` | This node's own site, one of the keys of `sites` |
-| `sites` | Every site (at least two): its replication API `endpoint` (several URLs separated by commas for a cluster's members), its `ZEE3_PEER_TOKEN`, and optionally `max_bytes_per_sec` and `windows` for pulling from it |
+| `sites` | Every site (at least two): its replication API `endpoint` (several URLs separated by commas for a cluster's members), its peer token, and optionally `max_bytes_per_sec` and `windows` for pulling from it |
 | `topology` | `"mesh"` (every site pulls from every other), `{"hub_spoke": {"hub": "jkt"}}`, or `{"chain": {"order": ["jkt", "sby", "bdg"]}}` (each site pulls from its neighbours). Changes are relayed, so every topology reaches every site |
 
 The answer says how the push to each other site went:
@@ -212,3 +222,88 @@ The answer says how the push to each other site went:
 
 `GET /api/site` answers the configuration with tokens as `***`, or `null`. `DELETE /api/site` makes
 this node leave; the other sites keep their configuration.
+
+## Peer token
+
+`GET /api/node/peer` (`admin:ServerInfo`) describes the peer API of the node you call:
+
+```json
+{
+  "source": "console", "configured": true, "token": "3f9c...", "listening": true, "error": null,
+  "addr": "0.0.0.0:9002", "scheme": "http", "cluster_needs_restart": false, "can_change": true
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `source` | Where the token comes from: `env` (`ZEE3_PEER_TOKEN`), `console`, or `none` |
+| `configured` | Whether there is a token |
+| `token` | The token, for root only (`null` for everyone else) |
+| `listening`, `error` | Whether the peer API listens, and why not when it failed to start |
+| `addr`, `scheme` | Its address (`ZEE3_PEER_ADDR`) and `http` or `https` ([peer TLS](/deploy/peer-tls)) |
+| `cluster_needs_restart` | The token was set in the console after start: restart before joining a [cluster](/deploy/cluster), which reads it only at start |
+| `can_change` | Whether `PUT` may change it: root, a token not from `ZEE3_PEER_TOKEN`, and not a cluster member |
+
+`PUT /api/node/peer` (root) sets a token, at least 16 characters without spaces, or generates one:
+
+```bash
+curl -X PUT http://127.0.0.1:9001/api/node/peer -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"generate": true}'
+```
+
+```json
+{ "token": "9b1e...", "sites": [ { "site": "sby", "ok": true }, { "site": "bdg", "ok": false, "error": "..." } ] }
+```
+
+The peer API starts without a restart if it was off, and a changed token applies in place. The token
+is kept in `<data dir>/credentials.json`. When this node is in a site group, the group with the new
+token is pushed to every other site; `sites` says how each push went. Peers configured by hand on
+other nodes must be changed there. A token from `ZEE3_PEER_TOKEN` is refused (change the variable and
+restart), and so is any change on a cluster member (`409`): members share one `ZEE3_PEER_TOKEN`.
+
+## First-run setup
+
+A node with a new data directory and no root credentials serves only these on its admin port until
+setup is done (every other `/api/` route answers `503`, except `GET /api/health`). See
+[Root credentials](/deploy/configuration#root-credentials) and
+[Join from the setup page](/replication/site-replication#join-from-the-setup-page).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/setup` | `{"product": "zee3", "needed": true, "version", "name", "node"}`. Also answered once set up, with `needed: false` |
+| `POST` | `/api/setup` | `{"access_key", "secret_key"}`: finish setup as a new node |
+| `POST` | `/api/setup/discover` | Start looking for Zee3 nodes on the network: `{"id"}` |
+| `GET` | `/api/setup/discover/{id}` | `{"probed", "total", "done", "networks", "found": [{"url", "name", "node", "version", "via"}]}`; `via` is `mdns` or `scan` |
+| `POST` | `/api/setup/pairing` | `{"url", "endpoint"?}`: ask the console at `url` to join; answers `{"id", "code", "site"}` with the six-digit code to approve there |
+| `GET` | `/api/setup/pairing/{id}` | `{"status", "code", "site", "error"}`; `status` is `waiting`, `approved`, `joined`, `denied`, `expired` or `failed`. On `joined`, setup is done |
+| `POST` | `/api/setup/join` | `{"join_code", "endpoint"?}`: join with a `zee3-join:` code, no approval |
+
+`endpoint` is this node's replication address as the existing node reaches it, such as
+`http://203.0.113.9:9002`. Without it, the existing node uses the address the request came from with
+this node's peer port.
+
+## Join requests
+
+The existing node's side of joining. These are public, for the new node's setup page:
+
+| Method | Path | Body or header |
+| --- | --- | --- |
+| `POST` | `/api/join/requests` | `{"code", "nonce", "name", "token", "peer_port", "scheme", "endpoint"?}`: a pairing request; answers `{"id", "site"}` |
+| `GET` | `/api/join/requests/{id}` | Header `x-zee3-join-nonce` with the request's nonce: `{"status", "error", "bootstrap"}`. `bootstrap` (root credentials and the group) is only there once approved |
+| `POST` | `/api/join/code` | The secret of a join code with the same fields: joins at once |
+
+At most 32 requests wait at a time, and each expires after ten minutes.
+
+For admins:
+
+- `GET /api/join/pending` (`admin:ServerInfo`) lists the requests of the last ten minutes, newest
+  first: `id`, `code`, `name`, `from` (the address it came from), `version`, `created_ms`, `status`,
+  `error`, and `member` (its site name once approved).
+- `POST /api/join/requests/{id}/approve` (root) hands the new node the root credentials and answers
+  `{"member": "<site name>"}`. Once the new node's peer API answers, this node adds it to the site
+  group (making one if there is none) and pushes the configuration to every site. If this node had
+  no peer token, one is generated and its peer API turned on.
+- `POST /api/join/requests/{id}/deny` (root).
+- `POST /api/join/codes` (root) with `{"api": "<this console's URL as the new node reaches it>"}`
+  answers `{"code": "zee3-join:...", "expires_ms"}`. A code works once, for one hour, and is
+  forgotten when this node restarts.

@@ -31,7 +31,7 @@ zee3
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `ZEE3_PEER_TOKEN` | (required) | Peer API token, the same on every member |
+| `ZEE3_PEER_TOKEN` | (required) | Peer API token, the same on every member. It must come from the variable: the console refuses to change a member's token, and cluster mode reads it only at start, so restart a node whose token was [set in the console](/replication/site-replication#peer-token-from-the-console) before it joins |
 | `ZEE3_CLUSTER_ADDR` | `http://127.0.0.1:<peer port>` (`https://` with [mutual TLS](#mutual-tls)) | This node's peer API as the other members reach it |
 | `ZEE3_NODE_NAME` | host name | The node's name in the console and the CLI |
 | `ZEE3_CLUSTER_COPIES` | `3` | Copies of each chunk, capped at the number of members. With [erasure coding](#erasure-coding-across-members), copies of chunks below the smallest size to shard |
