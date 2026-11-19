@@ -106,6 +106,11 @@ key, or endpoint) and choose **Save and resume**. Zee3 tries the new settings ag
 and keeps the old ones if they are refused. A running job starts its round again from the saved
 position; a new endpoint lists the buckets again from the start.
 
+- **Speed.** Over a link with latency, many small objects are limited by how many are copied at once:
+  raise `concurrency` (up to 64; it can be changed while the job runs, from the next bucket on). With
+  20 ms of latency, 2,000 objects of 64 KiB took 12.2 s with 8 and 5.0 s with 32. The next listing
+  pages are read ahead, so one slow object doesn't hold the rest back, and objects of 32 MiB and more
+  are read as several ranges at once (with `If-Match`, so an object replaced halfway is never mixed).
 - **Resumable.** The position (bucket and listing marker) is saved after every page. After a Zee3
   restart or a network failure the job continues from there.
 - **Idempotent.** Versions that already exist are skipped without downloading them again. A version

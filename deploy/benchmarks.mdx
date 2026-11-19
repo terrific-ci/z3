@@ -95,6 +95,23 @@ process's own memory (anonymous, without the page cache) as objects pile up.
   fast, since the operating system still caches the metadata file. See
   [Running alongside other services](/deploy/shared-host).
 
+## Importing from another S3 store
+
+`bench/import.sh` fills one Zee3 with 2,000 objects of 64 KiB and 3 of 128 MiB, and a second Zee3
+[imports](/deploy/migrate-from-minio) them with latency added on its side. Zee3 1.1.1 against the next
+version, which reads listing pages ahead and fetches large objects as several ranges at once:
+
+| Workload | Latency | Concurrency | 1.1.1 | Next |
+|---|---|---|---|---|
+| 2,000 x 64 KiB | 0 ms | 8 | 4.7 s | **3.7 s** |
+| 2,000 x 64 KiB | 20 ms | 8 | 12.2 s | 12.2 s |
+| 2,000 x 64 KiB | 20 ms | 32 | 5.0 s | 5.0 s |
+| 128 MiB objects, one at a time | 60 ms | 1 | 48.7 MiB/s | **62.8 MiB/s** |
+| 128 MiB objects, one at a time | 0 ms | 1 | 175 MiB/s | 175 MiB/s |
+
+Over a link with latency, small objects go as fast as the number copied at once allows: raise the
+job's `concurrency`. With no latency the target's drive is the limit for large objects.
+
 ## Measure it yourself
 
 The script runs the three servers one after another with the same limits and prints one line per
