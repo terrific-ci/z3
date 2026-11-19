@@ -111,6 +111,12 @@ position; a new endpoint lists the buckets again from the start.
   20 ms of latency, 2,000 objects of 64 KiB took 12.2 s with 8 and 5.0 s with 32. The next listing
   pages are read ahead, so one slow object doesn't hold the rest back, and objects of 32 MiB and more
   are read as several ranges at once (with `If-Match`, so an object replaced halfway is never mixed).
+- **Progress.** The console shows how far the current round is (by bytes, against the source's size:
+  counted in the background on the first round, taken from the previous round after that and counted
+  again when the source has grown), the copy speed, objects checked per second and the time left.
+  Between rounds it shows how long the last round took, what it copied and when the next one starts.
+  `GET /api/imports/{id}` has the same numbers (`pass_versions`, `pass_bytes`, `total_versions`,
+  `total_bytes`, `last_pass_ms`, ...).
 - **Resumable.** The position (bucket and listing marker) is saved after every page. After a Zee3
   restart or a network failure the job continues from there.
 - **Idempotent.** Versions that already exist are skipped without downloading them again. A version
