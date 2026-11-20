@@ -6,17 +6,25 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.1.4**, released November 20, 2026. To install or upgrade to it:
+The latest release is **v1.1.5**, released November 20, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/zee3:1.1.4
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.4
+docker pull terrificci/zee3:1.1.5
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.5
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.1.4" description="November 20, 2026" tags={["Latest"]}>
+<Update label="v1.1.5" description="November 20, 2026" tags={["Latest"]}>
+
+- **Replication map:** each line shows the transfer speed of every direction that moves data, such as `45.1 MB/s → cluster1`, with the data rate beside it when compression makes it much larger. See [Replication map](/replication/map).
+- **Replication map:** while a new site (or one away longer than the change-log retention) is brought up to date by anti-entropy, the line says **resyncing** with how much is done and stays amber; the detail panel shows it per bucket.
+- **Fix:** the map said "in sync" while a new site was still being filled by anti-entropy, or while a large batch of changes was downloading, and the transferred bytes did not count anti-entropy. Lag now shows as soon as a batch arrives, and anti-entropy counts toward the transfer totals.
+
+</Update>
+
+<Update label="v1.1.4" description="November 20, 2026">
 
 - **Joining:** a node that joined with a pairing code or join code shows on its Replication page that it is waiting to be added, the address the other node tries to reach it at, and any error, until it is in the site group. See [Site replication](/replication/site-replication).
 - **Joining:** on the existing node, Join requests keep a failed request for a day with the address it tried; **Fix address…** sets the right one (such as an HTTPS proxy URL) and **Retry** adds the node as soon as it answers, without joining again.
