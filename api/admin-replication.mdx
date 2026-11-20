@@ -36,10 +36,12 @@ replication settings are stored in the cluster's metadata, and every member answ
 | `PUT` | `/api/site` | Join or change site replication; pushed to every other site |
 | `DELETE` | `/api/site` | Leave site replication (this node only) |
 | `GET` | `/api/node/peer` | [This node's peer token](#peer-token): token source, listening state (the token for root) |
-| `PUT` | `/api/node/peer` | Set or generate this node's peer token (root) |
-| `GET` | `/api/join/pending` | [Join requests](#join-requests) of the last ten minutes |
+| `PUT` | `/api/node/peer` | Set or generate this node's peer token, or its replication address (root) |
+| `GET` | `/api/join/pending` | Recent [join requests](#join-requests) (failed ones for a day) |
 | `POST` | `/api/join/requests/{id}/approve` | Approve a join request (root) |
 | `POST` | `/api/join/requests/{id}/deny` | Deny a join request (root) |
+| `POST` | `/api/join/requests/{id}/retry` | Reach an approved new node again, optionally at another address (root) |
+| `GET` | `/api/join/status` | On a node that joined at setup: how its join goes |
 | `POST` | `/api/join/codes` | Make a one-use join code (root) |
 
 The [first-run setup](#first-run-setup) endpoints and the public side of [joining](#join-requests)
@@ -230,7 +232,8 @@ this node leave; the other sites keep their configuration.
 ```json
 {
   "source": "console", "configured": true, "token": "3f9c...", "listening": true, "error": null,
-  "addr": "0.0.0.0:9002", "scheme": "http", "cluster_needs_restart": false, "can_change": true
+  "addr": "0.0.0.0:9002", "scheme": "http", "cluster_needs_restart": false, "can_change": true,
+  "name": "jakarta", "endpoint": "https://peer-a.example.com"
 }
 ```
 
@@ -243,6 +246,8 @@ this node leave; the other sites keep their configuration.
 | `addr`, `scheme` | Its address (`ZEE3_PEER_ADDR`) and `http` or `https` ([peer TLS](/deploy/peer-tls)) |
 | `cluster_needs_restart` | The token was set in the console after start: restart before joining a [cluster](/deploy/cluster), which reads it only at start |
 | `can_change` | Whether `PUT` may change it: root, a token not from `ZEE3_PEER_TOKEN`, and not a cluster member |
+| `name` | The name other nodes know this node by (its site name) |
+| `endpoint` | This node's replication address saved in the console, or `null` |
 
 `PUT /api/node/peer` (root) sets a token, at least 16 characters without spaces, or generates one:
 
@@ -260,6 +265,11 @@ is kept in `<data dir>/credentials.json`. When this node is in a site group, the
 token is pushed to every other site; `sites` says how each push went. Peers configured by hand on
 other nodes must be changed there. A token from `ZEE3_PEER_TOKEN` is refused (change the variable and
 restart), and so is any change on a cluster member (`409`): members share one `ZEE3_PEER_TOKEN`.
+
+`{"endpoint": "https://peer-a.example.com"}` saves this node's replication address (`""` clears it),
+also with a token from `ZEE3_PEER_TOKEN`. Like a new token, it is written into this node's entry of
+its site group and pushed to every other site. In `PUT /api/site`, a site whose `token` is empty
+keeps the token the group already has for it (this node's own: its peer token).
 
 ## First-run setup
 
@@ -289,7 +299,7 @@ The existing node's side of joining. These are public, for the new node's setup 
 | Method | Path | Body or header |
 | --- | --- | --- |
 | `POST` | `/api/join/requests` | `{"code", "nonce", "name", "token", "peer_port", "scheme", "endpoint"?}`: a pairing request; answers `{"id", "site"}` |
-| `GET` | `/api/join/requests/{id}` | Header `x-zee3-join-nonce` with the request's nonce: `{"status", "error", "bootstrap"}`. `bootstrap` (root credentials and the group) is only there once approved |
+| `GET` | `/api/join/requests/{id}` | Header `x-zee3-join-nonce` with the request's nonce: `{"status", "error", "bootstrap", "endpoint", "site"}`. `bootstrap` (root credentials, the group, and the request id and nonce to follow it) is only there once approved |
 | `POST` | `/api/join/code` | The secret of a join code with the same fields: joins at once |
 
 At most 32 requests wait at a time, and each expires after ten minutes.
@@ -298,12 +308,20 @@ For admins:
 
 - `GET /api/join/pending` (`admin:ServerInfo`) lists the requests of the last ten minutes, newest
   first: `id`, `code`, `name`, `from` (the address it came from), `version`, `created_ms`, `status`,
-  `error`, and `member` (its site name once approved).
+  `error`, `member` (its site name once approved) and `endpoint` (where this node reaches the new
+  node's peer API). Approved requests stay while this node tries, failed ones for a day.
 - `POST /api/join/requests/{id}/approve` (root) hands the new node the root credentials and answers
   `{"member": "<site name>"}`. Once the new node's peer API answers, this node adds it to the site
   group (making one if there is none) and pushes the configuration to every site. If this node had
   no peer token, one is generated and its peer API turned on.
 - `POST /api/join/requests/{id}/deny` (root).
+- `POST /api/join/requests/{id}/retry` (root) with `{"endpoint"?}`: for an approved request that has
+  not joined (still trying, or failed), try again for ten minutes, at `endpoint` when given. Answers
+  `{"endpoint"}`.
+- `GET /api/join/status` on the new node (signed in) asks the node it joined at setup:
+  `{"status", "site", "name", "api", "since_ms", "endpoint", "error"}` with `status` `approved`
+  (still being reached at `endpoint`), `failed`, `lost` (that node no longer knows the request),
+  `unreachable`, or `none` once it is in the group.
 - `POST /api/join/codes` (root) with `{"api": "<this console's URL as the new node reaches it>"}`
   answers `{"code": "zee3-join:...", "expires_ms"}`. A code works once, for one hour, and is
   forgotten when this node restarts.

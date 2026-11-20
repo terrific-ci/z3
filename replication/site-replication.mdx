@@ -138,13 +138,30 @@ and approvals made together never overwrite each other's place in the group.
 When a proxy or NAT is between the nodes, open **This node's replication address** on the setup page
 and give the URL the existing node reaches the new node's peer API at, such as
 `http://203.0.113.9:9002`. The new node's peer port must be reachable from the existing node either
-way. The existing node keeps trying for ten minutes after the approval; if it never gets an answer,
-the new node is set up but not in the group (see
-[Troubleshooting](/deploy/troubleshooting#setup-and-joining)).
+way. The existing node keeps trying for ten minutes after the approval. Meanwhile, and if it never gets
+an answer:
+
+- the new node's **Replication** page shows that it is waiting to be added, the address the
+  existing node tries, and any error;
+- the existing node's **Join requests** keep the request (a failed one for a day) with that address
+  and **Fix address…**: correct the address (for example `https://peer-b.example.com` behind a proxy)
+  and choose **Retry**. The new node joins as soon as that address answers.
 
 If the existing node had no peer token yet, approving (or using a join code) generates one and turns
-its peer API on. When it has no site group, it makes one with itself under its own name, at the
-address the new node reached it at with its peer port.
+its peer API on. When it has no site group, it makes one with itself under its own name, at its
+saved replication address (see [below](#peer-token-from-the-console)), or else at the address the
+new node reached its console at with its peer port.
+
+### Only ports 80 and 443 open
+
+The peer API can sit behind an HTTPS reverse proxy on its own host name, such as
+`peer-a.example.com` to `127.0.0.1:9002` (see [TLS and reverse proxies](/deploy/tls-and-proxies#the-replication-api)).
+Then:
+
+1. On the existing node, save `https://peer-a.example.com` as **This node's replication address**
+   (Replication → Peers and sites → This node's peer API). A site group it belongs to gets it at once.
+2. On the new node's setup page, set **This node's replication address** to its own proxy URL,
+   such as `https://peer-b.example.com`, before joining.
 
 <Warning>
   Only root can approve join requests and make join codes. The root credentials and peer tokens
@@ -168,6 +185,11 @@ and copy the token.
   another node, which fills in all three from it. The address is guessed from the host the console
   was opened on and the peer port; correct it under *Other nodes reach this one at* if the other node
   reaches this one differently. The code holds the token, so share it like the token.
+- **This node's replication address**: the URL other nodes reach this node's peer API at, when that
+  is not this console's host with port 9002 (an HTTPS proxy, NAT, a mapped port). Saving it updates
+  this node's entry in its site group on every site, and the connection code carries it.
+- In the site group dialog a token left empty keeps the one the group has, so changing an address
+  does not mean typing every token again; a connection code fills in a whole site.
 - A token set in the console is kept in `<data dir>/credentials.json`.
 - A token from `ZEE3_PEER_TOKEN` can't be changed in the console: change the variable and restart.
 - Cluster members share one token, which must come from `ZEE3_PEER_TOKEN`. Cluster mode reads the
