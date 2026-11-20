@@ -26,7 +26,12 @@ that answers.
   pulls from another gets the arrow. Most links run both ways, with an arrow at each end.
 - **Colours**: green is in sync, amber is catching up (changes waiting), dashed red is failing or
   offline, dashed grey is paused outside a bandwidth window. A line moves while changes flow.
-- The chip on each line says how far behind it is, or how many buckets are in sync.
+- The chip on each line says how far behind it is, or how many buckets are in sync. While a site
+  that is new (or was away longer than the change-log retention) is brought up to date by
+  anti-entropy, it says **resyncing** with how much is done, and the line is amber, not green.
+- Under the chip, the transfer speed of each direction that moves data now, such as
+  `45.1 MB/s → cluster1`: bytes on the network over the last half minute, with the data rate in
+  brackets when compression makes it much larger.
 
 Above the map, readouts total the whole group: nodes and how many are unreachable, links streaming,
 changes waiting and the age of the oldest, conflicts, bytes transferred and bytes saved by
