@@ -6,17 +6,26 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.1.3**, released November 19, 2026. To install or upgrade to it:
+The latest release is **v1.1.4**, released November 20, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/zee3:1.1.3
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.3
+docker pull terrificci/zee3:1.1.4
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.4
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.1.3" description="November 19, 2026" tags={["Latest"]}>
+<Update label="v1.1.4" description="November 20, 2026" tags={["Latest"]}>
+
+- **Joining:** a node that joined with a pairing code or join code shows on its Replication page that it is waiting to be added, the address the other node tries to reach it at, and any error, until it is in the site group. See [Site replication](/replication/site-replication).
+- **Joining:** on the existing node, Join requests keep a failed request for a day with the address it tried; **Fix address…** sets the right one (such as an HTTPS proxy URL) and **Retry** adds the node as soon as it answers, without joining again.
+- **Replication:** **This node's replication address** under This node's peer API saves the URL other nodes reach this node at (an HTTPS proxy, NAT, another port). A site group made by a join uses it instead of guessing the console's host with port 9002, and changing it updates every site. Nodes with only ports 80 and 443 open can replicate through a reverse proxy.
+- **Replication:** in the site group dialog an empty token keeps the one the group already has, and a connection code fills in a whole site.
+
+</Update>
+
+<Update label="v1.1.3" description="November 19, 2026">
 
 - **Imports:** a running import shows how far the current round is as a percentage of the source's size, the copy speed, objects checked per second and the time left; between rounds it shows how long the last round took, what it copied and when the next one starts. The first round counts the source in the background, later rounds use the previous round's size and count again when the source has grown. The counters now move with every object instead of every 1,000. See [Migrate from MinIO](/deploy/migrate-from-minio).
 - **Console:** previews of images, PDFs and text show how much has arrived, the speed and the time left while they load. Files above 256 MiB still open directly in the browser.
