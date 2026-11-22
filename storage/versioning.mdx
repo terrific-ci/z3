@@ -120,7 +120,9 @@ versions; deleting a single version says it cannot be recovered.
 
 ## Older versions and space
 
-Older versions count toward the bucket's size and its [quota](/storage/tags-and-quota). To keep
+Older versions count toward the bucket's size and its [quota](/storage/tags-and-quota), so a
+bucket whose objects were all deleted (each hidden by a delete marker) shows 0 objects but keeps its
+size; the console shows that part as "in old versions" under the size. To keep
 them in check, add a [lifecycle rule](/storage/lifecycle) that removes older versions some days
 after they were replaced, keeps only the newest few, or moves them to a [tier](/storage/tiers).
 Unchanged chunks are shared between versions (see [Concepts](/get-started/concepts)), so a

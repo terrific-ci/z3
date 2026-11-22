@@ -70,6 +70,7 @@ Bucket policies are under [IAM](/api/admin-iam#bucket-policies), bucket replicat
 [
   {
     "name": "radiology", "created_ms": 1794834588308, "object_count": 812004, "total_bytes": 1759218604441,
+    "current_bytes": 1649267441664, "noncurrent_bytes": 107374182400, "trash_bytes": 2576980377, "trash_versions": 1204,
     "versioning": "Enabled", "peers": ["dc2"], "site_managed": true, "geo": false,
     "quota_bytes": 2199023255552, "tags": { "team": "radiology" }, "object_lock": true
   }
@@ -78,6 +79,11 @@ Bucket policies are under [IAM](/api/admin-iam#bucket-policies), bucket replicat
 
 | Field | Meaning |
 | --- | --- |
+| `object_count` | Current objects: what a listing shows (delete markers hide their objects) |
+| `total_bytes` | Bytes of every stored version: `current_bytes` + `noncurrent_bytes` + `trash_bytes` |
+| `current_bytes` | Bytes of the current objects |
+| `noncurrent_bytes` | Bytes of older versions kept by versioning, including objects hidden by a delete marker |
+| `trash_bytes`, `trash_versions` | Deleted versions waiting in the [trash](/storage/deletion-protection) |
 | `versioning` | `Unversioned`, `Enabled` or `Suspended` |
 | `peers` | Peers the bucket replicates with; empty when it is not replicated |
 | `site_managed` | Replication is managed by site replication |
@@ -109,6 +115,7 @@ curl -X POST http://127.0.0.1:9001/api/buckets -H "Authorization: Bearer $TOKEN"
 ### One bucket
 
 `GET /api/buckets/{bucket}` answers `name`, `created_ms`, `object_count`, `total_bytes`,
+`current_bytes`, `noncurrent_bytes`, `trash_bytes`, `trash_versions` (as in the list),
 `versioning`, `replication` (the [replication configuration](/api/admin-replication#bucket-replication)
 or `null`) and `object_lock`.
 

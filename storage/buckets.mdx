@@ -71,6 +71,13 @@ replication peers, the first two [tags](/storage/tags-and-quota), the
 [quota](/storage/tags-and-quota) if one is set (for example "of 2.00 GB" under the size) and a lock
 icon for buckets with Object Lock. The filter box narrows the list by name.
 
+The size counts every stored version, while the object count only counts current objects. When part
+of the size is not in the listing, a line under it says where it is, for example "2.40 MB in old
+versions · 3.1 MB in trash": [older versions](/storage/versioning#older-versions-and-space) (also
+objects hidden by a delete marker) and deleted versions waiting in the
+[trash](/storage/deletion-protection). So a versioned bucket can show 0 objects and still have a size.
+The bucket page shows the same split next to its size.
+
 <Frame>
   <img src="/images/buckets.png" alt="The Buckets page with sizes, versioning, tags and replication" />
 </Frame>
