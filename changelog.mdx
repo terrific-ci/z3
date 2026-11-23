@@ -6,17 +6,26 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.1.5**, released November 20, 2026. To install or upgrade to it:
+The latest release is **v1.1.6**, released November 23, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/zee3:1.1.5
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.5
+docker pull terrificci/zee3:1.1.6
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.6
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.1.5" description="November 20, 2026" tags={["Latest"]}>
+<Update label="v1.1.6" description="November 23, 2026" tags={["Latest"]}>
+
+- **Buckets:** a bucket's size now says how much of it the object list does not show, such as "2.40 MB in old versions · 3.1 MB in trash", on the Buckets page, the bucket page and its flow view. A versioned bucket whose objects were all deleted shows 0 objects and the size its older versions still take. See [Buckets](/storage/buckets).
+- **Admin API:** `GET /api/buckets` and `GET /api/buckets/{bucket}` return `current_bytes`, `noncurrent_bytes`, `trash_bytes` and `trash_versions` beside `total_bytes`. See [Admin API: buckets](/api/admin-buckets).
+- **Security:** updated the URL parsing library to fix a stack overflow on deeply nested `blob:` URLs.
+- **Upgrading:** the first start of 1.1.6 updates the metadata once and cannot be undone; an earlier version will not open the data directory afterwards.
+
+</Update>
+
+<Update label="v1.1.5" description="November 20, 2026">
 
 - **Replication map:** each line shows the transfer speed of every direction that moves data, such as `45.1 MB/s → cluster1`, with the data rate beside it when compression makes it much larger. See [Replication map](/replication/map).
 - **Replication map:** while a new site (or one away longer than the change-log retention) is brought up to date by anti-entropy, the line says **resyncing** with how much is done and stays amber; the detail panel shows it per bucket.
