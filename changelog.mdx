@@ -6,17 +6,24 @@ rss: true
 
 {/* Written by the Zee3 release workflow on every release. Edits here are overwritten. */}
 
-The latest release is **v1.1.6**, released November 23, 2026. To install or upgrade to it:
+The latest release is **v1.1.7**, released November 25, 2026. To install or upgrade to it:
 
 ```bash
-docker pull terrificci/zee3:1.1.6
-curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.6
+docker pull terrificci/zee3:1.1.7
+curl -fsSL https://raw.githubusercontent.com/terrific-ci/z3/main/install.sh | sh -s -- --version 1.1.7
 ```
 
 The `latest` image tag and the install script without `--version` always get this release; see
 [Install](/deploy/install).
 
-<Update label="v1.1.6" description="November 23, 2026" tags={["Latest"]}>
+<Update label="v1.1.7" description="November 25, 2026" tags={["Latest"]}>
+
+- **Console:** a bucket's objects can be sorted by name, size, modified time or type, in either order, from the sort button or by clicking a column header; folders stay on top. Sorting by anything other than the name orders the objects loaded so far. See [Buckets](/storage/buckets#browse-objects).
+- **Console:** a gallery view beside the list shows folders and objects as cards, with thumbnails for images up to 10 MiB. The sort and the view are remembered in the browser.
+
+</Update>
+
+<Update label="v1.1.6" description="November 23, 2026">
 
 - **Buckets:** a bucket's size now says how much of it the object list does not show, such as "2.40 MB in old versions · 3.1 MB in trash", on the Buckets page, the bucket page and its flow view. A versioned bucket whose objects were all deleted shows 0 objects and the size its older versions still take. See [Buckets](/storage/buckets).
 - **Admin API:** `GET /api/buckets` and `GET /api/buckets/{bucket}` return `current_bytes`, `noncurrent_bytes`, `trash_bytes` and `trash_versions` beside `total_bytes`. See [Admin API: buckets](/api/admin-buckets).
