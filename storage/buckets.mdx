@@ -95,6 +95,12 @@ Click a bucket to open its **Objects** tab:
   it, in any case, and marks the match. It reads up to 20,000 objects at a time; **Search further**
   goes on. **Starts with** lists folders and objects in the current folder whose name starts with
   it (case-sensitive), the way S3 prefixes work.
+- **Sort** by name, size, modified time or type, either way, from the sort button or by clicking a
+  column header. Folders stay on top. The server lists keys in name order a page at a time, so
+  sorting by anything else orders the objects loaded so far; **Load more** brings in the rest.
+- **List** or **Gallery** view: the gallery shows a card per folder and object, with a thumbnail for
+  images up to 10 MiB (not for SSE-C objects, which need your key). The sort and the view are kept
+  in the browser.
 - **Upload** (or drag and drop files onto the page) uploads into the current folder, with progress.
 - Click an object to see its details: size, content type, ETag, metadata,
   [object headers](/api/s3-compatibility#object-headers) (shown apart from metadata), tags, encryption,
